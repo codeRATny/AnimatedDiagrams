@@ -244,8 +244,13 @@
         } else if (type === "pulse") {
           step.nodeId = nodes[0] ? nodes[0].id : null;
           step.duration = 700;
+        } else if (type === "action") {
+          step.nodeId = nodes[0] ? nodes[0].id : null;
+          step.text = "Обработка";
+          step.color = "#38bdf8";
+          step.duration = 1800;
         }
-        if ((type === "message" && !step.from) || (["timer", "state", "pulse"].includes(type) && !step.nodeId)) {
+        if ((type === "message" && !step.from) || (["timer", "state", "pulse", "action"].includes(type) && !step.nodeId)) {
           this.toast("Сначала добавьте узлы на диаграмму", true);
           return;
         }
@@ -521,6 +526,10 @@
       } else if (s.type === "pulse") {
         box.appendChild(this.field("Узел", this.selectCtl(s.nodeId, this.nodeOptions(), (v) => { s.nodeId = v; this.commit(true); })));
         box.appendChild(this.field("Цвет", this.input(s.color || "#22d3ee", (v) => { s.color = v; this.commit(); }, "color")));
+      } else if (s.type === "action") {
+        box.appendChild(this.field("Узел (сервис)", this.selectCtl(s.nodeId, this.nodeOptions(), (v) => { s.nodeId = v; this.commit(true); })));
+        box.appendChild(this.field("Действие", this.input(s.text, (v) => { s.text = v; this.commit(true); })));
+        box.appendChild(this.field("Цвет", this.input(s.color || "#38bdf8", (v) => { s.color = v; this.commit(); }, "color")));
       }
 
       const timing = document.createElement("div");
@@ -560,6 +569,9 @@
         s.state = s.state || "down";
       } else if (s.type === "pulse") {
         s.nodeId = s.nodeId || s.from || (nodes[0] && nodes[0].id);
+      } else if (s.type === "action") {
+        s.nodeId = s.nodeId || s.from || (nodes[0] && nodes[0].id);
+        s.text = s.text || "Действие";
       } else if (s.type === "note") {
         s.text = s.text || "Заметка";
         s.x = s.x || 60; s.y = s.y || 30;

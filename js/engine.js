@@ -105,6 +105,7 @@
 
     /* --- отрисовка кадра --- */
     renderAt(t) {
+      this.t = t; // синхронизируем время: состояние узлов резолвится по this.t (важно для экспорта)
       AD.diagram.highlights = {};
       const active = this.activeSteps(t);
 
@@ -124,6 +125,7 @@
           if (p < 0.2) this._hl(s.from, AD.MSG_VARIANTS[s.variant]);
           if (p > 0.8) this._hl(s.to, AD.MSG_VARIANTS[s.variant]);
         }
+        if (s.type === "action") this._hl(s.nodeId, { color: s.color || "#38bdf8" });
       }
 
       AD.diagram.render();
@@ -144,6 +146,7 @@
         if (s.type === "message") this.drawMessage(g, s, p);
         else if (s.type === "timer") this.drawTimer(g, s, p);
         else if (s.type === "note") this.drawNote(g, s, p);
+        else if (s.type === "action") this.drawAction(g, s, p);
       }
     },
 
@@ -260,6 +263,38 @@
       clip.appendChild(el("rect", { x: 0, y: 0, width: w, height: 30, rx: 8, ry: 8 }));
       grp.insertBefore(clip, tx);
       grp.insertBefore(el("rect", { x: 0, y: 0, width: 5, height: 30, fill: color, "clip-path": "url(#" + clipId + ")" }), tx);
+    },
+
+    /* Действие на сервисе: бейдж под узлом с текстом действия и вращающимся спиннером */
+    drawAction(g, s, p) {
+      const n = S.node(s.nodeId);
+      if (!n) return;
+      const color = s.color || "#38bdf8";
+      const text = s.text || "Действие";
+      const grp = el("g", { transform: `translate(${n.x + n.w / 2},${n.y + n.h + 18})` });
+      g.appendChild(grp); // в DOM — чтобы измерить текст
+      // текст сначала (для измерения ширины)
+      const tx = el("text", { x: 0, y: 4, class: "action-label", fill: color, "text-anchor": "start" });
+      tx.textContent = text;
+      grp.appendChild(tx);
+      const tw = tx.getComputedTextLength();
+      const pad = 12, sr = 7, gap = 7;        // отступ, радиус спиннера, зазор
+      const W = pad + sr * 2 + gap + tw + pad; // ширина пилюли по содержимому
+      const leftX = -W / 2;
+      // фон-пилюля
+      grp.insertBefore(el("rect", { x: leftX, y: -13, width: W, height: 26, rx: 13, fill: "#0b1220", opacity: 0.92, stroke: color, "stroke-width": 1.2, filter: "url(#nodeShadow)" }), tx);
+      // вращающийся спиннер (индикатор активности) — вращение по абсолютному времени
+      const scx = leftX + pad + sr;
+      const circ = 2 * Math.PI * sr;
+      const spin = el("g", { transform: `translate(${scx},0) rotate(${(this.t / 1000 * 300) % 360})` });
+      spin.appendChild(el("circle", { r: sr, fill: "none", stroke: color, opacity: 0.25, "stroke-width": 2.4 }));
+      spin.appendChild(el("circle", {
+        r: sr, fill: "none", stroke: color, "stroke-width": 2.4, "stroke-linecap": "round",
+        "stroke-dasharray": circ * 0.65 + " " + circ,
+      }));
+      grp.insertBefore(spin, tx);
+      // сдвигаем текст правее спиннера
+      tx.setAttribute("x", scx + sr + gap);
     },
   });
 })();
