@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Animated Diagrams — редактор анимированных диаграмм</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ВЕРХНЯЯ ПАНЕЛЬ (кастомный хедер в стиле приложения; меню строит js/menu.js) -->
+  <header class="appbar" id="appbar">
+    <div class="appbar-brand" title="Animated Diagrams">◈</div>
+    <nav class="menubar" id="menubar"></nav>
+    <div class="appbar-title" id="appbar-title" title="Двойной клик — переименовать диаграмму">Новая диаграмма</div>
+    <div class="win-controls" id="win-controls">
+      <button class="win-btn" id="win-min" title="Свернуть" tabindex="-1">&#8211;</button>
+      <button class="win-btn" id="win-max" title="Развернуть" tabindex="-1">&#9634;</button>
+      <button class="win-btn win-close" id="win-close" title="Закрыть" tabindex="-1">&#10005;</button>
+    </div>
+  </header>
+  <input id="file-input" type="file" accept="application/json,.json" hidden />
+
+  <div class="workspace">
+    <!-- ЛЕВАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ -->
+    <aside class="sidebar left">
+      <div class="panel">
+        <h3>Инструменты</h3>
+        <div class="tool-grid">
+          <button class="tool" data-tool="select" title="Выбор (V)">▘ Выбор</button>
+          <button class="tool" data-tool="node" title="Добавить узел (N)">＋ Узел</button>
+          <button class="tool" data-tool="edge" title="Связь (E)">↗ Связь</button>
+          <button class="tool" id="btn-delete" title="Удалить (Del)">🗑 Удалить</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Типы узлов</h3>
+        <div class="kind-list" id="kind-list">
+          <button class="kind active" data-kind="service">▢ Сервис</button>
+          <button class="kind" data-kind="client">◎ Клиент</button>
+          <button class="kind" data-kind="gateway">◇ Шлюз</button>
+          <button class="kind" data-kind="db">◫ БД</button>
+          <button class="kind" data-kind="queue">≣ Очередь</button>
+          <button class="kind" data-kind="external">◈ Внешний</button>
+        </div>
+        <p class="hint">Выберите тип и кликните по холсту.</p>
+      </div>
+    </aside>
+
+    <!-- ЦЕНТР: ХОЛСТ -->
+    <main class="canvas-wrap">
+      <svg id="stage" data-tool="select"></svg>
+      <div class="canvas-hud">
+        <span id="canvas-hint" class="canvas-hint"></span>
+      </div>
+      <div class="zoom-ctl">
+        <button class="btn icon" id="btn-zoom-out" title="Отдалить">−</button>
+        <button class="btn icon" id="btn-zoom-fit" title="Вписать">⊡</button>
+        <button class="btn icon" id="btn-zoom-in" title="Приблизить">＋</button>
+      </div>
+    </main>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ: ИНСПЕКТОР -->
+    <aside class="sidebar right">
+      <div class="panel grow">
+        <h3 id="inspector-title">Свойства</h3>
+        <div id="inspector-body" class="inspector"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- НИЖНЯЯ ПАНЕЛЬ: СЦЕНАРИЙ / ТАЙМЛАЙН -->
+  <section class="dock" id="timeline">
+    <div class="dock-resize" id="dock-resize" title="Потяните, чтобы изменить высоту"></div>
+    <div class="dock-head">
+      <div class="transport">
+        <button class="btn icon" id="btn-to-start" title="В начало">⏮</button>
+        <button class="btn icon play" id="btn-play" title="Играть / Пауза (Пробел)">▶</button>
+        <button class="btn icon" id="btn-stop" title="Стоп">⏹</button>
+        <button class="btn icon" id="btn-to-end" title="В конец">⏭</button>
+        <span id="time-readout" class="readout">0.00с / 0.0с</span>
+        <label class="inline">Скорость
+          <select id="speed">
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+        <label class="inline">Длит., с
+          <input id="duration" type="number" min="1" step="0.5" value="12" style="width:64px" />
+        </label>
+        <label class="inline"><input id="loop" type="checkbox" checked /> Повтор</label>
+      </div>
+      <div class="scenario-add">
+        <select id="new-step-type"></select>
+        <button class="btn primary" id="btn-add-step">＋ Добавить шаг</button>
+      </div>
+    </div>
+
+    <div class="tl-viewport">
+      <div id="tl-scroll" class="tl-scroll">
+        <div id="tl-ruler" class="tl-ruler"></div>
+        <div id="tl-tracks" class="tl-tracks"></div>
+        <div id="tl-playhead" class="tl-playhead"></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Готовые библиотеки: d3 (шкалы/кривые), gifenc (GIF) -->
+  <script src="js/vendor/d3.min.js"></script>
+  <script src="js/vendor/gifenc.umd.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/geometry.js"></script>
+  <script src="js/diagram.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/timeline.js"></script>
+  <script src="js/export-media.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/electron-bridge.js"></script>
+</body>
+</html>

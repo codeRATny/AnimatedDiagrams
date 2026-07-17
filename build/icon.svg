@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Иконка приложения Animated Diagrams: 512x512, БЕЗ прозрачности (полная заливка). -->
+<!-- Тёмный градиент фона (#0b1220 -> #0f1a2e) и по центру светлый глиф-диаграмма: -->
+<!-- три соединённых стрелками кружка (flow-цикл) цветом #4f8cff. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <!-- Тёмный градиент фона -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#0f1a2e"/>
+    </linearGradient>
+    <!-- Градиент заливки узлов -->
+    <linearGradient id="node" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6ea3ff"/>
+      <stop offset="1" stop-color="#3d78e6"/>
+    </linearGradient>
+    <!-- Стрелка-наконечник для соединителей -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5"
+            markerWidth="24" markerHeight="24" markerUnits="userSpaceOnUse"
+            orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4f8cff"/>
+    </marker>
+  </defs>
+
+  <!-- Фон: полный квадрат без прозрачности -->
+  <rect x="0" y="0" width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Соединители (flow-цикл A -> C -> B -> A) со стрелками -->
+  <g fill="none" stroke="#4f8cff" stroke-width="12" stroke-linecap="round" marker-end="url(#arrow)">
+    <!-- A -> C -->
+    <line x1="279" y1="165.8" x2="342.6" y2="276"/>
+    <!-- C -> B -->
+    <line x1="322.6" y1="321" x2="195.4" y2="321"/>
+    <!-- B -> A -->
+    <line x1="166.4" y1="281.2" x2="230" y2="171"/>
+  </g>
+
+  <!-- Три узла-кружка -->
+  <g stroke="#0b1220" stroke-width="6">
+    <!-- Узел A (верх) -->
+    <circle cx="256" cy="126" r="42" fill="url(#node)"/>
+    <!-- Узел B (низ-слева) -->
+    <circle cx="143.4" cy="321" r="42" fill="url(#node)"/>
+    <!-- Узел C (низ-справа) -->
+    <circle cx="368.6" cy="321" r="42" fill="url(#node)"/>
+  </g>
+
+  <!-- Светлые блики в центрах узлов -->
+  <g fill="#dbe8ff">
+    <circle cx="256" cy="126" r="13"/>
+    <circle cx="143.4" cy="321" r="13"/>
+    <circle cx="368.6" cy="321" r="13"/>
+  </g>
+</svg>
