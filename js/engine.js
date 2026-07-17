@@ -196,12 +196,14 @@
 
       if (s.label) {
         const lg = el("g", { transform: `translate(${pos.x},${pos.y - 16})` });
-        const tw = s.label.length * 6.5 + 12;
-        lg.appendChild(el("rect", { x: -tw / 2, y: -13, width: tw, height: 18, rx: 5, fill: "#0b1220", opacity: 0.82, stroke: variant.color, "stroke-width": 1 }));
+        g.appendChild(lg); // добавляем в DOM, чтобы измерить фактическую ширину текста
         const tx = el("text", { x: 0, y: 0, class: "msg-label", "text-anchor": "middle", fill: variant.color });
         tx.textContent = s.label;
         lg.appendChild(tx);
-        g.appendChild(lg);
+        // плашка строится по реальной ширине текста (getComputedTextLength), а не по числу символов
+        const tw = tx.getComputedTextLength() + 14;
+        const bg = el("rect", { x: -tw / 2, y: -13, width: tw, height: 18, rx: 5, fill: "#0b1220", opacity: 0.82, stroke: variant.color, "stroke-width": 1 });
+        lg.insertBefore(bg, tx); // фон под текстом
       }
     },
 
@@ -243,14 +245,21 @@
     drawNote(g, s, p) {
       const fade = p < 0.12 ? p / 0.12 : p > 0.88 ? (1 - p) / 0.12 : 1;
       const text = s.text || "заметка";
-      const w = Math.min(260, text.length * 7.2 + 24);
       const grp = el("g", { transform: `translate(${s.x || 40},${s.y || 40})`, opacity: fade });
-      grp.appendChild(el("rect", { x: 0, y: 0, width: w, height: 30, rx: 8, fill: "#111a2e", stroke: s.color || "#fbbf24", "stroke-width": 1.5, filter: "url(#nodeShadow)" }));
-      grp.appendChild(el("rect", { x: 0, y: 0, width: 5, height: 30, rx: 2, fill: s.color || "#fbbf24" }));
+      g.appendChild(grp); // в DOM — чтобы измерить текст
       const tx = el("text", { x: 14, y: 19, class: "note-text" });
       tx.textContent = text;
       grp.appendChild(tx);
-      g.appendChild(grp);
+      // плашка по фактической ширине текста (левый отступ 14 + правый 14)
+      const w = tx.getComputedTextLength() + 28;
+      const color = s.color || "#fbbf24";
+      grp.insertBefore(el("rect", { x: 0, y: 0, width: w, height: 30, rx: 8, fill: "#111a2e", stroke: color, "stroke-width": 1.5, filter: "url(#nodeShadow)" }), tx);
+      // clip по форме плашки, чтобы левая акцентная полоса не вылезала за скруглённые углы
+      const clipId = "noteclip-" + s.id;
+      const clip = el("clipPath", { id: clipId });
+      clip.appendChild(el("rect", { x: 0, y: 0, width: w, height: 30, rx: 8, ry: 8 }));
+      grp.insertBefore(clip, tx);
+      grp.insertBefore(el("rect", { x: 0, y: 0, width: 5, height: 30, fill: color, "clip-path": "url(#" + clipId + ")" }), tx);
     },
   });
 })();
