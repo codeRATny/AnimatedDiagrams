@@ -249,9 +249,20 @@
           step.text = "Обработка";
           step.color = "#38bdf8";
           step.duration = 1800;
+        } else if (type === "link") {
+          const e = S.model.edges[0];
+          step.edgeId = e ? e.id : null;
+          step.text = "Соединение";
+          step.color = "#38bdf8";
+          step.anim = "flow";
+          step.duration = 2000;
         }
         if ((type === "message" && !step.from) || (["timer", "state", "pulse", "action"].includes(type) && !step.nodeId)) {
           this.toast("Сначала добавьте узлы на диаграмму", true);
+          return;
+        }
+        if (type === "link" && !step.edgeId) {
+          this.toast("Сначала добавьте связь между узлами", true);
           return;
         }
         const s = S.addStep(step);
@@ -354,6 +365,24 @@
       b.onclick = fn;
       return b;
     },
+    /** ползунок диапазона [min..max] */
+    range(value, min, max, step, oninput) {
+      const r = document.createElement("input");
+      r.type = "range"; r.min = min; r.max = max; r.step = step;
+      r.value = value;
+      r.oninput = () => oninput(parseFloat(r.value));
+      return r;
+    },
+    /** общие поля позиционирования/размера подписи (для связи и шага «Соединение»):
+        объект obj должен иметь поля labelSize / labelPos / labelOff */
+    labelControls(box, obj, defOff) {
+      const row = document.createElement("div");
+      row.className = "row2";
+      row.appendChild(this.field("Размер шрифта", this.input(obj.labelSize || 12, (v) => { obj.labelSize = Math.max(6, v || 12); this.commit(true); }, "number")));
+      row.appendChild(this.field("Смещение", this.input(obj.labelOff != null ? obj.labelOff : defOff, (v) => { obj.labelOff = v || 0; this.commit(true); }, "number")));
+      box.appendChild(row);
+      box.appendChild(this.field("Положение вдоль связи", this.range(obj.labelPos != null ? obj.labelPos : 0.5, 0, 1, 0.02, (v) => { obj.labelPos = v; this.commit(true); })));
+    },
     commit(rerenderTimeline) {
       S.touch();
       AD.diagram.render();
@@ -416,6 +445,7 @@
       info.textContent = `${nm(e.from)} → ${nm(e.to)}`;
       box.appendChild(info);
       box.appendChild(this.field("Подпись", this.input(e.label, (v) => { e.label = v; this.commit(); })));
+      if (e.label) this.labelControls(box, e, 10); // размер/положение подписи связи
       box.appendChild(this.field("Стиль", this.selectCtl(e.style,
         [{ value: "solid", label: "Сплошная" }, { value: "dashed", label: "Пунктир" }],
         (v) => { e.style = v; this.commit(); })));
@@ -511,10 +541,23 @@
         box.appendChild(trow);
         box.appendChild(this.field("Подпись", this.input(s.label, (v) => { s.label = v; this.commit(true); })));
       } else if (s.type === "state") {
+        const preset = AD.NODE_STATES[s.state] || AD.NODE_STATES.ok;
         box.appendChild(this.field("Узел", this.selectCtl(s.nodeId, this.nodeOptions(), (v) => { s.nodeId = v; this.commit(true); })));
-        box.appendChild(this.field("Состояние", this.selectCtl(s.state,
+        box.appendChild(this.field("Состояние (пресет)", this.selectCtl(s.state,
           Object.keys(AD.NODE_STATES).map((k) => ({ value: k, label: AD.NODE_STATES[k].label })),
-          (v) => { s.state = v; this.commit(true); })));
+          (v) => { s.state = v; this.commit(true); this.renderInspector(); })));
+        const li = this.input(s.label || "", (v) => { s.label = v; this.commit(true); });
+        li.placeholder = preset.label; // подсказка = метка пресета
+        box.appendChild(this.field("Подпись", li));
+        const srow = document.createElement("div");
+        srow.className = "row2";
+        srow.appendChild(this.field("Цвет (акцент)", this.input(s.color || preset.ring, (v) => { s.color = v; this.commit(true); }, "color")));
+        srow.appendChild(this.field("Размер шрифта", this.input(s.labelSize || 11, (v) => { s.labelSize = Math.max(6, v || 11); this.commit(true); }, "number")));
+        box.appendChild(srow);
+        const sh = document.createElement("p");
+        sh.className = "hint";
+        sh.textContent = "Подпись и цвет переопределяют пресет; пусто — берётся из пресета.";
+        box.appendChild(sh);
       } else if (s.type === "note") {
         box.appendChild(this.field("Текст", this.input(s.text, (v) => { s.text = v; this.commit(true); })));
         const pos = document.createElement("div");
@@ -530,6 +573,17 @@
         box.appendChild(this.field("Узел (сервис)", this.selectCtl(s.nodeId, this.nodeOptions(), (v) => { s.nodeId = v; this.commit(true); })));
         box.appendChild(this.field("Действие", this.input(s.text, (v) => { s.text = v; this.commit(true); })));
         box.appendChild(this.field("Цвет", this.input(s.color || "#38bdf8", (v) => { s.color = v; this.commit(); }, "color")));
+      } else if (s.type === "link") {
+        box.appendChild(this.field("Связь", this.selectCtl(s.edgeId || "", this.edgeOptions(), (v) => { s.edgeId = v || null; this.commit(true); })));
+        box.appendChild(this.field("Текст", this.input(s.text, (v) => { s.text = v; this.commit(true); })));
+        const cr = document.createElement("div");
+        cr.className = "row2";
+        cr.appendChild(this.field("Цвет", this.input(s.color || "#38bdf8", (v) => { s.color = v; this.commit(); }, "color")));
+        cr.appendChild(this.field("Анимация", this.selectCtl(s.anim || "flow",
+          Object.keys(AD.LINK_ANIMS).map((k) => ({ value: k, label: AD.LINK_ANIMS[k].label })),
+          (v) => { s.anim = v; this.commit(true); })));
+        box.appendChild(cr);
+        this.labelControls(box, s, 22); // положение и размер подписи
       }
 
       const timing = document.createElement("div");
@@ -572,6 +626,11 @@
       } else if (s.type === "action") {
         s.nodeId = s.nodeId || s.from || (nodes[0] && nodes[0].id);
         s.text = s.text || "Действие";
+      } else if (s.type === "link") {
+        s.text = s.text != null ? s.text : "Соединение";
+        s.anim = s.anim || "flow";
+        s.color = s.color || "#38bdf8";
+        if (!s.edgeId) { const e = S.model.edges[0]; if (e) s.edgeId = e.id; }
       } else if (s.type === "note") {
         s.text = s.text || "Заметка";
         s.x = s.x || 60; s.y = s.y || 30;

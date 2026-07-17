@@ -55,6 +55,24 @@
     success: { label: "Успех", color: "#166534", ring: "#22c55e" },
   };
 
+  /* Разрешение состояния узла в набор параметров отрисовки: пресет + переопределения
+     шага (своя подпись, цвет-акцент, размер шрифта). Тёмная заливка выводится из
+     акцента библиотекой d3 (без «магии»). step может быть null (состояние по умолчанию). */
+  AD.resolveNodeState = function (step) {
+    if (!step) {
+      const b = AD.NODE_STATES.ok;
+      return { id: "ok", label: b.label, fill: b.color, ring: b.ring, size: null };
+    }
+    const base = AD.NODE_STATES[step.state] || AD.NODE_STATES.ok;
+    const ring = step.color || base.ring;
+    let fill = base.color;
+    if (step.color) {
+      try { fill = String(window.d3.color(step.color).darker(1.9)); } catch (e) { fill = step.color; }
+    }
+    const label = step.label != null && step.label !== "" ? step.label : base.label;
+    return { id: step.state, label, fill, ring, size: step.labelSize || null };
+  };
+
   /* ---- варианты сообщений ------------------------------------------------- */
   AD.MSG_VARIANTS = {
     request: { label: "Запрос", color: "#60a5fa", dash: null },
@@ -65,11 +83,20 @@
     event: { label: "Событие", color: "#c084fc", dash: "1 6" },
   };
 
+  /* ---- анимации связи для шага «Соединение» ------------------------------- */
+  AD.LINK_ANIMS = {
+    flow: { label: "Бегущий пунктир", dash: "7 6", flow: true, pulse: false },
+    dash: { label: "Пунктир", dash: "7 6", flow: false, pulse: false },
+    solid: { label: "Сплошная", dash: null, flow: false, pulse: false },
+    pulse: { label: "Пульсация", dash: null, flow: false, pulse: true },
+  };
+
   AD.STEP_TYPES = {
     message: "Сообщение",
     timer: "Таймер",
     state: "Смена состояния",
     action: "Действие",
+    link: "Соединение",
     note: "Заметка",
     pulse: "Пульс/подсветка",
   };

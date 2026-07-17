@@ -66,14 +66,22 @@
                   <option value="12">12 fps</option>
                   <option value="15" selected>15 fps</option>
                   <option value="20">20 fps</option>
-                  <option value="25">25 fps</option>
+                  <option value="24">24 fps</option>
+                  <option value="30">30 fps</option>
+                  <option value="45">45 fps</option>
+                  <option value="60">60 fps</option>
                 </select>
               </label>
-              <label class="field"><span>Масштаб</span>
+              <label class="field"><span>Масштаб (разрешение)</span>
                 <select id="exp-scale">
                   <option value="1" selected>1×</option>
                   <option value="1.5">1.5×</option>
                   <option value="2">2×</option>
+                  <option value="3">3×</option>
+                  <option value="4">4×</option>
+                  <option value="6">6×</option>
+                  <option value="8">8×</option>
+                  <option value="10">10×</option>
                 </select>
               </label>
             </div>
@@ -113,10 +121,12 @@
       };
       $("#exp-go").onclick = () => this.start();
       $("#exp-fps").onchange = () => this.updateEstimate();
+      $("#exp-scale").onchange = () => this.updateEstimate();
       $("#exp-mode").onchange = () => this.updateEstimate();
       m.querySelectorAll('input[name="exp-fmt"]').forEach((r) => {
         r.onchange = () => {
           $("#exp-loop-wrap").style.display = this._fmt() === "gif" ? "" : "none";
+          this.updateEstimate();
         };
       });
       m.querySelectorAll(".chip").forEach((c) => {
@@ -148,7 +158,10 @@
       const o = this.readOpts();
       const geom = this.computeBounds(o.mode, o.scale);
       const n = Math.max(1, Math.round(AD.engine.duration() / 1000 * o.fps)) + 1;
-      const warn = n > 200 ? "  ⚠ много кадров — файл будет большим" : "";
+      const mp = (geom.pxW * geom.pxH) / 1e6; // мегапиксели кадра
+      const heavy = n > 200 || mp > 6;
+      const gifNote = o.fmt === "gif" && (mp > 4 || n > 200) ? " Для больших/долгих — берите WebM." : "";
+      const warn = heavy ? `  ⚠ большой объём: ${n} кадров × ${mp.toFixed(1)}МП — экспорт долгий, файл большой.${gifNote}` : "";
       this.modal.querySelector("#exp-estimate").textContent =
         `≈ ${n} кадров · ${geom.pxW}×${geom.pxH}px · ${(AD.engine.duration() / 1000).toFixed(1)}с${warn}`;
     },
@@ -201,8 +214,10 @@
       }
       b.w = Math.max(40, b.w); b.h = Math.max(40, b.h);
       let pxW = Math.round(b.w * scale), pxH = Math.round(b.h * scale);
-      const MAXW = 1600;
-      if (pxW > MAXW) { const k = MAXW / pxW; pxW = MAXW; pxH = Math.round(pxH * k); }
+      // защитный предел по большей стороне (лимит canvas в браузере ~16384px), с сохранением пропорций
+      const MAXD = 12000;
+      const k = Math.min(1, MAXD / pxW, MAXD / pxH);
+      if (k < 1) { pxW = Math.round(pxW * k); pxH = Math.round(pxH * k); }
       pxW += pxW % 2; pxH += pxH % 2; // чётные размеры для видеокодеков
       return { world: b, pxW, pxH };
     },

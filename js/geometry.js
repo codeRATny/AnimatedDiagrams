@@ -63,6 +63,21 @@
       return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
     },
 
+    /** точка на пути (доля pos∈[0,1]) со смещением off по перпендикуляру
+        («вверх» на экране = положительный off). Используется для подписей связи/бейджей. */
+    pointAlongPath(pathEl, pos, off) {
+      const L = pathEl.getTotalLength() || 1;
+      pos = Math.max(0, Math.min(1, pos));
+      const at = pathEl.getPointAtLength(L * pos);
+      if (!off) return { x: at.x, y: at.y };
+      const a = pathEl.getPointAtLength(Math.max(0, L * pos - 3));
+      const b = pathEl.getPointAtLength(Math.min(L, L * pos + 3));
+      const ang = Math.atan2(b.y - a.y, b.x - a.x);
+      let nx = Math.cos(ang + Math.PI / 2), ny = Math.sin(ang + Math.PI / 2);
+      if (ny > 0) { nx = -nx; ny = -ny; } // «вверх» = положительное направление off
+      return { x: at.x + nx * off, y: at.y + ny * off };
+    },
+
     /* --- построение SVG-путей библиотекой d3 (без ручной сборки строк) --- */
 
     /** гладкая кривая через список точек */

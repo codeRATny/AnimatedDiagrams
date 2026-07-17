@@ -74,8 +74,9 @@
     variantColor(s) {
       if (s.type === "message") return (AD.MSG_VARIANTS[s.variant] || {}).color || "#60a5fa";
       if (s.type === "timer") return "#f59e0b";
-      if (s.type === "state") return (AD.NODE_STATES[s.state] || {}).ring || "#94a3b8";
+      if (s.type === "state") return s.color || (AD.NODE_STATES[s.state] || {}).ring || "#94a3b8";
       if (s.type === "action") return s.color || "#38bdf8";
+      if (s.type === "link") return s.color || "#93c5fd";
       if (s.type === "note") return "#fbbf24";
       if (s.type === "pulse") return "#22d3ee";
       return "#64748b";
@@ -84,8 +85,12 @@
       const nm = (id) => (S.node(id) ? S.node(id).label : "?");
       if (s.type === "message") return `${nm(s.from)} → ${nm(s.to)}${s.label ? " · " + s.label : ""}`;
       if (s.type === "timer") return `⏱ ${nm(s.nodeId)} · ${s.seconds || Math.round(s.duration / 1000)}${(AD.TIME_UNITS[s.unit] || AD.TIME_UNITS.s).short}`;
-      if (s.type === "state") return `⇄ ${nm(s.nodeId)} → ${(AD.NODE_STATES[s.state] || {}).label || s.state}`;
+      if (s.type === "state") return `⇄ ${nm(s.nodeId)} → ${s.label || (AD.NODE_STATES[s.state] || {}).label || s.state}`;
       if (s.type === "action") return `⚙ ${nm(s.nodeId)} · ${s.text || ""}`;
+      if (s.type === "link") {
+        const e = S.edge(s.edgeId);
+        return `⚡ ${e ? nm(e.from) + " ↔ " + nm(e.to) : "?"}${s.text ? " · " + s.text : ""}`;
+      }
       if (s.type === "note") return `✎ ${s.text || ""}`;
       if (s.type === "pulse") return `✷ ${nm(s.nodeId)}`;
       return s.type;

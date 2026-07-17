@@ -35,21 +35,20 @@
     },
 
     /* --- состояние узла в момент t --------------------------------------
-     * Состояние действует в пределах своего блока [start, start+duration).
-     * Если активны несколько — побеждает начавшийся позже (самый свежий).
-     * Вне блоков узел в состоянии по умолчанию «ok». Чтобы состояние
-     * держалось до конца — просто растяните блок на таймлайне.
+     * Возвращает выигравший state-шаг (или null). Состояние действует в пределах
+     * своего блока [start, start+duration). Если активны несколько — побеждает
+     * начавшийся позже (самый свежий). Вне блоков — состояние по умолчанию.
      */
     stateAt(nodeId, t) {
       let chosen = null, chosenStart = -1;
       for (const s of S.model.scenario.steps) {
         if (s.type !== "state" || s.nodeId !== nodeId) continue;
         if (s.start <= t && t < s.start + s.duration && s.start >= chosenStart) {
-          chosen = s.state;
+          chosen = s;
           chosenStart = s.start;
         }
       }
-      return chosen || "ok";
+      return chosen;
     },
 
     /* --- активные шаги --- */
@@ -147,6 +146,7 @@
         else if (s.type === "timer") this.drawTimer(g, s, p);
         else if (s.type === "note") this.drawNote(g, s, p);
         else if (s.type === "action") this.drawAction(g, s, p);
+        else if (s.type === "link") this.drawLink(g, s, p);
       }
     },
 
@@ -295,6 +295,46 @@
       grp.insertBefore(spin, tx);
       // сдвигаем текст правее спиннера
       tx.setAttribute("x", scx + sr + gap);
+    },
+
+    /* Соединение: поверх связи рисуется линия заданного цвета с выбранной анимацией
+       (бегущий пунктир / пунктир / сплошная / пульсация), а у связи — бейдж с текстом.
+       Текст, цвет, анимацию, положение и размер шрифта задаёт пользователь. */
+    drawLink(g, s, p) {
+      const edge = s.edgeId ? S.edge(s.edgeId) : null;
+      const pathEl = edge ? AD.diagram.edgePathEl(edge.id) : null;
+      if (!pathEl) return;
+      const color = s.color || "#f87171";
+      const anim = AD.LINK_ANIMS[s.anim] || AD.LINK_ANIMS.flow;
+      const d = pathEl.getAttribute("d");
+
+      // оверлей поверх связи — цвет + анимация
+      const line = el("path", { d, fill: "none", stroke: color, "stroke-linecap": "round" });
+      let sw = 4, op = 0.9;
+      if (anim.dash) line.setAttribute("stroke-dasharray", anim.dash);
+      if (anim.flow) line.setAttribute("stroke-dashoffset", ((-this.t / 1000 * 26) % 1000).toFixed(1)); // бегущий пунктир
+      if (anim.pulse) { const k = 0.5 + 0.5 * Math.sin((this.t / 1000) * Math.PI * 2); sw = 3 + 2.5 * k; op = 0.45 + 0.45 * k; }
+      line.setAttribute("stroke-width", sw);
+      line.setAttribute("opacity", op);
+      g.appendChild(line);
+
+      // бейдж с текстом: положение вдоль связи (labelPos) + перпендикулярное смещение (labelOff),
+      // размер шрифта (labelSize) — всё настраивается в свойствах шага
+      if (!s.text) return;
+      const fs = s.labelSize || 12;
+      const pos = s.labelPos != null ? s.labelPos : 0.5;
+      const off = s.labelOff != null ? s.labelOff : 22;
+      const pt = AD.geom.pointAlongPath(pathEl, pos, off);
+      const grp = el("g", { transform: `translate(${pt.x},${pt.y})` });
+      g.appendChild(grp); // в DOM — чтобы измерить текст
+      const tx = el("text", { x: 0, y: 0, class: "action-label", fill: color, "text-anchor": "middle", "dominant-baseline": "middle" });
+      tx.style.fontSize = fs + "px";
+      tx.textContent = s.text;
+      grp.appendChild(tx);
+      const tw = tx.getComputedTextLength();
+      const h = Math.max(24, fs + 12), padX = Math.max(12, fs);
+      const W = tw + padX * 2;
+      grp.insertBefore(el("rect", { x: -W / 2, y: -h / 2, width: W, height: h, rx: h / 2, fill: "#0b1220", opacity: 0.95, stroke: color, "stroke-width": 1.2, filter: "url(#nodeShadow)" }), tx);
     },
   });
 })();

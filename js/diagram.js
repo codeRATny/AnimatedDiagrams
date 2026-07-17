@@ -202,9 +202,10 @@
       return best;
     },
 
+    /** дескриптор состояния узла {id,label,fill,ring,size} с учётом переопределений шага */
     effectiveState(nodeId) {
-      if (this.stateResolver) return this.stateResolver(nodeId);
-      return "ok";
+      const step = this.stateResolver ? this.stateResolver(nodeId) : null;
+      return AD.resolveNodeState(step);
     },
 
     /* --- отрисовка --- */
@@ -234,9 +235,11 @@
         const hit = el("path", { d: geom.d, class: "edge-hit", "data-edge": e.id, fill: "none" });
         g.appendChild(hit);
         if (e.label) {
-          const L = p.getTotalLength();
-          const mid = p.getPointAtLength(L / 2);
-          const t = el("text", { x: mid.x, y: mid.y - 6, class: "edge-label", "text-anchor": "middle" });
+          const pos = e.labelPos != null ? e.labelPos : 0.5;
+          const off = e.labelOff != null ? e.labelOff : 10;
+          const pt = AD.geom.pointAlongPath(p, pos, off);
+          const t = el("text", { x: pt.x, y: pt.y, class: "edge-label", "text-anchor": "middle", "dominant-baseline": "middle" });
+          if (e.labelSize) t.style.fontSize = e.labelSize + "px";
           t.textContent = e.label;
           g.appendChild(t);
         }
@@ -253,8 +256,7 @@
       const g = this.layers.nodes;
       g.innerHTML = "";
       for (const n of S.model.nodes) {
-        const stateId = this.effectiveState(n.id);
-        const st = AD.NODE_STATES[stateId] || AD.NODE_STATES.ok;
+        const st = this.effectiveState(n.id); // {id,label,fill,ring,size}
         const hl = this.highlights[n.id];
         const selected = S.selection.type === "node" && S.selection.id === n.id;
         const isConnectSrc = this._connectFrom && this._connectFrom.node === n.id;
@@ -275,7 +277,7 @@
         const body = el("rect", {
           x: 0, y: 0, width: n.w, height: n.h, rx, ry: rx,
           class: "node-body",
-          fill: st.color,
+          fill: st.fill,
           stroke: isConnectSrc ? "#22d3ee" : selected ? "#fff" : st.ring,
           "stroke-width": selected || isConnectSrc ? 3 : 2,
           filter: "url(#nodeShadow)",
@@ -306,8 +308,9 @@
 
         const sub = el("text", { x: 40, y: n.h / 2 + 14, class: "node-sub" });
         // в базовом состоянии показываем пользовательский подзаголовок (если задан),
-        // при активной смене состояния — метку состояния (Норма/Недоступен/…)
-        sub.textContent = (stateId === "ok" && n.subtitle) ? n.subtitle : st.label;
+        // при активной смене состояния — подпись состояния (пресет или своя)
+        sub.textContent = (st.id === "ok" && n.subtitle) ? n.subtitle : st.label;
+        if (st.size) sub.style.fontSize = st.size + "px"; // размер шрифта подписи из шага
         grp.appendChild(sub);
 
         // точки соединения (порты)
