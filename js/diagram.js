@@ -307,9 +307,10 @@
         grp.appendChild(label);
 
         const sub = el("text", { x: 40, y: n.h / 2 + 14, class: "node-sub" });
-        // в базовом состоянии показываем пользовательский подзаголовок (если задан),
-        // при активной смене состояния — подпись состояния (пресет или своя)
-        sub.textContent = (st.id === "ok" && n.subtitle) ? n.subtitle : st.label;
+        // Приоритет подписи: своя подпись активного шага > подзаголовок узла (в состоянии
+        // «Норма») > метка состояния. Т.е. даже при пресете «Норма» заданная в шаге подпись
+        // заменяет дефолтный подзаголовок сервиса.
+        sub.textContent = (st.id === "ok" && !st.customLabel && n.subtitle) ? n.subtitle : st.label;
         if (st.size) sub.style.fontSize = st.size + "px"; // размер шрифта подписи из шага
         grp.appendChild(sub);
 

@@ -61,7 +61,7 @@
   AD.resolveNodeState = function (step) {
     if (!step) {
       const b = AD.NODE_STATES.ok;
-      return { id: "ok", label: b.label, fill: b.color, ring: b.ring, size: null };
+      return { id: "ok", label: b.label, fill: b.color, ring: b.ring, size: null, customLabel: false };
     }
     const base = AD.NODE_STATES[step.state] || AD.NODE_STATES.ok;
     const ring = step.color || base.ring;
@@ -69,8 +69,8 @@
     if (step.color) {
       try { fill = String(window.d3.color(step.color).darker(1.9)); } catch (e) { fill = step.color; }
     }
-    const label = step.label != null && step.label !== "" ? step.label : base.label;
-    return { id: step.state, label, fill, ring, size: step.labelSize || null };
+    const hasCustom = step.label != null && step.label !== "";
+    return { id: step.state, label: hasCustom ? step.label : base.label, fill, ring, size: step.labelSize || null, customLabel: hasCustom };
   };
 
   /* ---- варианты сообщений ------------------------------------------------- */
