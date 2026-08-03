@@ -36,7 +36,5 @@ jobs:
           name: installers
           path: |
             release/*.deb
-            release/*.rpm
-            release/*.exe
           if-no-files-found: error
           retention-days: 14
