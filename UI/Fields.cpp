@@ -315,9 +315,11 @@ QWidget *OptCheck(const QString &label, std::optional<bool> value, bool fallback
     c->setTristate(true);
     c->setCheckState(!value.has_value() ? Qt::PartiallyChecked : (*value ? Qt::Checked : Qt::Unchecked));
     c->setToolTip(QObject::tr("Промежуточное состояние — наследовать значение"));
-    QObject::connect(c, &QCheckBox::stateChanged, c,
-                     [f = std::move(on_change)](int state)
+    // clicked (not stateChanged): the latter is deprecated in Qt 6.9, checkStateChanged needs 6.7
+    QObject::connect(c, &QCheckBox::clicked, c,
+                     [c, f = std::move(on_change)]
                      {
+                         const Qt::CheckState state = c->checkState();
                          f(state == Qt::PartiallyChecked ? std::nullopt : std::optional<bool>(state == Qt::Checked));
                      });
     return c;

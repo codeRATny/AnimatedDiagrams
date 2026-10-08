@@ -19,7 +19,7 @@ TEST(FileTest, WriteReadRoundTripWithUtf8Path)
     EXPECT_TRUE(PathToUtf8(file).ends_with("диаграмма.json"));
     WriteFile(file, "second");
     EXPECT_EQ(ReadFile(file), "second");
-    EXPECT_FALSE(fs::exists(file.string() + ".tmp"));
+    EXPECT_FALSE(fs::exists(fs::path(file) += ".tmp")); // no narrow conversion: fails on Windows ANSI code pages
     std::error_code ec;
     fs::remove_all(dir, ec);
     EXPECT_THROW(ReadFile(dir / "missing"), IoError);
