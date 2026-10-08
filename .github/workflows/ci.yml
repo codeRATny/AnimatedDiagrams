@@ -1,0 +1,203 @@
+name: CI
+
+# Сборка + тесты на всех целевых платформах; пакеты — в артефакты.
+# Тег vX.Y.Z → GitHub Release с deb / rpm / exe / zip и SHA256SUMS.
+# PR из этого же репозитория не собирается повторно (уже собран push-событием ветки).
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  linux:
+    name: ${{ matrix.name }}
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu 24.04 (deb)
+            image: ubuntu:24.04
+            family: debian
+            cc: clang-19
+            cxx: clang++-19
+            generator: DEB
+            suffix: ubuntu24.04
+          - name: Debian 13 (deb)
+            image: debian:13
+            family: debian
+            cc: clang-19
+            cxx: clang++-19
+            generator: DEB
+            suffix: debian13
+          - name: Fedora 43 (rpm)
+            image: fedora:43
+            family: fedora
+            cc: clang
+            cxx: clang++
+            generator: RPM
+            suffix: ''
+    steps:
+      - name: Install dependencies (apt)
+        if: matrix.family == 'debian'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates git cmake ninja-build ${{ matrix.cc }} \
+            qt6-base-dev qt6-qpa-plugins libgl-dev \
+            libgtest-dev nlohmann-json3-dev \
+            dpkg-dev file fonts-dejavu-core
+
+      - name: Install dependencies (dnf)
+        if: matrix.family == 'fedora'
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            git cmake ninja-build clang \
+            qt6-qtbase-devel mesa-libGL-devel \
+            gtest-devel json-devel \
+            rpm-build dejavu-sans-fonts
+
+      - uses: actions/checkout@v4
+
+      - name: Version from tag
+        shell: bash
+        run: ci/version-from-tag.sh >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+          -DCMAKE_C_COMPILER=${{ matrix.cc }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+          -DAD_WARNINGS_AS_ERRORS=ON
+          -DAD_PACKAGE_RELEASE_SUFFIX=${{ matrix.suffix }}
+          ${AD_VERSION_ARG:-}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel 4
+
+      - name: Package
+        run: cd build && cpack -G ${{ matrix.generator }} -B ../dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.generator }}-${{ matrix.suffix || 'fedora' }}
+          path: |
+            dist/*.deb
+            dist/*.rpm
+          if-no-files-found: error
+          retention-days: 14
+
+  sanitizers:
+    name: Core tests (ASan + UBSan)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build clang-19 libgtest-dev nlohmann-json3-dev
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER=clang++-19
+          -DAD_BUILD_APP=OFF
+          -DAD_WARNINGS_AS_ERRORS=ON
+          "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all"
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel 4
+
+  windows:
+    name: Windows (MSVC, NSIS + ZIP)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Ensure NSIS
+        shell: bash
+        run: command -v makensis || choco install nsis -y --no-progress
+
+      - name: Version from tag
+        shell: bash
+        run: ci/version-from-tag.sh >> "$GITHUB_ENV"
+
+      - name: Configure
+        shell: bash
+        run: >
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          ${AD_VERSION_ARG:-}
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C ${{ env.BUILD_TYPE }} --output-on-failure
+
+      - name: Package
+        shell: bash
+        run: |
+          export PATH="$PATH:/c/Program Files (x86)/NSIS:/c/Program Files/NSIS"
+          cd build && cpack -G "NSIS;ZIP" -C ${{ env.BUILD_TYPE }} -B ../dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, sanitizers, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

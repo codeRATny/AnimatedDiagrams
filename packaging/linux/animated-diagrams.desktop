@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Animated Diagrams
+GenericName=Animated Diagram Editor
+GenericName[ru]=Редактор анимированных диаграмм
+Comment=Animate architecture flows: requests, timeouts, retries, fallbacks; export to GIF/WebM/MP4
+Comment[ru]=Анимация flow-сценариев: запросы, таймауты, ретраи, fallback; экспорт в GIF/WebM/MP4
+Exec=animated-diagrams %f
+Icon=animated-diagrams
+Terminal=false
+Categories=Development;Graphics;
+MimeType=application/json;
+Keywords=diagram;architecture;animation;gif;

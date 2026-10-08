@@ -1,0 +1,210 @@
+{
+  "version": 2,
+  "meta": {
+    "name": "Пример: fallback с ретраями и таймаутом",
+    "createdAt": 0
+  },
+  "view": {
+    "zoom": 1.0,
+    "panX": 0.0,
+    "panY": 0.0
+  },
+  "nodes": [
+    {
+      "id": "svcA",
+      "label": "Сервис A",
+      "kind": "service",
+      "x": 80.0,
+      "y": 120.0,
+      "w": 150.0,
+      "h": 66.0,
+      "color": "#4f8cff",
+      "shape": "round",
+      "subtitle": ""
+    },
+    {
+      "id": "svcB",
+      "label": "Сервис B",
+      "kind": "service",
+      "x": 480.0,
+      "y": 60.0,
+      "w": 150.0,
+      "h": 66.0,
+      "color": "#4f8cff",
+      "shape": "round",
+      "subtitle": ""
+    },
+    {
+      "id": "svcC",
+      "label": "Сервис C",
+      "kind": "service",
+      "x": 480.0,
+      "y": 260.0,
+      "w": 150.0,
+      "h": 66.0,
+      "color": "#4f8cff",
+      "shape": "round",
+      "subtitle": ""
+    }
+  ],
+  "edges": [
+    {
+      "id": "eAB",
+      "from": "svcA",
+      "to": "svcB",
+      "label": "REST",
+      "style": "solid",
+      "curve": 0.15,
+      "bidirectional": false,
+      "fromPort": null,
+      "toPort": null,
+      "waypoints": []
+    },
+    {
+      "id": "eAC",
+      "from": "svcA",
+      "to": "svcC",
+      "label": "fallback",
+      "style": "dashed",
+      "curve": -0.15,
+      "bidirectional": false,
+      "fromPort": null,
+      "toPort": null,
+      "waypoints": []
+    }
+  ],
+  "scenario": {
+    "duration": 12000.0,
+    "steps": [
+      {
+        "id": "s1",
+        "type": "message",
+        "start": 300.0,
+        "duration": 1100.0,
+        "from": "svcA",
+        "to": "svcB",
+        "variant": "request",
+        "label": "запрос"
+      },
+      {
+        "id": "s2",
+        "type": "state",
+        "start": 1400.0,
+        "duration": 10600.0,
+        "nodeId": "svcB",
+        "state": "down"
+      },
+      {
+        "id": "s2b",
+        "type": "note",
+        "start": 1500.0,
+        "duration": 5100.0,
+        "text": "Сервис B недоступен",
+        "x": 470.0,
+        "y": 20.0
+      },
+      {
+        "id": "s3",
+        "type": "timer",
+        "start": 1600.0,
+        "duration": 5000.0,
+        "nodeId": "svcA",
+        "seconds": 5.0,
+        "unit": "s",
+        "label": "timeout"
+      },
+      {
+        "id": "s4",
+        "type": "message",
+        "start": 2400.0,
+        "duration": 900.0,
+        "from": "svcA",
+        "to": "svcB",
+        "variant": "retry",
+        "label": "retry 1"
+      },
+      {
+        "id": "s5",
+        "type": "message",
+        "start": 3800.0,
+        "duration": 900.0,
+        "from": "svcA",
+        "to": "svcB",
+        "variant": "retry",
+        "label": "retry 2"
+      },
+      {
+        "id": "s5e",
+        "type": "message",
+        "start": 4750.0,
+        "duration": 700.0,
+        "from": "svcB",
+        "to": "svcA",
+        "variant": "error",
+        "label": "нет ответа"
+      },
+      {
+        "id": "s6",
+        "type": "message",
+        "start": 5200.0,
+        "duration": 900.0,
+        "from": "svcA",
+        "to": "svcB",
+        "variant": "retry",
+        "label": "retry 3"
+      },
+      {
+        "id": "s7",
+        "type": "pulse",
+        "start": 6600.0,
+        "duration": 700.0,
+        "nodeId": "svcA"
+      },
+      {
+        "id": "s7n",
+        "type": "note",
+        "start": 6600.0,
+        "duration": 2200.0,
+        "text": "5с истекли — переключение на C",
+        "x": 60.0,
+        "y": 210.0
+      },
+      {
+        "id": "s8",
+        "type": "message",
+        "start": 7000.0,
+        "duration": 1100.0,
+        "from": "svcA",
+        "to": "svcC",
+        "variant": "request",
+        "label": "запрос"
+      },
+      {
+        "id": "s9",
+        "type": "state",
+        "start": 8100.0,
+        "duration": 3900.0,
+        "nodeId": "svcC",
+        "state": "active"
+      },
+      {
+        "id": "s10",
+        "type": "message",
+        "start": 8400.0,
+        "duration": 1000.0,
+        "from": "svcC",
+        "to": "svcA",
+        "variant": "success",
+        "label": "200 OK"
+      },
+      {
+        "id": "s11",
+        "type": "state",
+        "start": 9500.0,
+        "duration": 2500.0,
+        "nodeId": "svcA",
+        "state": "success"
+      }
+    ]
+  }
+}
