@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "meta": {
     "name": "Пример: fallback с ретраями и таймаутом",
     "createdAt": 0
@@ -17,10 +17,7 @@
       "x": 80.0,
       "y": 120.0,
       "w": 150.0,
-      "h": 66.0,
-      "color": "#4f8cff",
-      "shape": "round",
-      "subtitle": ""
+      "h": 66.0
     },
     {
       "id": "svcB",
@@ -29,10 +26,7 @@
       "x": 480.0,
       "y": 60.0,
       "w": 150.0,
-      "h": 66.0,
-      "color": "#4f8cff",
-      "shape": "round",
-      "subtitle": ""
+      "h": 66.0
     },
     {
       "id": "svcC",
@@ -41,10 +35,7 @@
       "x": 480.0,
       "y": 260.0,
       "w": 150.0,
-      "h": 66.0,
-      "color": "#4f8cff",
-      "shape": "round",
-      "subtitle": ""
+      "h": 66.0
     }
   ],
   "edges": [
@@ -53,24 +44,17 @@
       "from": "svcA",
       "to": "svcB",
       "label": "REST",
-      "style": "solid",
-      "curve": 0.15,
-      "bidirectional": false,
-      "fromPort": null,
-      "toPort": null,
-      "waypoints": []
+      "curve": 0.15
     },
     {
       "id": "eAC",
       "from": "svcA",
       "to": "svcC",
       "label": "fallback",
-      "style": "dashed",
       "curve": -0.15,
-      "bidirectional": false,
-      "fromPort": null,
-      "toPort": null,
-      "waypoints": []
+      "style": {
+        "strokeStyle": "dashed"
+      }
     }
   ],
   "scenario": {
@@ -155,10 +139,11 @@
       },
       {
         "id": "s7",
-        "type": "pulse",
+        "type": "effect",
         "start": 6600.0,
         "duration": 700.0,
-        "nodeId": "svcA"
+        "nodeId": "svcA",
+        "effect": "pulse"
       },
       {
         "id": "s7n",

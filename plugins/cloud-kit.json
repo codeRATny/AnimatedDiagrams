@@ -1,0 +1,538 @@
+{
+  "format": "animated-diagrams-plugin",
+  "formatVersion": 1,
+  "id": "animated-diagrams.cloud-kit",
+  "name": "Cloud kit",
+  "version": "1.0.0",
+  "author": "Animated Diagrams",
+  "description": "Пример плагина: облачные элементы, эффекты и сценарии (circuit breaker, saga)",
+  "elements": [
+    {
+      "id": "k8s-pod",
+      "label": "Pod",
+      "icon": "☸",
+      "category": "Облако",
+      "description": "Под Kubernetes",
+      "accent": "#326ce5",
+      "width": 150.0,
+      "height": 70.0,
+      "style": {
+        "shape": "hexagon",
+        "fill": "#1e3a5f",
+        "stroke": "#326ce5"
+      }
+    },
+    {
+      "id": "function",
+      "label": "Функция",
+      "icon": "λ",
+      "category": "Облако",
+      "description": "Serverless-функция",
+      "accent": "#f59e0b",
+      "width": 150.0,
+      "height": 64.0,
+      "style": {
+        "shape": "parallelogram",
+        "fill": "#3b2a12",
+        "stroke": "#f59e0b"
+      }
+    },
+    {
+      "id": "topic",
+      "label": "Топик",
+      "icon": "≋",
+      "category": "Облако",
+      "description": "Топик брокера сообщений (Kafka, NATS)",
+      "accent": "#a78bfa",
+      "width": 170.0,
+      "height": 60.0,
+      "style": {
+        "shape": "queue",
+        "fill": "#2a1f3d",
+        "stroke": "#a78bfa"
+      }
+    },
+    {
+      "id": "bucket",
+      "label": "Бакет",
+      "icon": "▤",
+      "category": "Облако",
+      "description": "Объектное хранилище (S3)",
+      "accent": "#34d399",
+      "width": 130.0,
+      "height": 80.0,
+      "style": {
+        "shape": "cylinder",
+        "fill": "#14342b",
+        "stroke": "#34d399"
+      }
+    },
+    {
+      "id": "cdn",
+      "label": "CDN",
+      "icon": "☁",
+      "category": "Облако",
+      "description": "Сеть доставки контента",
+      "accent": "#38bdf8",
+      "width": 160.0,
+      "height": 90.0,
+      "style": {
+        "shape": "cloud",
+        "fill": "#10314a",
+        "stroke": "#38bdf8"
+      }
+    },
+    {
+      "id": "firewall",
+      "label": "Firewall",
+      "icon": "⛨",
+      "category": "Облако",
+      "description": "Межсетевой экран (свой SVG-контур)",
+      "accent": "#f472b6",
+      "width": 150.0,
+      "height": 64.0,
+      "style": {
+        "shape": "custom",
+        "customPath": "M0.15 0 L0.85 0 L1 0.5 L0.85 1 L0.15 1 L0 0.5 Z",
+        "fill": "#3a1730",
+        "stroke": "#f472b6",
+        "strokeStyle": "dashed"
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "heartbeat",
+      "label": "Сердцебиение",
+      "category": "Облако",
+      "description": "Двойной удар — признак живого сервиса (health check)",
+      "color": "#f43f5e",
+      "repeat": 2,
+      "tracks": [
+        {
+          "property": "scale",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 1.0
+            },
+            {
+              "t": 0.15,
+              "value": 1.12,
+              "easing": "ease-out"
+            },
+            {
+              "t": 0.3,
+              "value": 1.0,
+              "easing": "ease-in"
+            },
+            {
+              "t": 0.45,
+              "value": 1.08,
+              "easing": "ease-out"
+            },
+            {
+              "t": 0.6,
+              "value": 1.0,
+              "easing": "ease-in"
+            },
+            {
+              "t": 1.0,
+              "value": 1.0
+            }
+          ]
+        },
+        {
+          "property": "glow",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.15,
+              "value": 0.8,
+              "easing": "ease-out"
+            },
+            {
+              "t": 0.6,
+              "value": 0.0,
+              "easing": "ease-in"
+            },
+            {
+              "t": 1.0,
+              "value": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alarm",
+      "label": "Тревога",
+      "category": "Облако",
+      "description": "Мигание красным с покачиванием",
+      "color": "#ef4444",
+      "repeat": 3,
+      "tracks": [
+        {
+          "property": "tint",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.5,
+              "value": 0.7,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 0.0,
+              "easing": "ease-in"
+            }
+          ]
+        },
+        {
+          "property": "rotate",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.25,
+              "value": -3.0
+            },
+            {
+              "t": 0.75,
+              "value": 3.0
+            },
+            {
+              "t": 1.0,
+              "value": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "slide-in",
+      "label": "Въезд слева",
+      "category": "Облако",
+      "description": "Узел появляется, выезжая слева",
+      "color": "#22d3ee",
+      "repeat": 1,
+      "tracks": [
+        {
+          "property": "offset_x",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": -80.0
+            },
+            {
+              "t": 1.0,
+              "value": 0.0,
+              "easing": "back-out"
+            }
+          ]
+        },
+        {
+          "property": "opacity",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.6,
+              "value": 1.0,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scale-out",
+      "label": "Масштабирование",
+      "category": "Облако",
+      "description": "Горизонтальное масштабирование: узел «растёт»",
+      "color": "#4ade80",
+      "repeat": 1,
+      "tracks": [
+        {
+          "property": "scale",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 1.0
+            },
+            {
+              "t": 0.4,
+              "value": 1.25,
+              "easing": "elastic-out"
+            },
+            {
+              "t": 1.0,
+              "value": 1.0,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "property": "glow",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.4,
+              "value": 1.0,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 0.0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "id": "circuit-breaker",
+      "label": "Circuit breaker",
+      "category": "Облако",
+      "description": "Ошибки размыкают предохранитель: запросы идут в fallback, затем пробный запрос замыкает его",
+      "roles": [
+        {
+          "id": "client",
+          "label": "Клиент"
+        },
+        {
+          "id": "service",
+          "label": "Сервис"
+        },
+        {
+          "id": "fallback",
+          "label": "Fallback"
+        }
+      ],
+      "steps": [
+        {
+          "id": "t1",
+          "type": "message",
+          "start": 0.0,
+          "duration": 800.0,
+          "from": "client",
+          "to": "service",
+          "variant": "request",
+          "label": "запрос"
+        },
+        {
+          "id": "t2",
+          "type": "message",
+          "start": 800.0,
+          "duration": 700.0,
+          "from": "service",
+          "to": "client",
+          "variant": "error",
+          "label": "500"
+        },
+        {
+          "id": "t3",
+          "type": "message",
+          "start": 1500.0,
+          "duration": 600.0,
+          "from": "client",
+          "to": "service",
+          "variant": "retry",
+          "label": "запрос"
+        },
+        {
+          "id": "t4",
+          "type": "message",
+          "start": 2100.0,
+          "duration": 500.0,
+          "from": "service",
+          "to": "client",
+          "variant": "error",
+          "label": "500"
+        },
+        {
+          "id": "t5",
+          "type": "state",
+          "start": 2600.0,
+          "duration": 4200.0,
+          "nodeId": "service",
+          "state": "down",
+          "label": "breaker open"
+        },
+        {
+          "id": "t6",
+          "type": "effect",
+          "start": 2600.0,
+          "duration": 900.0,
+          "nodeId": "client",
+          "effect": "alarm"
+        },
+        {
+          "id": "t7",
+          "type": "message",
+          "start": 3500.0,
+          "duration": 900.0,
+          "from": "client",
+          "to": "fallback",
+          "variant": "request",
+          "label": "fallback"
+        },
+        {
+          "id": "t8",
+          "type": "message",
+          "start": 4400.0,
+          "duration": 900.0,
+          "from": "fallback",
+          "to": "client",
+          "variant": "response",
+          "label": "кэш"
+        },
+        {
+          "id": "t9",
+          "type": "message",
+          "start": 5600.0,
+          "duration": 700.0,
+          "from": "client",
+          "to": "service",
+          "variant": "request",
+          "label": "half-open"
+        },
+        {
+          "id": "t10",
+          "type": "message",
+          "start": 6300.0,
+          "duration": 700.0,
+          "from": "service",
+          "to": "client",
+          "variant": "success",
+          "label": "200 OK"
+        },
+        {
+          "id": "t11",
+          "type": "state",
+          "start": 6800.0,
+          "duration": 1600.0,
+          "nodeId": "service",
+          "state": "success",
+          "label": "closed"
+        }
+      ]
+    },
+    {
+      "id": "saga",
+      "label": "Saga (оркестрация)",
+      "category": "Облако",
+      "description": "Шаги саги и компенсирующая транзакция при отказе платежа",
+      "roles": [
+        {
+          "id": "orchestrator",
+          "label": "Оркестратор"
+        },
+        {
+          "id": "inventory",
+          "label": "Склад"
+        },
+        {
+          "id": "payment",
+          "label": "Платёж"
+        }
+      ],
+      "steps": [
+        {
+          "id": "t1",
+          "type": "message",
+          "start": 0.0,
+          "duration": 900.0,
+          "from": "orchestrator",
+          "to": "inventory",
+          "variant": "request",
+          "label": "reserve"
+        },
+        {
+          "id": "t2",
+          "type": "message",
+          "start": 900.0,
+          "duration": 800.0,
+          "from": "inventory",
+          "to": "orchestrator",
+          "variant": "success",
+          "label": "ok"
+        },
+        {
+          "id": "t3",
+          "type": "message",
+          "start": 1800.0,
+          "duration": 900.0,
+          "from": "orchestrator",
+          "to": "payment",
+          "variant": "request",
+          "label": "charge"
+        },
+        {
+          "id": "t4",
+          "type": "message",
+          "start": 2700.0,
+          "duration": 800.0,
+          "from": "payment",
+          "to": "orchestrator",
+          "variant": "error",
+          "label": "declined"
+        },
+        {
+          "id": "t5",
+          "type": "effect",
+          "start": 3300.0,
+          "duration": 800.0,
+          "nodeId": "payment",
+          "effect": "alarm"
+        },
+        {
+          "id": "t6",
+          "type": "message",
+          "start": 3400.0,
+          "duration": 800.0,
+          "from": "orchestrator",
+          "to": "inventory",
+          "variant": "event",
+          "label": "cancel"
+        },
+        {
+          "id": "t7",
+          "type": "action",
+          "start": 4200.0,
+          "duration": 900.0,
+          "nodeId": "inventory",
+          "text": "Компенсация"
+        },
+        {
+          "id": "t8",
+          "type": "message",
+          "start": 5100.0,
+          "duration": 900.0,
+          "from": "inventory",
+          "to": "orchestrator",
+          "variant": "response",
+          "label": "released"
+        }
+      ]
+    }
+  ]
+}

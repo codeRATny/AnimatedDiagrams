@@ -1,32 +1,57 @@
 include(GoogleTest)
 
 add_executable(ad_core_tests
-    test_color.cpp
-    test_document.cpp
-    test_engine.cpp
-    test_export_plan.cpp
-    test_geometry.cpp
-    test_gif.cpp
-    test_hittest.cpp
-    test_json.cpp
-    test_scene.cpp
-    test_timeline.cpp
+    CatalogTest.cpp
+    ColorTest.cpp
+    DocumentTest.cpp
+    DocumentToolsTest.cpp
+    DrawioImporterTest.cpp
+    EasingTest.cpp
+    EffectsTest.cpp
+    EngineTest.cpp
+    ExportPlanTest.cpp
+    FileTest.cpp
+    GeometryTest.cpp
+    GifEncoderTest.cpp
+    HitTestTest.cpp
+    InflateTest.cpp
+    JsonIoTest.cpp
+    LayoutTest.cpp
+    LibraryTest.cpp
+    McpServerTest.cpp
+    PathTest.cpp
+    PluginTest.cpp
+    RegistryTest.cpp
+    SceneTest.cpp
+    ShapesTest.cpp
+    StdioTransportTest.cpp
+    TemplatesTest.cpp
+    TextTest.cpp
+    TimelineLayoutTest.cpp
+    XmlReaderTest.cpp
 )
 target_link_libraries(ad_core_tests PRIVATE ad::core GTest::gtest_main)
-target_compile_definitions(ad_core_tests PRIVATE AD_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples")
+target_compile_definitions(ad_core_tests PRIVATE AD_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples" AD_PLUGINS_DIR="${PROJECT_SOURCE_DIR}/plugins")
 ad_set_warnings(ad_core_tests)
 gtest_discover_tests(ad_core_tests DISCOVERY_TIMEOUT 60)
 
-# Смоук-тест приложения: headless-экспорт примера в GIF/PNG (платформа offscreen).
-if(AD_BUILD_APP)
+# Application smoke tests: headless export and MCP stdio session.
+if(TARGET animated_diagrams)
     foreach(fmt gif png)
-        add_test(NAME app_export_smoke_${fmt}
+        add_test(NAME AppExportSmoke.${fmt}
             COMMAND ${CMAKE_COMMAND}
                 -DAPP=$<TARGET_FILE:animated_diagrams>
                 -DINPUT=${PROJECT_SOURCE_DIR}/samples/fallback-retry.json
                 -DOUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/smoke
                 -DFORMAT=${fmt}
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/export_smoke.cmake)
-        set_tests_properties(app_export_smoke_${fmt} PROPERTIES TIMEOUT 120)
+        set_tests_properties(AppExportSmoke.${fmt} PROPERTIES TIMEOUT 120)
     endforeach()
+    add_test(NAME AppMcpStdioSmoke
+        COMMAND ${CMAKE_COMMAND}
+            -DAPP=$<TARGET_FILE:animated_diagrams>
+            -DINPUT=${PROJECT_SOURCE_DIR}/samples/fallback-retry.json
+            -DOUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/smoke
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/mcp_smoke.cmake)
+    set_tests_properties(AppMcpStdioSmoke PROPERTIES TIMEOUT 120)
 endif()

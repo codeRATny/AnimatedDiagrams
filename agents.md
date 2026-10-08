@@ -1,0 +1,38 @@
+# Agent notes
+
+## Layout
+
+- `src/` — `ad_core`, no Qt. Modules: `Common`, `Geometry`, `Model`, `Engine`, `Timeline`, `Interaction`,
+  `Io`, `Plugins`, `Import`, `Mcp`, `Export`, `Utils`. Includes are relative to `src/` (`"Model/Model.hpp"`).
+- `UI/` — `ad_ui`, Qt 6 Widgets + Network (`QT_NO_KEYWORDS`: use `Q_SIGNALS` / `Q_EMIT`).
+- `apps/` — `animated_diagrams` executable (GUI, `--export`, `--convert`, `--mcp`, `--mcp-port`).
+- `tests/` — GoogleTest, one `<Class>Test.cpp` per class; `TEST(ClassNameTest, Behaviour)`.
+- `plugins/` bundled plugins, `skills/` agent skill, `docs/` user docs, `samples/` example documents.
+
+## Build
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++-19 -DBUILD_TESTS=ON -DWARNINGS_AS_ERRORS=ON
+cmake --build build && ctest --test-dir build --output-on-failure
+```
+
+CI also builds with g++-13; keep both warning-free.
+
+## Style
+
+- `.clang-format` / `.clang-tidy` are authoritative (run `clang-format-19 -i`, `run-clang-tidy-19`).
+- Allman braces, braces on every block, 4 spaces, 140 columns.
+- Header guards `#ifndef _MODULE_FILE_NAME_HPP_` (no `#pragma once`).
+- Functions and methods `CamelCase`; private methods `_CamelCase`; private members `_lower_case`;
+  public struct fields `lower_case`; constants `kCamelCase`; namespaces `lower_case` (`ad`, `ad::ui`).
+- Comments and identifiers in English; UI strings in Russian via `tr()`.
+- Errors: specific exceptions from `Common/Exceptions.hpp` or `std::expected` with a message.
+- No range-for over members of temporaries (`for (x : Make().items())`) — GCC 13 does not extend
+  their lifetime.
+
+## Extending
+
+- New step field: `Model/Step.hpp` → `Io/JsonCodec.cpp` (read + write) → `Engine/Scene.cpp` →
+  `UI/Inspector.cpp` → `Mcp/DocumentTools.cpp` (schema) → docs + skill.
+- New element/effect/animation built-in: `Model/Library.cpp` (`BuiltinLibrary`).
+- New MCP tool: `Mcp/DocumentTools.cpp` + `tests/DocumentToolsTest.cpp` + `docs/mcp.md` + skill.

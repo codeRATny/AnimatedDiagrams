@@ -1,5 +1,5 @@
-# Сторонние зависимости: сначала ищем в системе (apt/dnf), иначе скачиваем
-# зафиксированную версию с проверкой SHA256 (Windows / системы без пакетов).
+# Third-party dependencies: system packages first (apt/dnf), otherwise a pinned
+# release is downloaded with a SHA256 check (Windows / systems without packages).
 include(FetchContent)
 
 FetchContent_Declare(nlohmann_json
@@ -9,7 +9,7 @@ FetchContent_Declare(nlohmann_json
     FIND_PACKAGE_ARGS 3.10)
 FetchContent_MakeAvailable(nlohmann_json)
 
-if(AD_BUILD_TESTS)
+if(BUILD_TESTS)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     FetchContent_Declare(googletest

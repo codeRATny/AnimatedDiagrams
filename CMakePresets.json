@@ -7,7 +7,7 @@
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "cacheVariables": { "CMAKE_EXPORT_COMPILE_COMMANDS": "ON" }
+      "cacheVariables": { "CMAKE_EXPORT_COMPILE_COMMANDS": "ON", "BUILD_TESTS": "ON" }
     },
     {
       "name": "clang",
@@ -19,7 +19,7 @@
       "name": "debug",
       "displayName": "Debug (clang-19)",
       "inherits": "clang",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "AD_WARNINGS_AS_ERRORS": "ON" }
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "WARNINGS_AS_ERRORS": "ON" }
     },
     {
       "name": "release",
@@ -33,7 +33,7 @@
       "inherits": "clang",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "AD_BUILD_APP": "OFF",
+        "BUILD_APP": "OFF",
         "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all"
       }
     }

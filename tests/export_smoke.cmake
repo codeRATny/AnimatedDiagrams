@@ -1,5 +1,5 @@
-# Смоук-тест: headless-экспорт примера и проверка сигнатуры результата.
-# Параметры: APP, INPUT, OUT_DIR, FORMAT (gif | png)
+# Smoke test: headless export of the sample and a check of the output signature.
+# Parameters: APP, INPUT, OUT_DIR, FORMAT (gif | png)
 file(REMOVE_RECURSE "${OUT_DIR}/${FORMAT}")
 file(MAKE_DIRECTORY "${OUT_DIR}/${FORMAT}")
 set(out "${OUT_DIR}/${FORMAT}/sample.${FORMAT}")
@@ -20,7 +20,7 @@ if(FORMAT STREQUAL "gif")
 else()
     set(check "${OUT_DIR}/${FORMAT}/sample_0001.png")
     set(magic "89504e470d0a1a0a")
-    if(NOT EXISTS "${OUT_DIR}/${FORMAT}/sample_0049.png")  # 12 c × 4 fps + 1
+    if(NOT EXISTS "${OUT_DIR}/${FORMAT}/sample_0049.png")  # 12 s x 4 fps + 1
         message(FATAL_ERROR "expected 49 PNG frames")
     endif()
 endif()

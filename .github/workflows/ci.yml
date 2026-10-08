@@ -1,8 +1,8 @@
 name: CI
 
-# Сборка + тесты на всех целевых платформах; пакеты — в артефакты.
-# Тег vX.Y.Z → GitHub Release с deb / rpm / exe / zip и SHA256SUMS.
-# PR из этого же репозитория не собирается повторно (уже собран push-событием ветки).
+# Build + tests on every target platform; packages go to artifacts.
+# A vX.Y.Z tag publishes a GitHub Release with deb / rpm / exe / zip and SHA256SUMS.
+# PRs from this repository are not rebuilt (already built by the branch push).
 on:
   push:
     branches: ['**']
@@ -35,13 +35,23 @@ jobs:
             family: debian
             cc: clang-19
             cxx: clang++-19
+            packages: clang-19
             generator: DEB
             suffix: ubuntu24.04
+          - name: Ubuntu 24.04 (gcc-13)
+            image: ubuntu:24.04
+            family: debian
+            cc: gcc-13
+            cxx: g++-13
+            packages: g++-13
+            generator: ''
+            suffix: ''
           - name: Debian 13 (deb)
             image: debian:13
             family: debian
             cc: clang-19
             cxx: clang++-19
+            packages: clang-19
             generator: DEB
             suffix: debian13
           - name: Fedora 43 (rpm)
@@ -49,6 +59,7 @@ jobs:
             family: fedora
             cc: clang
             cxx: clang++
+            packages: clang
             generator: RPM
             suffix: ''
     steps:
@@ -59,7 +70,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates git cmake ninja-build ${{ matrix.cc }} \
+            ca-certificates git cmake ninja-build ${{ matrix.packages }} \
             qt6-base-dev qt6-qpa-plugins libgl-dev \
             libgtest-dev nlohmann-json3-dev \
             dpkg-dev file fonts-dejavu-core
@@ -68,12 +79,12 @@ jobs:
         if: matrix.family == 'fedora'
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            git cmake ninja-build clang \
+            git cmake ninja-build ${{ matrix.packages }} \
             qt6-qtbase-devel mesa-libGL-devel \
             gtest-devel json-devel \
             rpm-build dejavu-sans-fonts
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Version from tag
         shell: bash
@@ -85,7 +96,8 @@ jobs:
           -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
           -DCMAKE_C_COMPILER=${{ matrix.cc }}
           -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
-          -DAD_WARNINGS_AS_ERRORS=ON
+          -DBUILD_TESTS=ON
+          -DWARNINGS_AS_ERRORS=ON
           -DAD_PACKAGE_RELEASE_SUFFIX=${{ matrix.suffix }}
           ${AD_VERSION_ARG:-}
 
@@ -96,9 +108,11 @@ jobs:
         run: ctest --test-dir build --output-on-failure --parallel 4
 
       - name: Package
+        if: matrix.generator != ''
         run: cd build && cpack -G ${{ matrix.generator }} -B ../dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
+        if: matrix.generator != ''
         with:
           name: package-${{ matrix.generator }}-${{ matrix.suffix || 'fedora' }}
           path: |
@@ -115,27 +129,56 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ninja-build clang-19 libgtest-dev nlohmann-json3-dev
-      - uses: actions/checkout@v4
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build clang-19 libclang-rt-19-dev libgtest-dev nlohmann-json3-dev
+      - uses: actions/checkout@v5
       - name: Configure
         run: >
           cmake -S . -B build -G Ninja
           -DCMAKE_BUILD_TYPE=Debug
           -DCMAKE_CXX_COMPILER=clang++-19
-          -DAD_BUILD_APP=OFF
-          -DAD_WARNINGS_AS_ERRORS=ON
+          -DBUILD_APP=OFF
+          -DBUILD_TESTS=ON
+          -DWARNINGS_AS_ERRORS=ON
           "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all"
       - name: Build
         run: cmake --build build --parallel
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel 4
 
+  lint:
+    name: clang-format + clang-tidy
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build clang-19 clang-format-19 clang-tidy-19 \
+            qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev
+      - uses: actions/checkout@v5
+      - name: clang-format
+        run: |
+          git ls-files 'src/*.cpp' 'src/*.hpp' 'UI/*.cpp' 'UI/*.hpp' 'apps/*.cpp' 'tests/*.cpp' \
+            | xargs clang-format-19 --dry-run -Werror
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_COMPILER=clang++-19
+          -DBUILD_TESTS=ON
+      - name: Generate Qt sources
+        run: cmake --build build --target ad_ui_autogen
+      - name: clang-tidy
+        run: run-clang-tidy-19 -p build -quiet -j 4 "^${GITHUB_WORKSPACE}/(src|UI|apps)/"
+
   windows:
     name: Windows (MSVC, NSIS + ZIP)
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -156,6 +199,7 @@ jobs:
         shell: bash
         run: >
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DBUILD_TESTS=ON
           ${AD_VERSION_ARG:-}
 
       - name: Build
@@ -170,7 +214,7 @@ jobs:
           export PATH="$PATH:/c/Program Files (x86)/NSIS:/c/Program Files/NSIS"
           cd build && cpack -G "NSIS;ZIP" -C ${{ env.BUILD_TYPE }} -B ../dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: package-windows
           path: |
@@ -182,12 +226,12 @@ jobs:
   release:
     name: GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, sanitizers, windows]
+    needs: [linux, sanitizers, lint, windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           pattern: package-*
           path: dist
