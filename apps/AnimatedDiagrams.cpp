@@ -1,7 +1,7 @@
 // Animated Diagrams -- animated diagram editor (Qt 6, C++23).
 //
 //   animated-diagrams [file]                          GUI (file: .json or draw.io)
-//   animated-diagrams --export out.gif [opts] file    headless export (no display needed)
+//   animated-diagrams --export out.gif [opts] file    headless export (no display needed; gif, png, webm, mp4, html)
 //   animated-diagrams --convert out.json file.drawio  headless conversion to the native format
 //   animated-diagrams --mcp [file]                    MCP server over stdio (for AI agents)
 //   animated-diagrams --mcp-port 8765 [file]          GUI with the HTTP MCP server enabled
@@ -122,7 +122,8 @@ int RunExport(const QCommandLineParser &cli, const Model &model, const Registry 
     const auto    format = FormatFromId(fmt);
     if (!format.has_value())
     {
-        std::cerr << "error: unknown format '" << fmt.toStdString() << "' (gif, png, webm, mp4, pptx)\n";
+        std::cerr << "error: unknown format '" << fmt.toStdString() << "' ("
+                  << AvailableFormatIds().join(QStringLiteral(", ")).toStdString() << ")\n";
         return 2;
     }
     o.format     = *format;
@@ -130,6 +131,7 @@ int RunExport(const QCommandLineParser &cli, const Model &model, const Registry 
     o.scale      = cli.value(QStringLiteral("scale")).toDouble();
     o.background = QColor(cli.isSet(QStringLiteral("background")) ? cli.value(QStringLiteral("background")) : Qs(model.scene.background));
     o.loop       = !cli.isSet(QStringLiteral("no-loop"));
+    o.autoplay   = !cli.isSet(QStringLiteral("no-autoplay"));
     if (!o.background.isValid() || o.fps <= 0 || o.fps > 120 || o.scale <= 0 || o.scale > 10)
     {
         std::cerr << "error: invalid --fps/--scale/--background\n";
@@ -168,7 +170,10 @@ int RunExport(const QCommandLineParser &cli, const Model &model, const Registry 
                                               std::cerr << "\rexport: " << percent << "% (" << done << "/" << total << " frames)"
                                                         << std::flush;
                                           });
-    std::cerr << "\n";
+    if (last_percent >= 0)
+    {
+        std::cerr << "\n"; // end of the progress line (the HTML export has no frames)
+    }
     if (!result.has_value())
     {
         std::cerr << "error: " << result.error().toStdString() << "\n";
@@ -282,13 +287,16 @@ int main(int argc, char **argv)
     cli.addVersionOption();
     cli.addPositionalArgument(QStringLiteral("file"), QStringLiteral("Diagram to open: .json or draw.io (.drawio / .xml)"));
     cli.addOptions({
-        {QStringLiteral("export"), QStringLiteral("Export without GUI to <path> (gif/png/webm/mp4/pptx by extension)"),
+        {QStringLiteral("export"),
+         QStringLiteral("Export without GUI to <path> (%1 by extension)").arg(AvailableFormatIds().join(QLatin1Char('/'))),
          QStringLiteral("path")},
-        {QStringLiteral("format"), QStringLiteral("Export format: gif, png, webm, mp4, pptx"), QStringLiteral("format")},
+        {QStringLiteral("format"), QStringLiteral("Export format: %1").arg(AvailableFormatIds().join(QStringLiteral(", "))),
+         QStringLiteral("format")},
         {QStringLiteral("fps"), QStringLiteral("Frame rate (default 15)"), QStringLiteral("fps"), QStringLiteral("15")},
         {QStringLiteral("scale"), QStringLiteral("Resolution scale (default 1)"), QStringLiteral("scale"), QStringLiteral("1")},
         {QStringLiteral("background"), QStringLiteral("Background color #rrggbb (default: scene background)"), QStringLiteral("color")},
-        {QStringLiteral("no-loop"), QStringLiteral("GIF without looping")},
+        {QStringLiteral("no-loop"), QStringLiteral("GIF / HTML player without looping")},
+        {QStringLiteral("no-autoplay"), QStringLiteral("HTML player: do not start playing when opened")},
         {QStringLiteral("pptx-mode"), QStringLiteral("PowerPoint: video (default), gif, animated (editable shapes), morph"),
          QStringLiteral("mode"), QStringLiteral("video")},
         {QStringLiteral("pptx-insert"), QStringLiteral("PowerPoint: add the slides to this existing presentation (written to --export)"),

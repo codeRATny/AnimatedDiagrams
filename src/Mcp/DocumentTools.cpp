@@ -35,6 +35,8 @@ std::expected<std::string, std::string> DocumentHost::Export(const ExportRequest
     return std::unexpected(std::string("export is not available in this host"));
 }
 
+std::vector<std::string> DocumentHost::ExportFormats() const { return {"gif", "png", "webm", "mp4"}; }
+
 namespace
 {
 
@@ -398,15 +400,18 @@ public:
              });
 
         _Add("export_animation", "Export animation",
-             "Export the whole scenario to GIF, PNG frames, WebM (VP9), MP4 (H.264) or a PowerPoint presentation (.pptx). "
+             "Export the whole scenario to GIF, PNG frames, WebM (VP9), MP4 (H.264), a PowerPoint presentation (.pptx) or "
+             "(format html, when available) a self-contained interactive HTML player page for web presentations. "
              "PowerPoint modes: video (MP4 slides playing automatically), gif (also for Google Slides), animated (editable "
              "shapes with PowerPoint animations), morph (key frame slides with the Morph transition). Markers split the "
              "scenario into slides; insertInto adds the slides to an existing presentation (written to path).",
              Schema({{"path", Prop("string", "Output file")},
-                     {"format", EnumProp({"gif", "png", "webm", "mp4", "pptx"}, "Default: by extension")},
+                     {"format", EnumProp(_host.ExportFormats(), "Default: by extension")},
                      {"fps", Prop("number", "Frames per second (default 15)")},
                      {"scale", Prop("number", "Resolution scale (default 1)")},
                      {"quality", Prop("integer", "WebM / MP4 quality 0 (smallest) .. 4 (best), default 2")},
+                     {"loop", Prop("boolean", "GIF / HTML player: loop (default true)")},
+                     {"autoplay", Prop("boolean", "HTML player: start playing when opened (default true)")},
                      {"pptxMode", EnumProp({"video", "gif", "animated", "morph"}, "PowerPoint slides (default video)")},
                      {"slideSize", EnumProp({"16:9", "4:3"}, "Slide size of a new presentation (default 16:9)")},
                      {"insertInto", Prop("string", "Existing .pptx to add the slides to")},
@@ -422,6 +427,8 @@ public:
                  req.fps          = std::clamp(a.value("fps", 15.0), 1.0, 60.0);
                  req.scale        = std::clamp(a.value("scale", 1.0), 0.25, 8.0);
                  req.quality      = std::clamp(a.value("quality", 2), 0, 4);
+                 req.loop         = a.value("loop", true);
+                 req.autoplay     = a.value("autoplay", true);
                  req.pptx_mode    = a.value("pptxMode", std::string("video"));
                  req.slide_size   = a.value("slideSize", std::string("16:9"));
                  req.insert_into  = a.value("insertInto", std::string{});

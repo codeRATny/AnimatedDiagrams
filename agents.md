@@ -13,6 +13,13 @@
   `PluginTest.BundledTemplatesReferenceKnownDefinitions`), `skills/` agent skill, `docs/` user docs,
   `samples/` example documents.
 - Video export: `src/Export/VideoEncoder` (libav, optional via `WITH_LIBAV`).
+- `src/CMakeLists.txt` splits the core: `ad_engine` (Model, Io, Geometry, Engine, Timeline, Interaction,
+  ExportPlan, I18n/Text; STL + nlohmann_json only -- it also compiles with Emscripten) and `ad_core` =
+  ad_engine + Import, Export encoders, Mcp, Plugins, File, CrashHandler. Sources are listed explicitly.
+- `player/` -- HTML player: `ad_engine` -> WebAssembly (`emcmake cmake -S . -B build/player`), display list
+  as a flat buffer (`Engine/FrameBuffer.hpp`, decoded by `player/player.js`), one `player.html`. The app
+  embeds it with `-DAD_PLAYER_HTML=<path>` and fills it via `Export/HtmlPlayer.hpp`. Drawing in `player.js`
+  mirrors `UI/QtRender.cpp` -- change both together.
 
 ## Build
 

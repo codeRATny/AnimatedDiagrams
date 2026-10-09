@@ -13,7 +13,7 @@ class QLabel;
 class QPushButton;
 
 /// @file ExportDialog.hpp
-/// @brief Export settings: format, fps, scale, quality, framing, background. "Export"
+/// @brief Export settings: format, fps, scale, quality, framing, background, loop / autoplay. "Export"
 ///        queues a background job (see ExportManager) and closes the dialog.
 
 namespace ad::ui
@@ -49,6 +49,7 @@ private:
     QComboBox   *_framing   = nullptr;
     QPushButton *_bg_button = nullptr;
     QCheckBox   *_loop      = nullptr;
+    QCheckBox   *_autoplay  = nullptr;
     QLabel      *_estimate  = nullptr;
 
     // PowerPoint

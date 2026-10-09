@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <format>
 #include <map>
 #include <numbers>
 
@@ -523,7 +522,8 @@ private:
             arc.round_cap = true;
             _Add(ArcShape{c, kR, -90, 360 * (1 - p)}, StrokeOnly(arc));
         }
-        const std::string label = std::format("{}{}", static_cast<int64_t>(std::ceil(remaining)), TimeUnit(s.unit).short_label);
+        // std::to_string, not std::format: keeps the float formatting tables out of the HTML player
+        const std::string label = std::to_string(static_cast<int64_t>(std::ceil(remaining))) + TimeUnit(s.unit).short_label;
         const auto        len   = Utf8Length(label);
         const double      fs    = len >= 5 ? 10 : len == 4 ? 12 : 15; // longer labels get smaller
         _Text({c.x, c.y + 5}, label, _Font(fs, true), danger ? Color::Rgb(0xfca5a5) : Color::Rgb(0xfcd34d), HAlign::Center);

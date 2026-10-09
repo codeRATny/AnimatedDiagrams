@@ -49,7 +49,7 @@ claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp
 | `set_scene` | название, длительность, цвета холста, дизайн-система (`designSystem`) |
 | `auto_layout` | авто-раскладка узлов по связям |
 | `render_frame` | PNG кадра в момент `timeMs` — визуальная проверка |
-| `export_animation` | экспорт GIF / PNG / WebM / MP4 (libav, `quality` 0..4) и PowerPoint: `format: "pptx"`, `pptxMode` video / gif / animated / morph, `slideSize`, `insertInto` + `insertAfter` (добавить в существующую презентацию), `bySegments` ([подробнее](presentations.md)) |
+| `export_animation` | экспорт GIF / PNG / WebM / MP4 (libav, `quality` 0..4); PowerPoint: `format: "pptx"`, `pptxMode` video / gif / animated / morph, `slideSize`, `insertInto` + `insertAfter` (добавить в существующую презентацию), `bySegments`; `html` — интерактивный HTML-плеер (`loop`, `autoplay`; если сборка включает плеер). [Подробнее](presentations.md) |
 | `undo`, `redo` | история |
 
 Ошибки аргументов возвращаются как результат с `isError: true` и понятным текстом.

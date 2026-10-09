@@ -19,11 +19,47 @@ concurrency:
 
 env:
   BUILD_TYPE: Release
+  EMSDK_VERSION: '6.0.10' # HTML player toolchain (keep in sync with docs/presentations.md)
 
 jobs:
+  # HTML player: ad_engine compiled to WebAssembly + a canvas renderer, one self-contained
+  # player.html that the linux / windows builds embed (-DAD_PLAYER_HTML) for the HTML export.
+  player:
+    name: HTML player (Emscripten)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+          actions-cache-folder: emsdk-cache
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build
+
+      - name: Version from tag
+        shell: bash
+        run: ci/version-from-tag.sh >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: emcmake cmake -S . -B build-player -G Ninja -DWARNINGS_AS_ERRORS=ON ${AD_VERSION_ARG:-}
+
+      - name: Build
+        run: cmake --build build-player && ls -l build-player/player/player.html
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: player-html
+          path: build-player/player/player.html
+          if-no-files-found: error
+          retention-days: 14
+
   linux:
     name: ${{ matrix.name }}
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    needs: player
     runs-on: ubuntu-24.04
     container: ${{ matrix.image }}
     strategy:
@@ -90,6 +126,11 @@ jobs:
 
       - uses: actions/checkout@v5
 
+      - uses: actions/download-artifact@v5
+        with:
+          name: player-html
+          path: player-dist
+
       - name: Version from tag
         shell: bash
         run: ci/version-from-tag.sh >> "$GITHUB_ENV"
@@ -103,6 +144,7 @@ jobs:
           -DBUILD_TESTS=ON
           -DWARNINGS_AS_ERRORS=ON
           -DREQUIRE_TRANSLATIONS=ON
+          -DAD_PLAYER_HTML=$PWD/player-dist/player.html
           -DAD_PACKAGE_RELEASE_SUFFIX=${{ matrix.suffix }}
           ${AD_VERSION_ARG:-}
 
@@ -167,7 +209,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: clang-format
         run: |
-          git ls-files 'src/*.cpp' 'src/*.hpp' 'UI/*.cpp' 'UI/*.hpp' 'apps/*.cpp' 'tests/*.cpp' \
+          git ls-files 'src/*.cpp' 'src/*.hpp' 'UI/*.cpp' 'UI/*.hpp' 'apps/*.cpp' 'tests/*.cpp' 'player/*.cpp' \
             | xargs clang-format-19 --dry-run -Werror
       - name: Configure
         run: >
@@ -183,9 +225,15 @@ jobs:
   windows:
     name: Windows (MSVC, NSIS + ZIP)
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    needs: player
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: player-html
+          path: player-dist
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -237,6 +285,7 @@ jobs:
           -DVCPKG_TARGET_TRIPLET=x64-windows
           -DBUILD_TESTS=ON
           -DREQUIRE_TRANSLATIONS=ON
+          -DAD_PLAYER_HTML="$(cygpath -m "$PWD")/player-dist/player.html"
           ${AD_VERSION_ARG:-}
 
       - name: Build
@@ -263,7 +312,7 @@ jobs:
   release:
     name: GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, sanitizers, lint, windows]
+    needs: [player, linux, sanitizers, lint, windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

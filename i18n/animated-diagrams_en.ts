@@ -39,17 +39,18 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../UI/Exporter.cpp" line="+28"/>
+        <location filename="../UI/Exporter.cpp" line="+33"/>
         <source>Export cancelled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+27"/>
+        <location line="+96"/>
         <source>Could not write %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="-74"/>
         <source>Could not write %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -61,7 +62,12 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+117"/>
+        <location line="+10"/>
+        <source>The HTML player is not included in this build</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+153"/>
         <source>No output file specified</source>
         <translation type="unfinished"></translation>
     </message>
@@ -76,7 +82,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+32"/>
         <source>Unknown format</source>
         <translation type="unfinished"></translation>
     </message>
@@ -355,7 +361,7 @@ Please attach it to your bug report.</source>
 <context>
     <name>ad::ui::ExportDialog</name>
     <message>
-        <location filename="../UI/ExportDialog.cpp" line="+48"/>
+        <location filename="../UI/ExportDialog.cpp" line="+50"/>
         <source>Export Animation</source>
         <translation type="unfinished"></translation>
     </message>
@@ -385,7 +391,12 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+3"/>
+        <source>HTML player — interactive, for web slides</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>No suitable codec in libav</source>
         <translation type="unfinished"></translation>
     </message>
@@ -446,17 +457,22 @@ Please attach it to your bug report.</source>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+76"/>
+        <location line="+82"/>
         <source>Background</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-59"/>
-        <source>Loop (GIF)</source>
+        <location line="-65"/>
+        <source>Loop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+2"/>
+        <source>Start playing when opened</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>Video — plays automatically (PowerPoint, Keynote, Impress)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -570,8 +586,13 @@ Please attach it to your bug report.</source>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location line="+68"/>
+        <source>One self-contained HTML page (≈ %1): plays in any modern browser and embeds in web presentations (reveal.js, Slidev, Marp, an iframe).</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message numerus="yes">
-        <location line="+62"/>
+        <location line="+8"/>
         <source>≈ %n frame(s) · %1×%2 px · %3 s</source>
         <translation>
             <numerusform>≈ %n frame · %1×%2 px · %3 s</numerusform>

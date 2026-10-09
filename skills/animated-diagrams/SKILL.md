@@ -48,12 +48,14 @@ user to connect the server. Never edit the user's open document over HTTP withou
 5. **Verify**: `render_frame {timeMs}` at 2–4 interesting moments (mid-message, during a state change,
    end). Look at the images; fix overlaps, wrong directions, unreadable labels.
 6. `save_document {path}` (plugin definitions used by the diagram are embedded) and/or
-   `export_animation {path, format: gif|mp4|webm|png|pptx, fps, scale}`.
+   `export_animation {path, format: gif|mp4|webm|png|pptx|html, fps, scale}`.
    For slides: `export_animation {path: "deck.pptx", pptxMode: "video"|"gif"|"animated"|"morph",
    insertInto?: "existing.pptx", insertAfter?: 3}` — video plays automatically (PowerPoint / Keynote /
    Impress), gif also works in Google Slides, animated = editable shapes with PowerPoint animations,
    morph = key frames with the Morph transition (PowerPoint 2019+). Markers split the scenario into
    click-to-continue slides.
+   `html`: a self-contained interactive player page for web slides / iframes, when the build includes
+   it -- see docs/presentations.md.
 
 Use `undo` / `redo` freely; every tool call is one history step.
 

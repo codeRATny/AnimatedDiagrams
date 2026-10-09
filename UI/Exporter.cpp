@@ -12,7 +12,9 @@
 
 #include "Engine/Scene.hpp"
 #include "Export/GifEncoder.hpp"
+#include "Export/HtmlPlayer.hpp"
 #include "Export/VideoEncoder.hpp"
+#include "Io/JsonIo.hpp"
 #include "PresentationExport.hpp"
 #include "QtRender.hpp"
 #include "Utils/File.hpp"
@@ -22,6 +24,9 @@ namespace ad::ui
 
 namespace
 {
+
+/// Prebuilt HTML player (player/player.html), present when built with -DAD_PLAYER_HTML.
+constexpr auto kPlayerResource = ":/player/player.html";
 
 std::span<const uint8_t> Pixels(const QImage &img) { return {img.constBits(), static_cast<size_t>(img.sizeInBytes())}; }
 
@@ -126,6 +131,33 @@ Result ExportVideo(const Model &m, const ExportOptions &o, const Registry &reg, 
     return ExportResult{o.output_path, static_cast<int>(times.size()), QFileInfo(o.output_path).size(), Qs(enc.EncoderName())};
 }
 
+Result ExportHtml(const Model &m, const ExportOptions &o, const Registry &reg)
+{
+    QFile tf(QString::fromLatin1(kPlayerResource));
+    if (!tf.open(QIODevice::ReadOnly))
+    {
+        return std::unexpected(QObject::tr("The HTML player is not included in this build"));
+    }
+    const QByteArray tmpl = tf.readAll();
+
+    // as when saving: definitions from plugins are embedded, so the page renders without them
+    Model doc = m;
+    reg.EmbedUsedDefinitions(doc);
+    doc.scene.background = Us(o.background.name());
+    const auto html      = MakePlayerHtml(std::string_view(tmpl.constData(), static_cast<size_t>(tmpl.size())), SerializeModel(doc, -1),
+                                          doc.meta.name, PlayerOptions{o.autoplay, o.loop});
+    if (!html.has_value())
+    {
+        return std::unexpected(Qs(html.error()));
+    }
+    QSaveFile f(o.output_path);
+    if (!f.open(QIODevice::WriteOnly) || f.write(html->data(), static_cast<qint64>(html->size())) < 0 || !f.commit())
+    {
+        return std::unexpected(QObject::tr("Could not write %1: %2").arg(o.output_path, f.errorString()));
+    }
+    return ExportResult{o.output_path, 0, static_cast<qint64>(html->size()), {}};
+}
+
 } // namespace
 
 QString FormatId(ExportFormat f)
@@ -142,6 +174,8 @@ QString FormatId(ExportFormat f)
         return QStringLiteral("mp4");
     case ExportFormat::Pptx:
         return QStringLiteral("pptx");
+    case ExportFormat::Html:
+        return QStringLiteral("html");
     }
     return {};
 }
@@ -176,14 +210,32 @@ std::optional<PptxMode> PptxModeFromId(const QString &id)
 
 std::optional<ExportFormat> FormatFromId(const QString &id)
 {
-    for (const auto f : {ExportFormat::Gif, ExportFormat::Png, ExportFormat::WebM, ExportFormat::Mp4, ExportFormat::Pptx})
+    for (const auto f :
+         {ExportFormat::Gif, ExportFormat::Png, ExportFormat::WebM, ExportFormat::Mp4, ExportFormat::Pptx, ExportFormat::Html})
     {
         if (FormatId(f).compare(id, Qt::CaseInsensitive) == 0)
         {
             return f;
         }
     }
+    if (id.compare(QStringLiteral("htm"), Qt::CaseInsensitive) == 0)
+    {
+        return ExportFormat::Html;
+    }
     return std::nullopt;
+}
+
+bool HtmlPlayerAvailable() { return QFile::exists(QString::fromLatin1(kPlayerResource)); }
+
+QStringList AvailableFormatIds()
+{
+    QStringList ids{FormatId(ExportFormat::Gif), FormatId(ExportFormat::Png), FormatId(ExportFormat::WebM), FormatId(ExportFormat::Mp4),
+                    FormatId(ExportFormat::Pptx)};
+    if (HtmlPlayerAvailable())
+    {
+        ids << FormatId(ExportFormat::Html);
+    }
+    return ids;
 }
 
 bool IsVideo(ExportFormat f) { return f == ExportFormat::WebM || f == ExportFormat::Mp4; }
@@ -249,6 +301,10 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
     {
         return std::unexpected(QObject::tr("Cannot access folder %1").arg(out.absolutePath()));
     }
+    if (o.format == ExportFormat::Html)
+    {
+        return ExportHtml(m, o, reg); // no frames: the page renders them in the browser
+    }
     if (o.format == ExportFormat::Pptx)
     {
         return ExportPresentation(m, o, reg, stop, progress);
@@ -272,6 +328,7 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
     case ExportFormat::Mp4:
         return ExportVideo(m, o, reg, g, times, stop, progress);
     case ExportFormat::Pptx:
+    case ExportFormat::Html:
         break; // handled above
     }
     return std::unexpected(QObject::tr("Unknown format"));

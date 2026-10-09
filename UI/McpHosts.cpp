@@ -30,6 +30,16 @@ std::expected<std::vector<uint8_t>, std::string> Png(const Model &m, double t, d
 
 } // namespace
 
+std::vector<std::string> McpExportFormats()
+{
+    std::vector<std::string> out;
+    for (const QString &id : AvailableFormatIds())
+    {
+        out.push_back(Us(id));
+    }
+    return out;
+}
+
 std::expected<ExportOptions, std::string> ExportOptionsFor(const Model &m, const mcp::ExportRequest &request)
 {
     ExportOptions o;
@@ -38,12 +48,14 @@ std::expected<ExportOptions, std::string> ExportOptionsFor(const Model &m, const
     const auto    format = FormatFromId(fmt);
     if (!format.has_value())
     {
-        return std::unexpected("unknown export format '" + Us(fmt) + "' (gif, png, webm, mp4, pptx)");
+        return std::unexpected("unknown export format '" + Us(fmt) + "' (" + Us(AvailableFormatIds().join(QStringLiteral(", "))) + ")");
     }
     o.format     = *format;
     o.fps        = request.fps;
     o.scale      = request.scale;
     o.quality    = request.quality;
+    o.loop       = request.loop;
+    o.autoplay   = request.autoplay;
     o.background = QColor(Qs(m.scene.background));
     if (o.format == ExportFormat::Pptx)
     {
@@ -67,6 +79,10 @@ namespace
 
 std::string ResultLine(const ExportResult &r)
 {
+    if (r.frames == 0)
+    {
+        return std::format("Exported the HTML player to {} ({} bytes)", Us(r.path), r.bytes);
+    }
     return std::format("Exported {} frames to {} ({} bytes{})", r.frames, Us(r.path), r.bytes,
                        r.encoder.isEmpty() ? std::string() : ", encoder " + Us(r.encoder));
 }
@@ -145,6 +161,8 @@ std::expected<std::string, std::string> AppDocumentHost::Export(const mcp::Expor
     return ResultLine(info->result);
 }
 
+std::vector<std::string> AppDocumentHost::ExportFormats() const { return McpExportFormats(); }
+
 std::vector<mcp::DocumentInfo> AppDocumentHost::Documents()
 {
     std::vector<mcp::DocumentInfo> out;
@@ -195,5 +213,7 @@ std::expected<std::string, std::string> HeadlessDocumentHost::Export(const mcp::
 {
     return ExportForMcp(Doc().Get(), Reg(), request);
 }
+
+std::vector<std::string> HeadlessDocumentHost::ExportFormats() const { return McpExportFormats(); }
 
 } // namespace ad::ui
