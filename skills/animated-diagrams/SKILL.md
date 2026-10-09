@@ -122,8 +122,8 @@ animated-diagrams --convert out.json input.drawio --page 1  # draw.io -> native 
 animated-diagrams --convert out.json --export out.gif input.drawio
 ```
 
-`--background '#ffffff'`, `--no-loop` (GIF). WebM / MP4 are encoded in process (libav: VP9 / H.264, with
-fallbacks), no external ffmpeg is needed; `export_animation` takes `quality` 0..4. To author a document
+`--background '#ffffff'`, `--no-loop` (GIF). GIF / WebM / MP4 are encoded in process (libav: one shared GIF
+palette, VP9 / H.264 with fallbacks), no external ffmpeg is needed; `export_animation` takes `quality` 0..4 (video). To author a document
 without MCP, write JSON in the native format — see [references/document-format.md](references/document-format.md).
 
 ## 8. Plugins

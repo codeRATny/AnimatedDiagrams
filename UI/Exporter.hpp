@@ -17,8 +17,8 @@
 #include "Model/Registry.hpp"
 
 /// @file Exporter.hpp
-/// @brief Animation export: GIF (built-in encoder), PNG sequence, WebM / MP4 (libav, in process),
-///        HTML player (the document in a self-contained page, when the build embeds the player).
+/// @brief Animation export: GIF / WebM / MP4 (libav, in process), PNG sequence (Qt), PowerPoint
+///        presentations, HTML player (the document in a self-contained page, when the build embeds the player).
 ///        UI independent -- used by the export dialog, the CLI (--export) and the MCP server.
 
 namespace ad::ui
@@ -31,7 +31,7 @@ enum class ExportFormat
     WebM,
     Mp4,
     Pptx, // PowerPoint presentation (see PresentationExport.hpp)
-    Html // interactive player page (player/, embedded with -DAD_PLAYER_HTML)
+    Html  // interactive player page (player/, embedded with -DAD_PLAYER_HTML)
 };
 
 /// How a diagram becomes PowerPoint slides.
@@ -82,7 +82,7 @@ struct ExportResult
     QString path;
     int     frames = 0;
     qint64  bytes  = 0;
-    QString encoder; // video encoder used (WebM / MP4)
+    QString encoder; // libav encoder used (GIF / WebM / MP4)
 };
 
 using ProgressFn = std::function<void(int done, int total)>;
@@ -94,10 +94,11 @@ std::optional<PptxMode>     PptxModeFromId(const QString &id);
 bool                        IsVideo(ExportFormat f);
 /// The build embeds the HTML player (otherwise the HTML format is not offered).
 bool HtmlPlayerAvailable();
-/// Ids of the formats this build can export ("gif", "png", "webm", "mp4", "html").
+/// Ids of the formats this build can export ("gif", "png", "webm", "mp4", "pptx", "html").
 QStringList AvailableFormatIds();
-/// Encoder that will be tried first for a video format; empty -- the format is unavailable.
-QString VideoEncoderFor(ExportFormat f);
+/// Encoder that will be tried first for a format; empty -- the format is unavailable
+/// (GIF / WebM / MP4 need libav with a suitable encoder).
+QString EncoderFor(ExportFormat f);
 
 ExportGeometry PlanExport(const Model &m, const ExportOptions &o, const Registry &reg);
 QImage         RenderExportFrame(const Model &m, double t, const ExportGeometry &g, const QColor &bg, const Registry &reg);

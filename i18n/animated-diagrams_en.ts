@@ -39,35 +39,37 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../UI/Exporter.cpp" line="+33"/>
+        <location filename="../UI/Exporter.cpp" line="+31"/>
         <source>Export cancelled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+27"/>
-        <location line="+96"/>
+        <location line="+130"/>
         <source>Could not write %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-74"/>
+        <location line="-109"/>
         <source>Could not write %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+24"/>
-        <location line="+14"/>
-        <location line="+9"/>
+        <location line="+33"/>
         <source>Video: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+0"/>
+        <source>GIF: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+59"/>
         <source>The HTML player is not included in this build</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+153"/>
+        <location line="+158"/>
         <source>No output file specified</source>
         <translation type="unfinished"></translation>
     </message>
@@ -82,7 +84,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+31"/>
         <source>Unknown format</source>
         <translation type="unfinished"></translation>
     </message>
@@ -280,7 +282,7 @@ Please attach it to your bug report.</source>
     </message>
     <message>
         <location line="+4"/>
-        <source>MP4 export is not available in this build: choose the GIF mode</source>
+        <source>Video and GIF export are not available in this build: choose editable shapes or Morph key frames</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -396,7 +398,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+13"/>
         <source>No suitable codec in libav</source>
         <translation type="unfinished"></translation>
     </message>
@@ -406,7 +408,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+10"/>
         <source>%1 fps</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2958,7 +2960,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>document</name>
     <message>
-        <location filename="../src/Import/DrawioImporter.cpp" line="+254"/>
+        <location filename="../src/Import/DrawioImporter.cpp" line="+336"/>
         <source>draw.io import</source>
         <translation type="unfinished"></translation>
     </message>

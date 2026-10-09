@@ -65,9 +65,10 @@ std::expected<ExportResult, QString> ExportPresentation(const Model &m, const Ex
         {
             return std::unexpected(QObject::tr("Cannot create a temporary folder"));
         }
-        if (!gif && VideoEncoderFor(ExportFormat::Mp4).isEmpty())
+        if (EncoderFor(gif ? ExportFormat::Gif : ExportFormat::Mp4).isEmpty())
         {
-            return std::unexpected(QObject::tr("MP4 export is not available in this build: choose the GIF mode"));
+            return std::unexpected(
+                QObject::tr("Video and GIF export are not available in this build: choose editable shapes or Morph key frames"));
         }
         std::vector<pptx::MediaSlide> slides;
         int                           frames = 0;

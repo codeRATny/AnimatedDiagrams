@@ -1,12 +1,18 @@
 #include "DrawioImporter.hpp"
 
+#define ZLIB_CONST // const input pointer (z_stream::next_in)
+#include <pugixml.hpp>
+#include <zlib.h>
+
 #include <algorithm>
+#include <array>
 #include <charconv>
+#include <limits>
+#include <memory>
 #include <set>
+#include <span>
 
 #include "Common/Exceptions.hpp"
-#include "Import/Inflate.hpp"
-#include "Import/XmlReader.hpp"
 #include "Io/JsonIo.hpp"
 #include "Utils/I18n.hpp"
 #include "Utils/Text.hpp"
@@ -60,73 +66,149 @@ std::optional<std::string> StyleColor(const Cell &c, const std::string &key)
     return color->Hex();
 }
 
-/// Locate the mxGraphModel of the requested page; decompresses compressed pages into `storage`.
-const XmlNode &PageModel(const XmlNode &root, int page, XmlNode &storage, std::string &page_name)
+/// Decompress a raw DEFLATE stream (draw.io: pako.deflateRaw) with zlib; at most `max_output` bytes.
+std::string InflateRaw(std::span<const uint8_t> data, size_t max_output)
 {
-    if (root.name == "mxGraphModel")
+    z_stream zs{};
+    if (inflateInit2(&zs, -MAX_WBITS) != Z_OK)
+    {
+        throw ParseError("zlib initialisation failed");
+    }
+    const std::unique_ptr<z_stream, int (*)(z_stream *)> guard(&zs, inflateEnd);
+
+    std::string                 out;
+    std::array<char, 64 * 1024> buf{};
+    size_t                      pos = 0;
+    while (true)
+    {
+        if (zs.avail_in == 0 && pos < data.size())
+        {
+            // zlib counts in uInt: feed large inputs in chunks
+            const size_t chunk = std::min<size_t>(data.size() - pos, std::numeric_limits<uInt>::max());
+            zs.next_in         = data.data() + pos;
+            zs.avail_in        = static_cast<uInt>(chunk);
+            pos += chunk;
+        }
+        zs.next_out           = reinterpret_cast<Bytef *>(buf.data());
+        zs.avail_out          = static_cast<uInt>(buf.size());
+        const int    rc       = inflate(&zs, Z_NO_FLUSH);
+        const size_t produced = buf.size() - zs.avail_out;
+        if (rc != Z_OK && rc != Z_STREAM_END)
+        {
+            // Z_BUF_ERROR: no progress possible -- the input ended before the end of the stream
+            throw ParseError(std::string("corrupt compressed page: ") + (zs.msg != nullptr   ? zs.msg
+                                                                         : rc == Z_BUF_ERROR ? "truncated data"
+                                                                                             : "zlib error " + std::to_string(rc)));
+        }
+        if (produced > max_output - out.size())
+        {
+            throw ParseError("compressed page is larger than " + std::to_string(max_output) + " bytes");
+        }
+        out.append(buf.data(), produced);
+        if (rc == Z_STREAM_END)
+        {
+            return out;
+        }
+    }
+}
+
+/// Load XML text into `doc`; throws ad::ParseError with the pugixml error and offset.
+pugi::xml_node LoadXml(pugi::xml_document &doc, std::string_view text)
+{
+    const pugi::xml_parse_result r = doc.load_buffer(text.data(), text.size(), pugi::parse_default, pugi::encoding_utf8);
+    if (!r)
+    {
+        throw ParseError("XML: " + std::string(r.description()) + " at offset " + std::to_string(r.offset));
+    }
+    return doc.document_element();
+}
+
+/// Concatenated character data (text and CDATA) of an element.
+std::string TextOf(pugi::xml_node node)
+{
+    std::string text;
+    for (const pugi::xml_node child : node.children())
+    {
+        if (child.type() == pugi::node_pcdata || child.type() == pugi::node_cdata)
+        {
+            text += child.value();
+        }
+    }
+    return text;
+}
+
+/// Locate the mxGraphModel of the requested page; decompresses compressed pages into `storage`.
+pugi::xml_node PageModel(pugi::xml_node root, const DrawioImportOptions &opt, pugi::xml_document &storage, std::string &page_name)
+{
+    const std::string_view root_name = root.name();
+    if (root_name == "mxGraphModel")
     {
         return root;
     }
-    if (root.name != "mxfile")
+    if (root_name != "mxfile")
     {
-        throw ParseError("not a draw.io file (root element <" + root.name + ">)");
+        throw ParseError("not a draw.io file (root element <" + std::string(root_name) + ">)");
     }
-    const auto diagrams = root.ChildrenNamed("diagram");
+    std::vector<pugi::xml_node> diagrams;
+    for (const pugi::xml_node d : root.children("diagram"))
+    {
+        diagrams.push_back(d);
+    }
     if (diagrams.empty())
     {
         throw ParseError("draw.io file has no pages");
     }
-    if (page < 0 || static_cast<size_t>(page) >= diagrams.size())
+    if (opt.page < 0 || static_cast<size_t>(opt.page) >= diagrams.size())
     {
-        throw ParseError("page " + std::to_string(page) + " does not exist (pages: " + std::to_string(diagrams.size()) + ")");
+        throw ParseError("page " + std::to_string(opt.page) + " does not exist (pages: " + std::to_string(diagrams.size()) + ")");
     }
-    const XmlNode *d = diagrams[static_cast<size_t>(page)];
-    page_name        = d->AttrOr("name");
-    if (const XmlNode *model = d->Child("mxGraphModel"); model != nullptr)
+    const pugi::xml_node d = diagrams[static_cast<size_t>(opt.page)];
+    page_name              = d.attribute("name").as_string();
+    if (const pugi::xml_node model = d.child("mxGraphModel"); !model.empty())
     {
-        return *model;
+        return model;
     }
-    const std::string payload = Trim(d->text);
+    const std::string payload = Trim(TextOf(d));
     if (payload.empty())
     {
         throw ParseError("page '" + page_name + "' is empty");
     }
     // compressed page: base64 -> raw deflate -> URI-encoded XML
-    const auto        bytes    = Base64Decode(payload);
-    const auto        inflated = Inflate(bytes);
-    const std::string xml      = UrlDecode(std::string_view(reinterpret_cast<const char *>(inflated.data()), inflated.size()));
-    storage                    = ParseXml(xml);
-    if (storage.name != "mxGraphModel")
+    const auto           bytes = Base64Decode(payload);
+    const std::string    xml   = UrlDecode(InflateRaw(bytes, opt.max_inflated_size));
+    const pugi::xml_node model = LoadXml(storage, xml);
+    if (std::string_view(model.name()) != "mxGraphModel")
     {
         throw ParseError("compressed page does not contain an mxGraphModel");
     }
-    return storage;
+    return model;
 }
 
-Cell ReadCell(const XmlNode &cell_node, const XmlNode *wrapper)
+Cell ReadCell(pugi::xml_node cell_node, pugi::xml_node wrapper)
 {
     Cell c;
-    c.id     = wrapper != nullptr ? wrapper->AttrOr("id") : cell_node.AttrOr("id");
-    c.value  = wrapper != nullptr ? wrapper->AttrOr("label") : cell_node.AttrOr("value");
-    c.parent = cell_node.AttrOr("parent");
-    c.style  = ParseDrawioStyle(cell_node.AttrOr("style"));
-    c.vertex = cell_node.AttrOr("vertex") == "1";
-    c.edge   = cell_node.AttrOr("edge") == "1";
-    c.source = cell_node.AttrOr("source");
-    c.target = cell_node.AttrOr("target");
-    if (const XmlNode *g = cell_node.Child("mxGeometry"); g != nullptr)
+    c.id     = !wrapper.empty() ? wrapper.attribute("id").as_string() : cell_node.attribute("id").as_string();
+    c.value  = !wrapper.empty() ? wrapper.attribute("label").as_string() : cell_node.attribute("value").as_string();
+    c.parent = cell_node.attribute("parent").as_string();
+    c.style  = ParseDrawioStyle(cell_node.attribute("style").as_string());
+    c.vertex = std::string_view(cell_node.attribute("vertex").as_string()) == "1";
+    c.edge   = std::string_view(cell_node.attribute("edge").as_string()) == "1";
+    c.source = cell_node.attribute("source").as_string();
+    c.target = cell_node.attribute("target").as_string();
+    if (const pugi::xml_node g = cell_node.child("mxGeometry"); !g.empty())
     {
-        c.geo = {Num(g->AttrOr("x"), 0), Num(g->AttrOr("y"), 0), Num(g->AttrOr("width"), 0), Num(g->AttrOr("height"), 0)};
-        for (const XmlNode &arr : g->children)
+        auto num = [](pugi::xml_node n, const char *key)
         {
-            if (arr.name == "Array" && arr.AttrOr("as") == "points")
+            return Num(n.attribute(key).as_string(), 0);
+        };
+        c.geo = {num(g, "x"), num(g, "y"), num(g, "width"), num(g, "height")};
+        for (const pugi::xml_node arr : g.children("Array"))
+        {
+            if (std::string_view(arr.attribute("as").as_string()) == "points")
             {
-                for (const XmlNode &p : arr.children)
+                for (const pugi::xml_node p : arr.children("mxPoint"))
                 {
-                    if (p.name == "mxPoint")
-                    {
-                        c.points.push_back({Num(p.AttrOr("x"), 0), Num(p.AttrOr("y"), 0)});
-                    }
+                    c.points.push_back({num(p, "x"), num(p, "y")});
                 }
             }
         }
@@ -255,15 +337,17 @@ std::string DrawioDefaultName() { return Tr("document", "draw.io import"); }
 
 std::vector<std::string> DrawioPageNames(std::string_view file_content)
 {
-    const XmlNode            root = ParseXml(file_content);
+    pugi::xml_document       doc;
+    const pugi::xml_node     root = LoadXml(doc, file_content);
     std::vector<std::string> names;
-    if (root.name == "mxGraphModel")
+    if (std::string_view(root.name()) == "mxGraphModel")
     {
         names.emplace_back("Page-1");
     }
-    for (const XmlNode *d : root.ChildrenNamed("diagram"))
+    for (const pugi::xml_node d : root.children("diagram"))
     {
-        names.push_back(d->AttrOr("name", "Page-" + std::to_string(names.size() + 1)));
+        const pugi::xml_attribute name = d.attribute("name");
+        names.push_back(!name.empty() ? name.as_string() : "Page-" + std::to_string(names.size() + 1));
     }
     return names;
 }
@@ -275,28 +359,30 @@ std::expected<Model, std::string> ImportDrawio(std::string_view file_content, co
     rep                     = {};
     try
     {
-        const XmlNode  root = ParseXml(file_content);
-        XmlNode        storage;
-        std::string    page_name;
-        const XmlNode &gm         = PageModel(root, opt.page, storage, page_name);
-        const XmlNode *cells_root = gm.Child("root");
-        if (cells_root == nullptr)
+        pugi::xml_document   doc;
+        pugi::xml_document   storage;
+        std::string          page_name;
+        const pugi::xml_node root       = LoadXml(doc, file_content);
+        const pugi::xml_node gm         = PageModel(root, opt, storage, page_name);
+        const pugi::xml_node cells_root = gm.child("root");
+        if (cells_root.empty())
         {
             return std::unexpected(std::string("draw.io page has no <root>"));
         }
 
         std::vector<Cell> cells;
-        for (const XmlNode &n : cells_root->children)
+        for (const pugi::xml_node n : cells_root.children())
         {
-            if (n.name == "mxCell")
+            const std::string_view name = n.name();
+            if (name == "mxCell")
             {
-                cells.push_back(ReadCell(n, nullptr));
+                cells.push_back(ReadCell(n, {}));
             }
-            else if (n.name == "object" || n.name == "UserObject")
+            else if (name == "object" || name == "UserObject")
             {
-                if (const XmlNode *inner = n.Child("mxCell"); inner != nullptr)
+                if (const pugi::xml_node inner = n.child("mxCell"); !inner.empty())
                 {
-                    cells.push_back(ReadCell(*inner, &n));
+                    cells.push_back(ReadCell(inner, n));
                 }
             }
         }

@@ -1,6 +1,7 @@
 #ifndef _IMPORT_DRAWIO_IMPORTER_HPP_
 #define _IMPORT_DRAWIO_IMPORTER_HPP_
 
+#include <cstddef>
 #include <expected>
 #include <map>
 #include <string>
@@ -23,8 +24,9 @@ namespace ad
 
 struct DrawioImportOptions
 {
-    int  page        = 0;    // page index in a multi-page file
-    bool keep_colors = true; // keep fill / stroke / font colors from draw.io
+    int    page              = 0;                    // page index in a multi-page file
+    bool   keep_colors       = true;                 // keep fill / stroke / font colors from draw.io
+    size_t max_inflated_size = 256U * 1024U * 1024U; // limit of a decompressed page (decompression bomb guard)
 };
 
 struct DrawioImportReport

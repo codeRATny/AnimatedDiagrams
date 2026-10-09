@@ -29,9 +29,10 @@ sudo dnf install ./animated-diagrams-*.x86_64.rpm     # Fedora
 ```
 
 Windows: `animated-diagrams-*-win64.exe` (установщик) или `*.zip` (портативная версия).
-WebM / MP4 кодируются внутри программы библиотеками FFmpeg (libavcodec / libavformat / libswscale):
-VP9 / VP8 / AV1 для WebM, H.264 (libx264, OpenH264, Media Foundation) или MPEG-4 для MP4 — выбирается
-первый доступный кодек. Внешний `ffmpeg` не нужен.
+GIF / WebM / MP4 кодируются внутри программы библиотеками FFmpeg (libavcodec / libavformat / libavfilter /
+libswscale): VP9 / VP8 / AV1 для WebM, H.264 (libx264, OpenH264, Media Foundation) или MPEG-4 для MP4 — выбирается
+первый доступный кодек; GIF — кодек `gif` с общей палитрой всей анимации (`palettegen` / `paletteuse`, кадры
+рендерятся в два прохода и не держатся в памяти). Внешний `ffmpeg` не нужен.
 
 ## Сборка из исходников
 
@@ -39,7 +40,8 @@ Ubuntu 24.04:
 
 ```bash
 sudo apt install cmake ninja-build pkg-config clang-19 qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev \
-                 libavcodec-dev libavformat-dev libswscale-dev
+                 libpugixml-dev libnanosvg-dev zlib1g-dev libzip-dev \
+                 libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev
 cmake --workflow --preset release          # configure + build + test → build/release
 ./build/release/apps/animated-diagrams
 ```
@@ -53,9 +55,14 @@ cd build && cpack -G DEB        # или RPM / "NSIS;ZIP"
 ```
 
 Опции: `BUILD_APP` (ON), `BUILD_TESTS` (OFF), `WARNINGS_AS_ERRORS` (OFF), `WITH_LIBAV` (ON; OFF — только
-GIF / PNG), `AD_PLAYER_HTML` (путь к собранному `player.html`; пусто — без экспорта в HTML). `nlohmann_json` и `GoogleTest` берутся из системы, а если их нет (Windows) — скачиваются CMake'ом
-с проверкой SHA256. libav ищется через pkg-config (Fedora: `libavcodec-free-devel libavformat-free-devel libswscale-free-devel`); на Windows укажите
-`-DFFMPEG_ROOT=<FFmpeg shared SDK>` (include/, lib/, bin/) — DLL попадут в установщик.
+PNG-кадры), `AD_PLAYER_HTML` (путь к собранному `player.html`; пусто — без экспорта в HTML). Форматы
+разбирают и кодируют готовые библиотеки: XML — pugixml, DEFLATE — zlib, SVG path — nanosvg, GIF / видео — libav,
+контейнер PowerPoint — libzip. `nlohmann_json`, `GoogleTest`, `pugixml` и `nanosvg` берутся из системы, а если их нет —
+скачиваются CMake'ом с проверкой SHA256; zlib обязателен. Fedora: `json-devel gtest-devel pugixml-devel
+libzip-devel nanosvg-devel zlib-ng-compat-devel libavcodec-free-devel libavformat-free-devel libavfilter-free-devel
+libswscale-free-devel`. libav ищется через pkg-config; на Windows укажите `-DFFMPEG_ROOT=<FFmpeg shared SDK>`
+(include/, lib/, bin/), остальные зависимости — из `vcpkg.json`
+(`-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake`); DLL попадут в установщик.
 
 HTML-плеер — движок, скомпилированный Emscripten (`emsdk` 6.0.10), собирается отдельно и встраивается в
 приложение ([подробнее](docs/presentations.md#сборка-плеера)):
@@ -138,12 +145,13 @@ src/        ad_core — вся логика без Qt (покрыта unit-те�
             движок, таймлайн) зависит только от STL и nlohmann_json и собирается также в WebAssembly
   Model/      модель, библиотека (элементы/эффекты/анимации), реестр, документ + undo/redo
   Engine/     кадр(t) → display list: формы, эффекты, шаблоны, авто-раскладка
-  Geometry/   пути, SVG path, Catmull-Rom, длина дуги
+  Geometry/   пути, SVG path (nanosvg), Catmull-Rom, длина дуги
   Io/         JSON (nlohmann) с нормализацией и обратной совместимостью
   Plugins/    формат плагинов, менеджер (сканирование, установка, вкл/выкл)
-  Import/     draw.io: inflate, XML, преобразование в модель
+  Import/     draw.io (XML — pugixml, сжатые страницы — zlib) → модель
   Mcp/        JSON-RPC MCP-сервер, инструменты документа, stdio-транспорт
-  Export/     GIF89a-энкодер, видео через libav (WebM / MP4), сетка кадров, шаблон HTML-плеера
+  Export/     GIF / WebM / MP4 через libav (GIF: palettegen + paletteuse), PowerPoint (libzip + pugixml),
+              сетка кадров, шаблон HTML-плеера
 UI/         Qt Widgets: вкладки, док-панели, холст, таймлайн, инспектор, палитра, библиотека, плагины,
             фоновый экспорт (ExportManager), HTTP-транспорт MCP; AppContext — общее для всех вкладок
 apps/       точка входа (GUI / CLI / MCP)
@@ -166,7 +174,7 @@ tests/      GoogleTest (175+ тестов) + smoke-тесты экспорта (
 | Fedora 43 | clang, `-Werror`, тесты, `cpack -G RPM` |
 | Sanitizers | ядро (с libav) и тесты под ASan + UBSan |
 | Lint | clang-format и clang-tidy |
-| Windows | MSVC 2022 + Qt 6.8 + FFmpeg 7.1 (LGPL shared), тесты, `cpack -G "NSIS;ZIP"` (windeployqt + DLL FFmpeg) |
+| Windows | MSVC 2022 + Qt 6.8 + FFmpeg (LGPL shared) + vcpkg (`vcpkg.json`: zlib, pugixml, nanosvg, libzip; бинарный кэш), тесты, `cpack -G "NSIS;ZIP"` (windeployqt + DLL FFmpeg и vcpkg) |
 | Release | только для тега `vX.Y.Z`: GitHub Release с пакетами и `SHA256SUMS.txt` |
 
 ```bash

@@ -44,35 +44,37 @@ Please attach it to your bug report.</source>
         <translation>%1 МБ</translation>
     </message>
     <message>
-        <location filename="../UI/Exporter.cpp" line="+33" />
+        <location filename="../UI/Exporter.cpp" line="+31" />
         <source>Export cancelled</source>
         <translation>Экспорт прерван</translation>
     </message>
     <message>
-        <location line="+27" />
-        <location line="+96" />
+        <location line="+130" />
         <source>Could not write %1: %2</source>
         <translation>Не удалось записать %1: %2</translation>
     </message>
     <message>
-        <location line="-74" />
+        <location line="-109" />
         <source>Could not write %1</source>
         <translation>Не удалось записать %1</translation>
     </message>
     <message>
-        <location line="+24" />
-        <location line="+14" />
-        <location line="+9" />
+        <location line="+33" />
         <source>Video: %1</source>
         <translation>Видео: %1</translation>
     </message>
     <message>
-        <location line="+10" />
+        <location line="+0" />
+        <source>GIF: %1</source>
+        <translation>GIF: %1</translation>
+    </message>
+    <message>
+        <location line="+59" />
         <source>The HTML player is not included in this build</source>
         <translation>HTML-плеер не входит в эту сборку</translation>
     </message>
     <message>
-        <location line="+153" />
+        <location line="+158" />
         <source>No output file specified</source>
         <translation>Не указан файл для сохранения</translation>
     </message>
@@ -87,7 +89,7 @@ Please attach it to your bug report.</source>
         <translation>Нет доступа к каталогу %1</translation>
     </message>
     <message>
-        <location line="+32" />
+        <location line="+31" />
         <source>Unknown format</source>
         <translation>Неизвестный формат</translation>
     </message>
@@ -285,8 +287,8 @@ Please attach it to your bug report.</source>
     </message>
     <message>
         <location line="+4" />
-        <source>MP4 export is not available in this build: choose the GIF mode</source>
-        <translation>Экспорт MP4 недоступен в этой сборке: выберите режим GIF</translation>
+        <source>Video and GIF export are not available in this build: choose editable shapes or Morph key frames</source>
+        <translation>Экспорт видео и GIF недоступен в этой сборке: выберите редактируемые фигуры или ключевые кадры «Трансформация»</translation>
     </message>
     <message>
         <location line="+38" />
@@ -401,7 +403,7 @@ Please attach it to your bug report.</source>
         <translation>HTML-плеер — интерактивный, для веб-слайдов</translation>
     </message>
     <message>
-        <location line="+9" />
+        <location line="+13" />
         <source>No suitable codec in libav</source>
         <translation>Нет подходящего кодека в libav</translation>
     </message>
@@ -411,7 +413,7 @@ Please attach it to your bug report.</source>
         <translation>Кодек: %1</translation>
     </message>
     <message>
-        <location line="+6" />
+        <location line="+10" />
         <source>%1 fps</source>
         <translation>%1 кадр/с</translation>
     </message>
@@ -2623,10 +2625,6 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>ad::ui::TimelineWidget</name>
     <message>
-        <source>Ctrl + wheel — zoom the timeline</source>
-        <translation type="vanished">Ctrl + колесо — масштаб таймлайна</translation>
-    </message>
-    <message>
         <location filename="../UI/TimelineWidget.cpp" line="+30" />
         <source>Ctrl + wheel — zoom the timeline. Right-click the ruler to add a marker</source>
         <translation>Ctrl + колесо — масштаб таймлайна. Правый клик по линейке — добавить маркер</translation>
@@ -2977,7 +2975,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>document</name>
     <message>
-        <location filename="../src/Import/DrawioImporter.cpp" line="+254" />
+        <location filename="../src/Import/DrawioImporter.cpp" line="+336" />
         <source>draw.io import</source>
         <translation>Импорт draw.io</translation>
     </message>

@@ -64,14 +64,22 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     {
         _format->addItem(tr("HTML player — interactive, for web slides"), FormatId(ExportFormat::Html));
     }
-    // video formats need a libav encoder for the container
+    // GIF / WebM / MP4 need a libav encoder for the container
     auto *model = qobject_cast<QStandardItemModel *>(_format->model());
-    for (int i = 1; i <= 2; ++i)
+    for (int i = 0; i < _format->count(); ++i)
     {
-        const auto    f       = FormatFromId(_format->itemData(i).toString()).value_or(ExportFormat::Gif);
-        const QString encoder = VideoEncoderFor(f);
+        const auto f = FormatFromId(_format->itemData(i).toString()).value_or(ExportFormat::Png);
+        if (f != ExportFormat::Gif && !IsVideo(f))
+        {
+            continue;
+        }
+        const QString encoder = EncoderFor(f);
         model->item(i)->setEnabled(!encoder.isEmpty());
         model->item(i)->setToolTip(encoder.isEmpty() ? tr("No suitable codec in libav") : tr("Codec: %1").arg(encoder));
+    }
+    if (!model->item(_format->currentIndex())->isEnabled())
+    {
+        _format->setCurrentIndex(_format->findData(FormatId(ExportFormat::Png)));
     }
 
     _fps = new QComboBox;

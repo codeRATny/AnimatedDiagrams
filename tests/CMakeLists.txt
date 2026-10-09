@@ -16,10 +16,9 @@ add_executable(ad_core_tests
     FrameBufferTest.cpp
     I18nTest.cpp
     GeometryTest.cpp
-    GifEncoderTest.cpp
+    GifExportTest.cpp
     HitTestTest.cpp
     HtmlPlayerTest.cpp
-    InflateTest.cpp
     JsonIoTest.cpp
     LayoutTest.cpp
     LibraryTest.cpp
@@ -36,18 +35,22 @@ add_executable(ad_core_tests
     TextTest.cpp
     TimelineLayoutTest.cpp
     VideoEncoderTest.cpp
-    XmlReaderTest.cpp
 )
 target_link_libraries(ad_core_tests PRIVATE ad::core GTest::gtest_main)
 target_compile_definitions(ad_core_tests PRIVATE AD_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples" AD_PLUGINS_DIR="${PROJECT_SOURCE_DIR}/plugins")
+if(WITH_LIBAV)
+    # GifExportTest demuxes / decodes the written files
+    target_link_libraries(ad_core_tests PRIVATE LibAV::LibAV)
+    target_compile_definitions(ad_core_tests PRIVATE AD_HAVE_LIBAV)
+endif()
 ad_set_warnings(ad_core_tests)
 gtest_discover_tests(ad_core_tests DISCOVERY_TIMEOUT 60)
 
 # Application smoke tests: headless export and MCP stdio session.
 if(TARGET animated_diagrams)
-    set(smoke_formats gif png)
+    set(smoke_formats png)
     if(WITH_LIBAV)
-        list(APPEND smoke_formats webm mp4)
+        list(APPEND smoke_formats gif webm mp4)
     endif()
     foreach(fmt IN LISTS smoke_formats)
         add_test(NAME AppExportSmoke.${fmt}

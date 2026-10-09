@@ -3,7 +3,7 @@
 #   ad_engine -- what is needed to load a document and build its frames: model, JSON I/O,
 #                geometry, engine / scene (display list), timeline layout, hit testing,
 #                export framing, text and i18n helpers. Depends on the C++ standard library
-#                and nlohmann_json ONLY: it is also compiled with Emscripten for the HTML
+#                nlohmann_json and nanosvg (one header) ONLY: it is also compiled with Emscripten for the HTML
 #                player (player/). Do not add libav / zip / XML / zlib / file system code here.
 #   ad_core   -- ad_engine + everything else: draw.io import, GIF / video / PowerPoint / HTML export,
 #                MCP server, plugins, file helpers, crash handler. The UI, the application
@@ -46,6 +46,7 @@ add_library(ad::engine ALIAS ad_engine)
 target_include_directories(ad_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(ad_engine PUBLIC cxx_std_23)
 target_link_libraries(ad_engine PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(ad_engine PRIVATE nanosvg::nanosvg) # SVG path data of custom shapes
 if(MSVC)
     target_compile_options(ad_engine PUBLIC /utf-8)
 endif()
@@ -57,7 +58,6 @@ endif()
 
 # ---- ad_core = ad_engine + import / export / MCP / plugins -----------------------------
 add_library(ad_core STATIC
-    Export/GifEncoder.cpp
     Export/HtmlPlayer.cpp
     Export/Opc.cpp
     Export/Pptx.cpp
@@ -65,8 +65,6 @@ add_library(ad_core STATIC
     Export/PptxVector.cpp
     Export/VideoEncoder.cpp
     Import/DrawioImporter.cpp
-    Import/Inflate.cpp
-    Import/XmlReader.cpp
     Mcp/DocumentTools.cpp
     Mcp/McpServer.cpp
     Mcp/StdioTransport.cpp
@@ -88,7 +86,8 @@ add_custom_command(OUTPUT ${AD_PPTX_TEMPLATE_CPP}
 target_sources(ad_core PRIVATE ${AD_PPTX_TEMPLATE_CPP})
 
 target_link_libraries(ad_core PUBLIC ad_engine)
-target_link_libraries(ad_core PRIVATE libzip::zip pugixml::pugixml) # PowerPoint export
+# XML (draw.io import, PowerPoint), DEFLATE (compressed draw.io pages), OPC zip container (PowerPoint)
+target_link_libraries(ad_core PRIVATE pugixml::pugixml ZLIB::ZLIB libzip::zip)
 if(WITH_LIBAV)
     target_link_libraries(ad_core PRIVATE LibAV::LibAV)
     target_compile_definitions(ad_core PRIVATE AD_HAVE_LIBAV)

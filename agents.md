@@ -12,9 +12,12 @@
 - `plugins/` bundled plugins (generated from code with the core API — keep them valid, see
   `PluginTest.BundledTemplatesReferenceKnownDefinitions`), `skills/` agent skill, `docs/` user docs,
   `samples/` example documents.
-- Video export: `src/Export/VideoEncoder` (libav, optional via `WITH_LIBAV`).
+- GIF / video export: `src/Export/VideoEncoder` (libav, optional via `WITH_LIBAV`; GIF uses the
+  palettegen / paletteuse filters in two passes).
+- Third-party parsers / codecs only (no own implementations): XML — pugixml, DEFLATE — zlib,
+  SVG path data — nanosvg, GIF / video — libav, PowerPoint (OPC zip) — libzip (`cmake/Dependencies.cmake`, Windows: `vcpkg.json`).
 - `src/CMakeLists.txt` splits the core: `ad_engine` (Model, Io, Geometry, Engine, Timeline, Interaction,
-  ExportPlan, I18n/Text; STL + nlohmann_json only -- it also compiles with Emscripten) and `ad_core` =
+  ExportPlan, I18n/Text; STL + nlohmann_json + nanosvg only -- it also compiles with Emscripten) and `ad_core` =
   ad_engine + Import, Export encoders, Mcp, Plugins, File, CrashHandler. Sources are listed explicitly.
 - `player/` -- HTML player: `ad_engine` -> WebAssembly (`emcmake cmake -S . -B build/player`), display list
   as a flat buffer (`Engine/FrameBuffer.hpp`, decoded by `player/player.js`), one `player.html`. The app

@@ -36,8 +36,8 @@
 
 **NodeStyle** (все поля необязательны; не заданное берётся из типа элемента, затем из умолчаний):
 `shape` (`rounded`, `rect`, `ellipse`, `diamond`, `hexagon`, `parallelogram`, `cylinder`, `queue`,
-`document`, `cloud`, `note`, `custom`), `customPath` (SVG path в квадрате 0..1 для `custom`, команды
-`M L H V C Q Z`), `fill`, `stroke`, `strokeWidth`, `strokeStyle` (`solid|dashed|dotted`), `cornerRadius`,
+`document`, `cloud`, `note`, `custom`), `customPath` (SVG path в квадрате 0..1 для `custom`, весь синтаксис
+SVG path: `M L H V C S Q T A Z`), `fill`, `stroke`, `strokeWidth`, `strokeStyle` (`solid|dashed|dotted`), `cornerRadius`,
 `textColor`, `fontSize`, `opacity` (0..1), `shadow`, `showIcon`.
 
 ## Edge

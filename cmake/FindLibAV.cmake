@@ -1,16 +1,17 @@
-# Finds the FFmpeg libraries (libavcodec, libavformat, libavutil, libswscale).
+# Finds the FFmpeg libraries (libavcodec, libavformat, libavfilter, libavutil, libswscale).
 #
 #   LibAV::LibAV       imported target
 #   LibAV_VERSION      libavcodec version
 #   LibAV_RUNTIME_DIR  directory with the shared libraries (Windows: bin/ with the DLLs)
 #
 # pkg-config is tried first (Linux); otherwise FFMPEG_ROOT (CMake or environment
-# variable) points to an unpacked SDK with include/, lib/ and bin/ (Windows).
-set(_libav_components avcodec avformat avutil swscale)
+# variable) points to an unpacked SDK with include/, lib/ (avcodec.lib, avfilter.lib, ...) and
+# bin/ (avcodec-*.dll, avfilter-*.dll, ...) (Windows).
+set(_libav_components avcodec avformat avfilter avutil swscale)
 
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND AND NOT FFMPEG_ROOT AND NOT DEFINED ENV{FFMPEG_ROOT})
-    pkg_check_modules(PC_LIBAV QUIET IMPORTED_TARGET libavcodec libavformat libavutil libswscale)
+    pkg_check_modules(PC_LIBAV QUIET IMPORTED_TARGET libavcodec libavformat libavfilter libavutil libswscale)
 endif()
 
 if(PC_LIBAV_FOUND)

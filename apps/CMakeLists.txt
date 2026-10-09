@@ -69,13 +69,22 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/plugins/" DESTINATION ${AD_SHARE_DIR}/p
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/skills/" DESTINATION ${AD_SHARE_DIR}/skills)
 
 if(WIN32 AND WITH_LIBAV AND LibAV_RUNTIME_DIR)
-    # FFmpeg DLLs next to the exe
+    # FFmpeg DLLs (avcodec, avformat, avfilter, avutil, swscale, ...) next to the exe
     install(DIRECTORY "${LibAV_RUNTIME_DIR}/" DESTINATION ${CMAKE_INSTALL_BINDIR} FILES_MATCHING PATTERN "*.dll")
 endif()
 
 if(WIN32)
-    # libraries from vcpkg (libzip, zlib, pugixml, ...) next to the exe
+    # DLLs of the imported shared libraries the exe links (pugixml, Qt -- windeployqt below completes Qt)
     install(FILES $<TARGET_RUNTIME_DLLS:animated_diagrams> DESTINATION ${CMAKE_INSTALL_BINDIR})
+    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        # vcpkg (vcpkg.json): zlib is an UNKNOWN imported library, not listed by TARGET_RUNTIME_DLLS --
+        # install the release DLLs of the manifest's packages
+        install(DIRECTORY "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/"
+            DESTINATION ${CMAKE_INSTALL_BINDIR} OPTIONAL FILES_MATCHING PATTERN "*.dll")
+    endif()
+endif()
+
+if(WIN32)
     # windeployqt: Qt libraries and plugins next to the exe (for ZIP / NSIS)
     qt_generate_deploy_app_script(
         TARGET animated_diagrams

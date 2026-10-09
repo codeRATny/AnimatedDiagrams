@@ -13,7 +13,7 @@ plugin files.
 
 `style` is a node style (all fields optional). Custom outline:
 `"style": {"shape": "custom", "customPath": "M0.15 0 L0.85 0 L1 0.5 L0.85 1 L0.15 1 L0 0.5 Z"}`
-(commands `M L H V C Q Z`, coordinates in 0..1 of the node box).
+(full SVG path syntax: `M L H V C S Q T A Z`, coordinates in 0..1 of the node box).
 
 ## Effect (`kind: "effect"`)
 
