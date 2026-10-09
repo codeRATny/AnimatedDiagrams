@@ -13,7 +13,9 @@ claude mcp add animated-diagrams -- animated-diagrams --mcp            # пус�
 claude mcp add animated-diagrams -- animated-diagrams --mcp diagram.json
 ```
 
-**HTTP, к открытому окну** — изменения сразу видны в редакторе и отменяются `Ctrl+Z`:
+**HTTP, к открытому окну** — инструменты работают с активной вкладкой, изменения сразу видны в редакторе и
+отменяются `Ctrl+Z`; `new_document` / `open_document` / `import_drawio` открывают новую вкладку,
+`export_animation` выполняется как фоновая задача (видна на панели «Экспорт»):
 «Инструменты → MCP-сервер для агентов» (или `animated-diagrams --mcp-port 8765`), затем
 
 ```bash
@@ -30,18 +32,19 @@ claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp
 |---|---|
 | `get_summary` | обзор: узлы с id, связи, шаги, библиотека — вызывать первым |
 | `get_document` | весь документ в формате .json |
-| `list_library` | типы элементов, эффекты, анимации и справочники (формы, состояния, варианты сообщений) |
+| `list_documents`, `select_document` | открытые вкладки и переключение активной |
+| `list_library` | типы элементов, эффекты, анимации, дизайн-системы и справочники (формы, состояния, варианты сообщений) |
 | `new_document`, `open_document`, `save_document` | файлы |
 | `import_drawio` | импорт страницы draw.io (`path` или содержимое `xml`) |
 | `add_node`, `update_node`, `remove_node` | узлы (`style` сливается, `null` удаляет поле) |
 | `add_edge`, `update_edge`, `remove_edge` | связи |
 | `add_step`, `update_step`, `remove_step` | шаги сценария |
 | `apply_animation` | вставить шаблон анимации, сопоставив роли узлам |
-| `upsert_library_item`, `remove_library_item` | свои элементы/эффекты/анимации в документе |
-| `set_scene` | название, длительность, цвета холста |
+| `upsert_library_item`, `remove_library_item` | свои элементы / эффекты / анимации / дизайн-системы в документе |
+| `set_scene` | название, длительность, цвета холста, дизайн-система (`designSystem`) |
 | `auto_layout` | авто-раскладка узлов по связям |
 | `render_frame` | PNG кадра в момент `timeMs` — визуальная проверка |
-| `export_animation` | экспорт GIF / PNG / WebM / MP4 |
+| `export_animation` | экспорт GIF / PNG / WebM / MP4 (libav, `quality` 0..4) |
 | `undo`, `redo` | история |
 
 Ошибки аргументов возвращаются как результат с `isError: true` и понятным текстом.

@@ -12,7 +12,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-#include "Controller.hpp"
+#include "AppContext.hpp"
 #include "QtRender.hpp"
 #include "Utils/File.hpp"
 
@@ -31,7 +31,7 @@ QString Contents(const LibrarySet &s)
 
 } // namespace
 
-PluginsDialog::PluginsDialog(Controller &ctl, QWidget *parent) : QDialog(parent), _ctl(ctl)
+PluginsDialog::PluginsDialog(AppContext &ctx, QWidget *parent) : QDialog(parent), _ctx(ctx)
 {
     setWindowTitle(tr("Плагины"));
     resize(760, 520);
@@ -48,7 +48,7 @@ PluginsDialog::PluginsDialog(Controller &ctl, QWidget *parent) : QDialog(parent)
                 {
                     return;
                 }
-                _ctl.SetPluginEnabled(Us(item->data(0, kIdRole).toString()), item->checkState(0) == Qt::Checked);
+                _ctx.SetPluginEnabled(Us(item->data(0, kIdRole).toString()), item->checkState(0) == Qt::Checked);
             });
     connect(_tree, &QTreeWidget::currentItemChanged, this, &PluginsDialog::_UpdateButtons);
 
@@ -70,13 +70,13 @@ PluginsDialog::PluginsDialog(Controller &ctl, QWidget *parent) : QDialog(parent)
     connect(folder_button, &QPushButton::clicked, this,
             []
             {
-                QDir().mkpath(Controller::UserPluginDir());
-                QDesktopServices::openUrl(QUrl::fromLocalFile(Controller::UserPluginDir()));
+                QDir().mkpath(AppContext::UserPluginDir());
+                QDesktopServices::openUrl(QUrl::fromLocalFile(AppContext::UserPluginDir()));
             });
     connect(reload_button, &QPushButton::clicked, this,
             [this]
             {
-                _ctl.ReloadPlugins();
+                _ctx.ReloadPlugins();
             });
 
     auto *buttons = new QDialogButtonBox;
@@ -88,7 +88,7 @@ PluginsDialog::PluginsDialog(Controller &ctl, QWidget *parent) : QDialog(parent)
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
 
     auto *hint = new QLabel(tr("Плагины — наборы элементов, эффектов и анимаций в JSON. Пользовательская папка: %1")
-                                .arg(QDir::toNativeSeparators(Controller::UserPluginDir())));
+                                .arg(QDir::toNativeSeparators(AppContext::UserPluginDir())));
     hint->setObjectName(QStringLiteral("hint"));
     hint->setWordWrap(true);
     hint->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -100,7 +100,7 @@ PluginsDialog::PluginsDialog(Controller &ctl, QWidget *parent) : QDialog(parent)
     layout->addWidget(_errors);
     layout->addWidget(buttons);
 
-    connect(&_ctl, &Controller::LibraryChanged, this, &PluginsDialog::_Refresh);
+    connect(&_ctx, &AppContext::LibraryChanged, this, &PluginsDialog::_Refresh);
     _Refresh();
 }
 
@@ -109,7 +109,7 @@ void PluginsDialog::_Refresh()
     const QString selected = _tree->currentItem() != nullptr ? _tree->currentItem()->data(0, kIdRole).toString() : QString();
     _filling               = true;
     _tree->clear();
-    for (const auto &rec : _ctl.Plugins().Plugins())
+    for (const auto &rec : _ctx.Plugins().Plugins())
     {
         auto *item = new QTreeWidgetItem(_tree);
         item->setText(0, Qs(rec.plugin.info.name));
@@ -128,7 +128,7 @@ void PluginsDialog::_Refresh()
     _filling = false;
 
     QStringList errors;
-    for (const auto &e : _ctl.Plugins().Errors())
+    for (const auto &e : _ctx.Plugins().Errors())
     {
         errors << QStringLiteral("%1: %2").arg(QDir::toNativeSeparators(Qs(PathToUtf8(e.path))), Qs(e.message));
     }
@@ -140,7 +140,7 @@ void PluginsDialog::_Refresh()
 void PluginsDialog::_UpdateButtons()
 {
     const QTreeWidgetItem *item = _tree->currentItem();
-    const PluginRecord    *rec  = item != nullptr ? _ctl.Plugins().Find(Us(item->data(0, kIdRole).toString())) : nullptr;
+    const PluginRecord    *rec  = item != nullptr ? _ctx.Plugins().Find(Us(item->data(0, kIdRole).toString())) : nullptr;
     _uninstall_button->setEnabled(rec != nullptr && rec->writable);
     if (rec == nullptr)
     {
@@ -171,13 +171,13 @@ void PluginsDialog::_Install()
     {
         return;
     }
-    const auto result = _ctl.Plugins().Install(PathFromUtf8(Us(path)));
+    const auto result = _ctx.Plugins().Install(PathFromUtf8(Us(path)));
     if (!result.has_value())
     {
         QMessageBox::warning(this, tr("Установка плагина"), Qs(result.error()));
         return;
     }
-    _ctl.ReloadPlugins();
+    _ctx.ReloadPlugins();
 }
 
 void PluginsDialog::_Uninstall()
@@ -192,12 +192,12 @@ void PluginsDialog::_Uninstall()
     {
         return;
     }
-    if (!_ctl.Plugins().Uninstall(id))
+    if (!_ctx.Plugins().Uninstall(id))
     {
         QMessageBox::warning(this, tr("Удалить плагин"), tr("Не удалось удалить плагин."));
         return;
     }
-    _ctl.ReloadPlugins();
+    _ctx.ReloadPlugins();
 }
 
 } // namespace ad::ui

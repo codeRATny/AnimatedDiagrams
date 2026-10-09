@@ -5,16 +5,16 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QPainter>
-#include <QProcess>
 #include <QSaveFile>
-#include <QStandardPaths>
 
 #include <algorithm>
 #include <span>
 
 #include "Engine/Scene.hpp"
 #include "Export/GifEncoder.hpp"
+#include "Export/VideoEncoder.hpp"
 #include "QtRender.hpp"
+#include "Utils/File.hpp"
 
 namespace ad::ui
 {
@@ -53,7 +53,7 @@ Result ExportGif(const Model &m, const ExportOptions &o, const Registry &reg, co
     {
         return std::unexpected(QObject::tr("Не удалось записать %1: %2").arg(o.output_path, f.errorString()));
     }
-    return ExportResult{o.output_path, static_cast<int>(times.size()), static_cast<qint64>(bytes.size())};
+    return ExportResult{o.output_path, static_cast<int>(times.size()), static_cast<qint64>(bytes.size()), {}};
 }
 
 Result ExportPng(const Model &m, const ExportOptions &o, const Registry &reg, const ExportGeometry &g, const std::vector<double> &times,
@@ -81,82 +81,48 @@ Result ExportPng(const Model &m, const ExportOptions &o, const Registry &reg, co
             progress(static_cast<int>(i + 1), static_cast<int>(times.size()));
         }
     }
-    return ExportResult{base + QStringLiteral("_*.png"), static_cast<int>(times.size()), total};
+    return ExportResult{base + QStringLiteral("_*.png"), static_cast<int>(times.size()), total, {}};
 }
 
 Result ExportVideo(const Model &m, const ExportOptions &o, const Registry &reg, const ExportGeometry &g, const std::vector<double> &times,
                    const std::stop_token &stop, const ProgressFn &progress)
 {
-    const QString ffmpeg = o.ffmpeg.isEmpty() ? FindFfmpeg() : o.ffmpeg;
-    if (ffmpeg.isEmpty())
+    video::VideoEncoder enc;
+    video::VideoOptions vo;
+    vo.width        = g.px_w;
+    vo.height       = g.px_h;
+    vo.fps          = o.fps;
+    vo.container    = o.format == ExportFormat::WebM ? video::Container::WebM : video::Container::Mp4;
+    vo.quality      = o.quality;
+    const auto path = PathFromUtf8(Us(o.output_path));
+    if (auto r = enc.Open(path, vo); !r.has_value())
     {
-        return std::unexpected(QObject::tr("Для WebM/MP4 нужен ffmpeg в PATH (sudo apt install ffmpeg / winget install ffmpeg)"));
+        return std::unexpected(QObject::tr("Видео: %1").arg(Qs(r.error())));
     }
-    QStringList args{"-hide_banner", "-loglevel",
-                     "error",        "-y",
-                     "-f",           "rawvideo",
-                     "-pix_fmt",     "rgba",
-                     "-s",           QStringLiteral("%1x%2").arg(g.px_w).arg(g.px_h),
-                     "-framerate",   QString::number(o.fps),
-                     "-i",           "-"};
-    if (o.format == ExportFormat::WebM)
-    {
-        args << "-c:v" << "libvpx-vp9" << "-b:v" << "0" << "-crf" << "32" << "-row-mt" << "1" << "-deadline" << "good" << "-cpu-used"
-             << "4";
-    }
-    else
-    {
-        args << "-c:v" << "libx264" << "-preset" << "medium" << "-crf" << "20" << "-movflags" << "+faststart";
-    }
-    args << "-pix_fmt" << "yuv420p" << o.output_path;
-
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::SeparateChannels);
-    proc.start(ffmpeg, args);
-    if (!proc.waitForStarted(15000))
-    {
-        return std::unexpected(QObject::tr("Не удалось запустить ffmpeg: %1").arg(proc.errorString()));
-    }
-    auto fail = [&](const QString &why) -> Result
-    {
-        proc.kill();
-        proc.waitForFinished(5000);
-        const QString err = QString::fromUtf8(proc.readAllStandardError()).trimmed();
-        return std::unexpected(err.isEmpty() ? why : why + QStringLiteral("\n") + err.right(800));
-    };
     for (size_t i = 0; i < times.size(); ++i)
     {
         if (stop.stop_requested())
         {
-            proc.kill();
-            proc.waitForFinished(5000);
+            enc.Abort();
             QFile::remove(o.output_path);
             return std::unexpected(Cancelled());
         }
         const QImage img = RenderExportFrame(m, times[i], g, o.background, reg);
-        const auto   px  = Pixels(img);
-        if (proc.write(reinterpret_cast<const char *>(px.data()), static_cast<qint64>(px.size())) < 0)
+        if (auto r = enc.AddFrame(Pixels(img)); !r.has_value())
         {
-            return fail(QObject::tr("ffmpeg: ошибка записи кадра"));
-        }
-        while (proc.bytesToWrite() > 0)
-        {
-            if (!proc.waitForBytesWritten(60000))
-            {
-                return fail(QObject::tr("ffmpeg не принимает данные"));
-            }
+            enc.Abort();
+            return std::unexpected(QObject::tr("Видео: %1").arg(Qs(r.error())));
         }
         if (progress)
         {
             progress(static_cast<int>(i + 1), static_cast<int>(times.size()));
         }
     }
-    proc.closeWriteChannel();
-    if (!proc.waitForFinished(-1) || proc.exitStatus() != QProcess::NormalExit || proc.exitCode() != 0)
+    if (auto r = enc.Finish(); !r.has_value())
     {
-        return fail(QObject::tr("ffmpeg завершился с ошибкой (код %1)").arg(proc.exitCode()));
+        return std::unexpected(QObject::tr("Видео: %1").arg(Qs(r.error())));
     }
-    return ExportResult{o.output_path, static_cast<int>(times.size()), QFileInfo(o.output_path).size()};
+    return ExportResult{o.output_path, static_cast<int>(times.size()), QFileInfo(o.output_path).size(), Qs(enc.EncoderName())};
 }
 
 } // namespace
@@ -189,9 +155,17 @@ std::optional<ExportFormat> FormatFromId(const QString &id)
     return std::nullopt;
 }
 
-bool NeedsFfmpeg(ExportFormat f) { return f == ExportFormat::WebM || f == ExportFormat::Mp4; }
+bool IsVideo(ExportFormat f) { return f == ExportFormat::WebM || f == ExportFormat::Mp4; }
 
-QString FindFfmpeg() { return QStandardPaths::findExecutable(QStringLiteral("ffmpeg")); }
+QString VideoEncoderFor(ExportFormat f)
+{
+    if (!IsVideo(f))
+    {
+        return {};
+    }
+    const auto encoders = video::EncodersFor(f == ExportFormat::WebM ? video::Container::WebM : video::Container::Mp4);
+    return encoders.empty() ? QString() : Qs(encoders.front());
+}
 
 ExportGeometry PlanExport(const Model &m, const ExportOptions &o, const Registry &reg)
 {

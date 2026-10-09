@@ -13,11 +13,13 @@
   "nodes": [ /* Node */ ],
   "edges": [ /* Edge */ ],
   "scenario": { "duration": 12000, "userDuration": false, "steps": [ /* Step */ ] },
-  "library":  { "elements": [], "effects": [], "animations": [] }     // необязательно
+  "designSystem": "light",                                            // необязательно
+  "library":  { "elements": [], "effects": [], "animations": [], "designSystems": [] }  // необязательно
 }
 ```
 
-Все времена — в миллисекундах, координаты — в пикселях мира (ось Y вниз).
+Все времена — в миллисекундах, координаты — в пикселях мира (ось Y вниз). Любой цвет может быть токеном
+дизайн-системы — `"$primary"`, `"$surface"`… (см. [дизайн-системы](design-systems.md)).
 
 ## Node
 
@@ -64,6 +66,12 @@
 
 `easing`: `linear`, `ease-in`, `ease-out`, `ease-in-out`, `cubic-in`, `cubic-out`, `cubic-in-out`,
 `back-out`, `elastic-out`, `bounce-out`, `step`. Устаревший тип `pulse` читается как `effect` с эффектом `pulse`.
+
+## designSystem
+
+id активной [дизайн-системы](design-systems.md) (встроенной, из плагина или из `library.designSystems`).
+Её цвета холста скопированы в `scene`; остальное (токены, состояния, шрифт, стили по умолчанию)
+применяется при отрисовке.
 
 ## library
 

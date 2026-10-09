@@ -41,6 +41,8 @@ protected:
 TEST_F(ToolsFixture, RegistersAllTools)
 {
     for (const char *name : {"get_summary",
+                             "list_documents",
+                             "select_document",
                              "get_document",
                              "list_library",
                              "new_document",
@@ -210,4 +212,29 @@ TEST_F(ToolsFixture, ImportDrawio)
     const std::string text = Ok("import_drawio", {{"xml", xml}}).content[0].text;
     EXPECT_NE(text.find("Imported 2 nodes, 1 edges"), std::string::npos);
     EXPECT_EQ(M().edges.size(), 1U);
+}
+
+TEST_F(ToolsFixture, DesignSystems)
+{
+    const Json lib = Ok("list_library", {{"kind", "designSystems"}}).structured;
+    ASSERT_GE(lib["designSystems"].size(), 4U);
+    Ok("set_scene", {{"designSystem", "light"}, {"edgeColor", "#123456"}});
+    EXPECT_EQ(M().design_system, "light");
+    EXPECT_EQ(M().scene.background, "#f6f8fc");
+    EXPECT_EQ(M().scene.edge_color, "#123456"); // explicit color wins
+    EXPECT_TRUE(server.CallTool("set_scene", {{"designSystem", "missing"}}).is_error);
+    Ok("upsert_library_item", {{"kind", "design-system"}, {"definition", {{"id", "mine"}, {"label", "Mine"}, {"background", "#000000"}}}});
+    Ok("set_scene", {{"designSystem", "mine"}});
+    EXPECT_EQ(M().scene.background, "#000000");
+    Ok("set_scene", {{"designSystem", ""}});
+    EXPECT_TRUE(M().design_system.empty());
+}
+
+TEST_F(ToolsFixture, SingleDocumentHostListsOneDocument)
+{
+    const Json docs = Ok("list_documents").structured["documents"];
+    ASSERT_EQ(docs.size(), 1U);
+    EXPECT_TRUE(docs[0]["active"].get<bool>());
+    Ok("select_document", {{"index", 0}});
+    EXPECT_TRUE(server.CallTool("select_document", {{"index", 3}}).is_error);
 }

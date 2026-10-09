@@ -1,4 +1,4 @@
-# Element types, effects, animation templates, plugins
+# Element types, effects, animation templates, design systems, plugins
 
 Used by `upsert_library_item {kind, definition}` (MCP), by the `library` section of a document and by
 plugin files.
@@ -59,6 +59,25 @@ Steps reference **role ids** instead of node ids; a link step references an edge
 Times are relative to the insertion point. Apply with
 `apply_animation {template: "health-check", roles: {"monitor": "<node id>", "target": "<node id>"}, start: 3000}`.
 
+## Design system (`kind: "design-system"`)
+
+```json
+{ "id": "sunset", "label": "Sunset", "category": "Mine", "description": "Warm dark theme",
+  "background": "#2a1020", "edgeColor": "#a86b7d", "textColor": "#fff4ec", "grid": true, "gridSize": 24,
+  "fontFamily": "DejaVu Sans Mono", "subtitleColor": "#e8b9a8",
+  "colors": { "surface": "#3a1a2c", "border": "#a86b7d", "primary": "#ff7a59", "danger": "#ff4d6d" },
+  "states": { "ok": { "fill": "$surface", "ring": "$border" }, "down": { "fill": "#4a1020", "ring": "$danger" } },
+  "variants": { "request": "$primary", "error": "$danger" },
+  "node": { "cornerRadius": 4, "shadow": false },
+  "edge": { "routing": "orthogonal", "width": 1.5, "arrowEnd": "open" },
+  "elements": { "db": { "accent": "$primary", "style": { "fill": "#2a2030" } } } }
+```
+
+All fields except `id` are optional. Standard tokens: `surface`, `surface-alt`, `border`, `text`, `muted`,
+`primary`, `secondary`, `accent`, `success`, `warning`, `danger`, `info` (custom names allowed).
+States: `ok active busy warn down success disabled`; variants: `request response retry error success event`.
+Style precedence: `node` < element type style < `elements.<type>.style` < the node's own style.
+
 ## Plugin file
 
 ```jsonc
@@ -72,7 +91,8 @@ Times are relative to the insertion point. Apply with
   "description": "…",
   "elements": [ /* element types */ ],
   "effects": [ /* effects */ ],
-  "animations": [ /* animation templates */ ]
+  "animations": [ /* animation templates */ ],
+  "designSystems": [ /* design systems */ ]
 }
 ```
 

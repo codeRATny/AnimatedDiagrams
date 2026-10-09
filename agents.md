@@ -5,9 +5,14 @@
 - `src/` — `ad_core`, no Qt. Modules: `Common`, `Geometry`, `Model`, `Engine`, `Timeline`, `Interaction`,
   `Io`, `Plugins`, `Import`, `Mcp`, `Export`, `Utils`. Includes are relative to `src/` (`"Model/Model.hpp"`).
 - `UI/` — `ad_ui`, Qt 6 Widgets + Network (`QT_NO_KEYWORDS`: use `Q_SIGNALS` / `Q_EMIT`).
+  `AppContext` — shared state (registry, plugins, favorites, MCP, `ExportManager`); one `Controller` per
+  document tab; `MainWindow` owns the tabs and the dock panels (palette, inspector / timeline stacks, exports).
 - `apps/` — `animated_diagrams` executable (GUI, `--export`, `--convert`, `--mcp`, `--mcp-port`).
 - `tests/` — GoogleTest, one `<Class>Test.cpp` per class; `TEST(ClassNameTest, Behaviour)`.
-- `plugins/` bundled plugins, `skills/` agent skill, `docs/` user docs, `samples/` example documents.
+- `plugins/` bundled plugins (generated from code with the core API — keep them valid, see
+  `PluginTest.BundledTemplatesReferenceKnownDefinitions`), `skills/` agent skill, `docs/` user docs,
+  `samples/` example documents.
+- Video export: `src/Export/VideoEncoder` (libav, optional via `WITH_LIBAV`).
 
 ## Build
 
@@ -34,5 +39,7 @@ CI also builds with g++-13; keep both warning-free.
 
 - New step field: `Model/Step.hpp` → `Io/JsonCodec.cpp` (read + write) → `Engine/Scene.cpp` →
   `UI/Inspector.cpp` → `Mcp/DocumentTools.cpp` (schema) → docs + skill.
-- New element/effect/animation built-in: `Model/Library.cpp` (`BuiltinLibrary`).
+- New element / effect / animation / design system built-in: `Model/Library.cpp` (`BuiltinLibrary`).
+- Colors in styles may be design system tokens (`$name`): resolve with `ResolveColorToken` / the
+  `Resolve*` helpers in `Engine/Engine.hpp`, never parse style colors directly.
 - New MCP tool: `Mcp/DocumentTools.cpp` + `tests/DocumentToolsTest.cpp` + `docs/mcp.md` + skill.

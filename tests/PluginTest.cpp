@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <random>
+#include <set>
 
 #include "Plugins/Plugin.hpp"
 #include "Plugins/PluginManager.hpp"
@@ -152,4 +153,40 @@ TEST(PluginTest, BundledPluginsAreValid)
     ASSERT_NE(reg.FindAnimation("circuit-breaker"), nullptr);
     ASSERT_NE(reg.FindEffect("heartbeat"), nullptr);
     EXPECT_EQ(reg.Element("firewall").style.shape, "custom");
+}
+
+TEST(PluginTest, BundledTemplatesReferenceKnownDefinitions)
+{
+    PluginManager mgr;
+    mgr.SetDirectories({}, {fs::path(AD_PLUGINS_DIR)});
+    mgr.Scan();
+    Registry reg;
+    mgr.ApplyTo(reg);
+    ASSERT_GE(mgr.Plugins().size(), 3U);
+    for (const auto &rec : mgr.Plugins())
+    {
+        for (const auto &a : rec.plugin.library.animations)
+        {
+            std::set<std::string> roles;
+            for (const auto &r : a.roles)
+            {
+                roles.insert(r.id);
+            }
+            for (const auto &s : a.steps)
+            {
+                if (s.type == StepType::Effect)
+                {
+                    EXPECT_NE(reg.FindEffect(s.effect), nullptr) << a.id << ": " << s.effect;
+                }
+                for (const std::string *ref : {&s.from, &s.to, &s.node_id})
+                {
+                    EXPECT_TRUE(ref->empty() || roles.contains(*ref)) << a.id << ": unknown role " << *ref;
+                }
+            }
+        }
+    }
+    for (const char *ds : {"clickhouse", "terminal"})
+    {
+        EXPECT_NE(reg.FindDesignSystem(ds), nullptr) << ds;
+    }
 }

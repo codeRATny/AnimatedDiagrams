@@ -7,7 +7,12 @@
 - **Расширяемая библиотека**: типы элементов (форма, цвета, обводка, шрифт, свой SVG-контур), эффекты
   на ключевых кадрах (масштаб, поворот, сдвиг, прозрачность, свечение, тонирование), шаблоны анимаций
   с ролями (ретраи, таймаут + fallback, pub/sub, cache-aside, …).
-- **Плагины** — JSON-наборы элементов, эффектов и анимаций; создаются прямо из редактора.
+- **Дизайн-системы** — цветовые токены (`$primary`…), цвета состояний и сообщений, шрифт, стили по
+  умолчанию; переключение вида всей диаграммы одним выбором.
+- **Плагины** — JSON-наборы элементов, эффектов, анимаций и дизайн-систем; создаются прямо из редактора.
+  В комплекте: Cloud kit, Data platform (PostgreSQL, ClickHouse, Kafka, CDC), Security kit (OAuth, JWT, WAF).
+- **Несколько проектов во вкладках**, настраиваемое расположение панелей, палитра с группами по плагинам
+  и «Избранным», **фоновый экспорт** (работа не блокируется).
 - **Импорт draw.io** (`.drawio`, `.xml`, в т.ч. сжатые и многостраничные).
 - **Встроенный MCP-сервер** (stdio и HTTP) и **скилл для агентов** — диаграммы можно строить с помощью AI.
 
@@ -23,14 +28,17 @@ sudo dnf install ./animated-diagrams-*.x86_64.rpm     # Fedora
 ```
 
 Windows: `animated-diagrams-*-win64.exe` (установщик) или `*.zip` (портативная версия).
-Для экспорта WebM/MP4 нужен `ffmpeg` в `PATH` (GIF и PNG работают без него).
+WebM / MP4 кодируются внутри программы библиотеками FFmpeg (libavcodec / libavformat / libswscale):
+VP9 / VP8 / AV1 для WebM, H.264 (libx264, OpenH264, Media Foundation) или MPEG-4 для MP4 — выбирается
+первый доступный кодек. Внешний `ffmpeg` не нужен.
 
 ## Сборка из исходников
 
 Ubuntu 24.04:
 
 ```bash
-sudo apt install cmake ninja-build clang-19 qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev
+sudo apt install cmake ninja-build pkg-config clang-19 qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev \
+                 libavcodec-dev libavformat-dev libswscale-dev
 cmake --workflow --preset release          # configure + build + test → build/release
 ./build/release/apps/animated-diagrams
 ```
@@ -43,8 +51,10 @@ cmake --build build && ctest --test-dir build --output-on-failure
 cd build && cpack -G DEB        # или RPM / "NSIS;ZIP"
 ```
 
-Опции: `BUILD_APP` (ON), `BUILD_TESTS` (OFF), `WARNINGS_AS_ERRORS` (OFF). `nlohmann_json` и `GoogleTest`
-берутся из системы, а если их нет (Windows) — скачиваются CMake'ом с проверкой SHA256.
+Опции: `BUILD_APP` (ON), `BUILD_TESTS` (OFF), `WARNINGS_AS_ERRORS` (OFF), `WITH_LIBAV` (ON; OFF — только
+GIF / PNG). `nlohmann_json` и `GoogleTest` берутся из системы, а если их нет (Windows) — скачиваются CMake'ом
+с проверкой SHA256. libav ищется через pkg-config (Fedora: `libavcodec-free-devel libavformat-free-devel libswscale-free-devel`); на Windows укажите
+`-DFFMPEG_ROOT=<FFmpeg shared SDK>` (include/, lib/, bin/) — DLL попадут в установщик.
 
 ## Командная строка
 
@@ -58,23 +68,28 @@ animated-diagrams --mcp-port 8765 diagram.json          # GUI + MCP по HTTP
 ```
 
 Опции экспорта: `--format gif|png|webm|mp4` (иначе по расширению), `--fps`, `--scale`, `--background`, `--no-loop`.
+Несколько файлов в командной строке открываются во вкладках; прошлая сессия (все вкладки) восстанавливается.
 
 ## Работа в редакторе
 
 | Действие | Как |
 |---|---|
-| Инструменты | `V` выбор · `N` узел (тип — в палитре слева) · `E` связь (клик по первому узлу/точке, затем по второму) |
+| Инструменты | `V` выбор · `N` узел (тип — в палитре или перетащить элемент на холст) · `E` связь |
+| Вкладки | `Ctrl+N` новая · `Ctrl+O` открыть (несколько файлов) · `Ctrl+W` закрыть · `Ctrl+PgUp/PgDn` переключить; файлы можно бросить на холст |
+| Панели | «Элементы», «Свойства», «Таймлайн», «Экспорт» перетаскиваются, открепляются, скрываются (Вид → Панели); «Закрепить панели», «Сбросить расположение» |
+| Палитра | группы: ★ Избранное · Встроенные · каждый плагин · Документ; ☆ — в избранное; поиск |
 | Перемещение / панорама / зум | перетаскивание · пустое место или средняя кнопка · колесо |
 | Точки изгиба связи | двойной клик по связи — добавить, по точке — удалить, тащить — двигать |
 | Стиль | инспектор справа: стиль узла/связи, параметры пакета, эффекта; «авто» — наследуется от типа |
 | Сцена | без выделения инспектор показывает фон, сетку, цвета и длительность |
 | Воспроизведение | `Пробел` · `Home` / `End` · клик по линейке таймлайна |
 | Таймлайн | перетаскивание шагов, края — длительность, `Ctrl` + колесо — масштаб |
-| Библиотека | `Ctrl+L` — элементы, эффекты, анимации: просмотр, создание, правка, экспорт в плагин |
+| Библиотека | `Ctrl+L` — элементы, эффекты, анимации, дизайн-системы: просмотр, создание, правка, экспорт в плагин |
+| Дизайн-система | без выделения: инспектор «Сцена → Дизайн-система» |
 | Анимация из шаблона | `Ctrl+T` или «▶ Анимация…» — роли шаблона сопоставляются узлам |
 | Импорт draw.io | `Ctrl+I` |
 | Правка | `Ctrl+Z` / `Ctrl+Shift+Z` · `Del` · `Ctrl+D` дублировать шаг |
-| Файлы | `Ctrl+N` · `Ctrl+O` · `Ctrl+S` · `Ctrl+Shift+S` · `Ctrl+E` экспорт |
+| Файлы | `Ctrl+S` · `Ctrl+Shift+S` · `Ctrl+E` экспорт в фоне (прогресс — в строке состояния и на панели «Экспорт») |
 
 Типы шагов: сообщение (по связи или напрямую; форма/размер/количество пакетов, кривая движения, след),
 таймер, смена состояния узла, действие, анимация связи, заметка, эффект.
@@ -84,7 +99,8 @@ animated-diagrams --mcp-port 8765 diagram.json          # GUI + MCP по HTTP
 ## Документация
 
 - [Формат документа](docs/file-format.md)
-- [Плагины](docs/plugins.md) — пример: [`plugins/cloud-kit.json`](plugins/cloud-kit.json) (поставляется с программой)
+- [Дизайн-системы](docs/design-systems.md)
+- [Плагины](docs/plugins.md) — три плагина в комплекте: [`plugins/`](plugins)
 - [MCP-сервер](docs/mcp.md)
 - [Скилл для агентов](skills/animated-diagrams/SKILL.md) — устанавливается в `share/animated-diagrams/skills`;
   для Claude Code: `cp -r skills/animated-diagrams ~/.claude/skills/`
@@ -100,10 +116,11 @@ src/        ad_core — вся логика без Qt (покрыта unit-те�
   Plugins/    формат плагинов, менеджер (сканирование, установка, вкл/выкл)
   Import/     draw.io: inflate, XML, преобразование в модель
   Mcp/        JSON-RPC MCP-сервер, инструменты документа, stdio-транспорт
-  Export/     GIF89a-энкодер, сетка кадров
-UI/         Qt Widgets: холст, таймлайн, инспектор, библиотека, плагины, экспорт, HTTP-транспорт MCP
+  Export/     GIF89a-энкодер, видео через libav (WebM / MP4), сетка кадров
+UI/         Qt Widgets: вкладки, док-панели, холст, таймлайн, инспектор, палитра, библиотека, плагины,
+            фоновый экспорт (ExportManager), HTTP-транспорт MCP; AppContext — общее для всех вкладок
 apps/       точка входа (GUI / CLI / MCP)
-tests/      GoogleTest (165+ тестов) + smoke-тесты экспорта и MCP-сессии
+tests/      GoogleTest (175+ тестов) + smoke-тесты экспорта (GIF / PNG / WebM / MP4) и MCP-сессии
 ```
 
 Кадр — чистая функция от `(модель, t)`, поэтому перемотка, пауза, скорость и экспорт дают ровно то же,
@@ -118,9 +135,9 @@ tests/      GoogleTest (165+ тестов) + smoke-тесты экспорта �
 | Ubuntu 24.04 / Debian 13 | clang-19, `-Werror`, тесты, `cpack -G DEB` |
 | Ubuntu 24.04 (gcc-13) | сборка и тесты GCC, `-Werror` |
 | Fedora 43 | clang, `-Werror`, тесты, `cpack -G RPM` |
-| Sanitizers | ядро и тесты под ASan + UBSan |
+| Sanitizers | ядро (с libav) и тесты под ASan + UBSan |
 | Lint | clang-format и clang-tidy |
-| Windows | MSVC 2022 + Qt 6.8, тесты, `cpack -G "NSIS;ZIP"` (windeployqt) |
+| Windows | MSVC 2022 + Qt 6.8 + FFmpeg 7.1 (LGPL shared), тесты, `cpack -G "NSIS;ZIP"` (windeployqt + DLL FFmpeg) |
 | Release | только для тега `vX.Y.Z`: GitHub Release с пакетами и `SHA256SUMS.txt` |
 
 ```bash

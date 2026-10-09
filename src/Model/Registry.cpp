@@ -100,6 +100,20 @@ const AnimationTemplate *Registry::FindAnimation(std::string_view id, const Libr
                                     });
 }
 
+const DesignSystem *Registry::FindDesignSystem(std::string_view id, const LibrarySet *doc) const
+{
+    return _Find<DesignSystem>(id, doc,
+                               [](const LibrarySet &s, std::string_view i)
+                               {
+                                   return s.Design(i);
+                               });
+}
+
+const DesignSystem *Registry::DesignOf(const Model &m) const
+{
+    return m.design_system.empty() ? nullptr : FindDesignSystem(m.design_system, &m.library);
+}
+
 const ElementType &Registry::Element(std::string_view id, const LibrarySet *doc) const
 {
     if (const ElementType *e = FindElement(id, doc); e != nullptr)
@@ -156,6 +170,11 @@ std::vector<RegistryEntry<AnimationTemplate>> Registry::Animations(const Library
     return _List<AnimationTemplate>(doc, &LibrarySet::animations);
 }
 
+std::vector<RegistryEntry<DesignSystem>> Registry::DesignSystems(const LibrarySet *doc) const
+{
+    return _List<DesignSystem>(doc, &LibrarySet::design_systems);
+}
+
 int Registry::EmbedUsedDefinitions(Model &model) const
 {
     const LibrarySet &builtins = _sources.front().set;
@@ -181,6 +200,15 @@ int Registry::EmbedUsedDefinitions(Model &model) const
         if (const EffectDef *e = FindEffect(s.effect); e != nullptr)
         {
             model.library.Upsert(*e);
+            ++copied;
+        }
+    }
+    if (!model.design_system.empty() && model.library.Design(model.design_system) == nullptr &&
+        builtins.Design(model.design_system) == nullptr)
+    {
+        if (const DesignSystem *d = FindDesignSystem(model.design_system); d != nullptr)
+        {
+            model.library.Upsert(*d);
             ++copied;
         }
     }

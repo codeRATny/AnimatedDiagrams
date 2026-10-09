@@ -32,6 +32,7 @@
 #include <windows.h>
 #endif
 
+#include "AppContext.hpp"
 #include "Controller.hpp"
 #include "Exporter.hpp"
 #include "Import/DrawioImporter.hpp"
@@ -260,7 +261,7 @@ int main(int argc, char **argv)
     {
         PluginManager plugins;
         Registry      registry;
-        Controller::LoadPlugins(plugins, registry);
+        AppContext::LoadPlugins(plugins, registry);
         for (const auto &e : plugins.Errors())
         {
             std::cerr << "warning: plugin " << PathToUtf8(e.path) << ": " << e.message << "\n";
@@ -312,16 +313,12 @@ int main(int argc, char **argv)
     }
 
     ApplyTheme(app);
-    Controller ctl;
-    MainWindow window(ctl);
-    bool       opened = false;
-    if (!files.isEmpty())
+    AppContext ctx;
+    MainWindow window(ctx);
+    window.RestoreSession(files.isEmpty()); // all tabs of the previous session
+    for (const QString &f : files)
     {
-        opened = IsDrawioPath(files.front()) ? window.ImportDrawioPath(files.front()) : window.OpenPath(files.front());
-    }
-    if (!opened)
-    {
-        ctl.RestoreSession();
+        window.OpenPath(f); // command line files open in tabs
     }
     window.StartMcpOnLaunch(mcp_port);
     window.show();

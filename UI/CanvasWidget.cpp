@@ -1,6 +1,7 @@
 #include "CanvasWidget.hpp"
 
 #include <QInputDialog>
+#include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QWheelEvent>
@@ -12,6 +13,7 @@
 #include "Engine/Engine.hpp"
 #include "Engine/Scene.hpp"
 #include "Interaction/HitTest.hpp"
+#include "PaletteWidget.hpp"
 #include "QtRender.hpp"
 
 namespace ad::ui
@@ -24,6 +26,7 @@ CanvasWidget::CanvasWidget(Controller &ctl, QWidget *parent) : QWidget(parent), 
     setFocusPolicy(Qt::ClickFocus);
     setMinimumSize(320, 200);
     setAttribute(Qt::WA_OpaquePaintEvent);
+    setAcceptDrops(true);
     auto repaint = [this]
     {
         update();
@@ -454,6 +457,46 @@ void CanvasWidget::wheelEvent(QWheelEvent *e)
     }
     ZoomBy(dy > 0 ? 1.1 : 1 / 1.1, e->position());
     e->accept();
+}
+
+void CanvasWidget::dragEnterEvent(QDragEnterEvent *e)
+{
+    if (e->mimeData()->hasFormat(QString::fromLatin1(kElementMime)) || e->mimeData()->hasUrls())
+    {
+        e->acceptProposedAction();
+    }
+}
+
+void CanvasWidget::dragMoveEvent(QDragMoveEvent *e) { e->acceptProposedAction(); }
+
+void CanvasWidget::dropEvent(QDropEvent *e)
+{
+    const QMimeData *mime = e->mimeData();
+    if (mime->hasFormat(QString::fromLatin1(kElementMime)))
+    {
+        const std::string  id   = mime->data(QString::fromLatin1(kElementMime)).toStdString();
+        const ElementType &type = _ctl.Reg().Element(id, &_ctl.GetModel().library);
+        Node              &n    = _ctl.Doc().AddNode(_ToWorld(e->position()), type);
+        n.type                  = id;
+        const std::string nid   = n.id;
+        _ctl.Changed(true);
+        _ctl.Select(Kind::Node, nid);
+        e->acceptProposedAction();
+        return;
+    }
+    QStringList files;
+    for (const QUrl &url : mime->urls())
+    {
+        if (url.isLocalFile())
+        {
+            files << url.toLocalFile();
+        }
+    }
+    if (!files.isEmpty())
+    {
+        Q_EMIT FilesDropped(files);
+        e->acceptProposedAction();
+    }
 }
 
 } // namespace ad::ui

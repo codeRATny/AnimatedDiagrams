@@ -1,5 +1,5 @@
 # Smoke test: headless export of the sample and a check of the output signature.
-# Parameters: APP, INPUT, OUT_DIR, FORMAT (gif | png)
+# Parameters: APP, INPUT, OUT_DIR, FORMAT (gif | png | webm | mp4)
 file(REMOVE_RECURSE "${OUT_DIR}/${FORMAT}")
 file(MAKE_DIRECTORY "${OUT_DIR}/${FORMAT}")
 set(out "${OUT_DIR}/${FORMAT}/sample.${FORMAT}")
@@ -14,9 +14,15 @@ if(NOT rc EQUAL 0)
     message(FATAL_ERROR "export failed (rc=${rc})\nstdout: ${stdout}\nstderr: ${stderr}")
 endif()
 
+set(check "${out}")
+set(offset 0)
 if(FORMAT STREQUAL "gif")
-    set(check "${out}")
     set(magic "474946383961")  # GIF89a
+elseif(FORMAT STREQUAL "webm")
+    set(magic "1a45dfa3")      # EBML
+elseif(FORMAT STREQUAL "mp4")
+    set(magic "66747970")      # "ftyp" at offset 4
+    set(offset 4)
 else()
     set(check "${OUT_DIR}/${FORMAT}/sample_0001.png")
     set(magic "89504e470d0a1a0a")
@@ -30,7 +36,7 @@ if(NOT EXISTS "${check}")
 endif()
 string(LENGTH "${magic}" hexlen)
 math(EXPR len "${hexlen} / 2")
-file(READ "${check}" head LIMIT ${len} HEX)
+file(READ "${check}" head OFFSET ${offset} LIMIT ${len} HEX)
 if(NOT head STREQUAL magic)
     message(FATAL_ERROR "bad signature: ${head}")
 endif()

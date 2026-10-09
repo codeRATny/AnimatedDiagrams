@@ -16,7 +16,7 @@
 #include "Model/Registry.hpp"
 
 /// @file Exporter.hpp
-/// @brief Animation export: GIF (built-in encoder), PNG sequence, WebM / MP4 (via ffmpeg).
+/// @brief Animation export: GIF (built-in encoder), PNG sequence, WebM / MP4 (libav, in process).
 ///        UI independent -- used by the export dialog, the CLI (--export) and the MCP server.
 
 namespace ad::ui
@@ -46,7 +46,7 @@ struct ExportOptions
     QColor       background = QColor(0x0a, 0x11, 0x1f);
     bool         loop       = true; // GIF only
     QString      output_path;
-    QString      ffmpeg; // path to ffmpeg for WebM / MP4 (empty -- search PATH)
+    int          quality = 2; // WebM / MP4: 0 (smallest) .. 4 (best)
 };
 
 struct ExportResult
@@ -54,15 +54,16 @@ struct ExportResult
     QString path;
     int     frames = 0;
     qint64  bytes  = 0;
+    QString encoder; // video encoder used (WebM / MP4)
 };
 
 using ProgressFn = std::function<void(int done, int total)>;
 
 QString                     FormatId(ExportFormat f);
 std::optional<ExportFormat> FormatFromId(const QString &id);
-bool                        NeedsFfmpeg(ExportFormat f);
-/// ffmpeg found in PATH (or an empty string).
-QString FindFfmpeg();
+bool                        IsVideo(ExportFormat f);
+/// Encoder that will be tried first for a video format; empty -- the format is unavailable.
+QString VideoEncoderFor(ExportFormat f);
 
 ExportGeometry PlanExport(const Model &m, const ExportOptions &o, const Registry &reg);
 QImage         RenderExportFrame(const Model &m, double t, const ExportGeometry &g, const QColor &bg, const Registry &reg);

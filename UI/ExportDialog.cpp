@@ -10,15 +10,16 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QProgressBar>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSettings>
 #include <QStandardItemModel>
 #include <QVBoxLayout>
 
+#include "AppContext.hpp"
 #include "Controller.hpp"
 #include "Export/ExportPlan.hpp"
+#include "ExportManager.hpp"
 #include "QtRender.hpp"
 
 namespace ad::ui
@@ -28,12 +29,6 @@ namespace
 {
 
 constexpr auto kLastDirKey = "export/lastDir";
-
-QString HumanSize(qint64 bytes)
-{
-    return bytes < 1024 * 1024 ? QObject::tr("%1 КБ").arg(bytes / 1024)
-                               : QObject::tr("%1 МБ").arg(static_cast<double>(bytes) / 1024 / 1024, 0, 'f', 2);
-}
 
 QString SafeFileName(QString name)
 {
@@ -59,15 +54,14 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     _format->addItem(tr("WebM (VP9) — лучше качество/размер"), FormatId(ExportFormat::WebM));
     _format->addItem(tr("MP4 (H.264) — для презентаций"), FormatId(ExportFormat::Mp4));
     _format->addItem(tr("PNG — последовательность кадров"), FormatId(ExportFormat::Png));
-    if (FindFfmpeg().isEmpty())
+    // video formats need a libav encoder for the container
+    auto *model = qobject_cast<QStandardItemModel *>(_format->model());
+    for (int i = 1; i <= 2; ++i)
     {
-        // video formats need ffmpeg
-        auto *model = qobject_cast<QStandardItemModel *>(_format->model());
-        for (int i = 1; i <= 2; ++i)
-        {
-            model->item(i)->setEnabled(false);
-            model->item(i)->setToolTip(tr("Нужен ffmpeg в PATH"));
-        }
+        const auto    f       = FormatFromId(_format->itemData(i).toString()).value_or(ExportFormat::Gif);
+        const QString encoder = VideoEncoderFor(f);
+        model->item(i)->setEnabled(!encoder.isEmpty());
+        model->item(i)->setToolTip(encoder.isEmpty() ? tr("Нет подходящего кодека в libav") : tr("Кодек: %1").arg(encoder));
     }
 
     _fps = new QComboBox;
@@ -82,6 +76,14 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     {
         _scale->addItem(QStringLiteral("%1×").arg(s), s);
     }
+
+    _quality                       = new QComboBox;
+    const QString quality_labels[] = {tr("Минимальный размер"), tr("Компактно"), tr("Сбалансировано"), tr("Высокое"), tr("Максимальное")};
+    for (int q = 0; q < 5; ++q)
+    {
+        _quality->addItem(quality_labels[q], q);
+    }
+    _quality->setCurrentIndex(2);
 
     _framing = new QComboBox;
     _framing->addItem(tr("По содержимому"), 0);
@@ -122,6 +124,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     form->addRow(tr("Формат"), _format);
     form->addRow(tr("Частота кадров"), _fps);
     form->addRow(tr("Масштаб"), _scale);
+    form->addRow(tr("Качество видео"), _quality);
     form->addRow(tr("Кадрирование"), _framing);
     form->addRow(tr("Фон"), bg_row);
     form->addRow(QString(), _loop);
@@ -129,44 +132,24 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     _estimate = new QLabel;
     _estimate->setWordWrap(true);
     _estimate->setObjectName(QStringLiteral("hint"));
-    _progress = new QProgressBar;
-    _progress->setRange(0, 1);
-    _progress->setValue(0);
-    _progress->setTextVisible(false);
-    _status = new QLabel;
-    _status->setWordWrap(true);
-    _status->setTextInteractionFlags(Qt::TextSelectableByMouse);
-
-    _export_button = new QPushButton(tr("Экспортировать"));
-    _export_button->setDefault(true);
-    _close_button = new QPushButton(tr("Закрыть"));
-    auto *buttons = new QDialogButtonBox;
-    buttons->addButton(_export_button, QDialogButtonBox::AcceptRole);
-    buttons->addButton(_close_button, QDialogButtonBox::RejectRole);
-    connect(_export_button, &QPushButton::clicked, this, &ExportDialog::_Start);
-    connect(_close_button, &QPushButton::clicked, this, &ExportDialog::reject);
+    auto *buttons       = new QDialogButtonBox;
+    auto *export_button = buttons->addButton(tr("Экспортировать в фоне"), QDialogButtonBox::AcceptRole);
+    export_button->setDefault(true);
+    export_button->setObjectName(QStringLiteral("primaryButton"));
+    buttons->addButton(tr("Отмена"), QDialogButtonBox::RejectRole);
+    connect(export_button, &QPushButton::clicked, this, &ExportDialog::_Start);
+    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     auto *layout = new QVBoxLayout(this);
     layout->addLayout(form);
     layout->addWidget(_estimate);
-    layout->addWidget(_progress);
-    layout->addWidget(_status);
     layout->addWidget(buttons);
 
-    for (QComboBox *c : {_format, _fps, _scale, _framing})
+    for (QComboBox *c : {_format, _fps, _scale, _quality, _framing})
     {
         connect(c, &QComboBox::currentIndexChanged, this, &ExportDialog::_UpdateEstimate);
     }
     _UpdateEstimate();
-}
-
-ExportDialog::~ExportDialog()
-{
-    _worker.request_stop();
-    if (_worker.joinable())
-    {
-        _worker.join();
-    }
 }
 
 void ExportDialog::_SetBackground(const QColor &c)
@@ -188,6 +171,7 @@ ExportOptions ExportDialog::_Options() const
     o.view_rect  = _view_rect;
     o.background = _background;
     o.loop       = _loop->isChecked();
+    o.quality    = _quality->currentData().toInt();
     return o;
 }
 
@@ -195,6 +179,7 @@ void ExportDialog::_UpdateEstimate()
 {
     const ExportOptions o = _Options();
     _loop->setVisible(o.format == ExportFormat::Gif);
+    _quality->setEnabled(IsVideo(o.format));
     const auto   g      = PlanExport(_ctl.GetModel(), o, _ctl.Reg());
     const auto   frames = ExportFrameTimes(_ctl.Duration(), o.fps).size();
     const double mp     = static_cast<double>(g.px_w) * g.px_h / 1e6;
@@ -210,34 +195,8 @@ void ExportDialog::_UpdateEstimate()
     _estimate->setText(text);
 }
 
-void ExportDialog::_SetRunning(bool running)
-{
-    _running = running;
-    _export_button->setEnabled(!running);
-    _close_button->setText(running ? tr("Прервать") : tr("Закрыть"));
-    for (QWidget *w : std::initializer_list<QWidget *>{_format, _fps, _scale, _framing, _bg_button, _loop})
-    {
-        w->setEnabled(!running);
-    }
-}
-
-void ExportDialog::reject()
-{
-    if (_running)
-    {
-        _worker.request_stop();
-        _status->setText(tr("Прерывание…"));
-        return;
-    }
-    QDialog::reject();
-}
-
 void ExportDialog::_Start()
 {
-    if (_running)
-    {
-        return;
-    }
     ExportOptions o   = _Options();
     const QString ext = FormatId(o.format);
     QSettings     settings;
@@ -256,55 +215,9 @@ void ExportDialog::_Start()
     settings.setValue(kLastDirKey, QFileInfo(path).absolutePath());
     o.output_path = path;
 
-    _SetRunning(true);
-    _progress->setRange(0, 1);
-    _progress->setValue(0);
-    _status->setText(tr("Подготовка…"));
-    // the worker gets copies: the document may change while exporting
-    _worker = std::jthread(
-        [this, model = _ctl.GetModel(), reg = _ctl.Reg(), o](const std::stop_token &stop)
-        {
-            auto result = RunExport(model, o, reg, stop,
-                                    [this](int done, int total)
-                                    {
-                                        QMetaObject::invokeMethod(
-                                            this,
-                                            [this, done, total]
-                                            {
-                                                _progress->setRange(0, total);
-                                                _progress->setValue(done);
-                                                _status->setText(tr("Кадр %1 / %2").arg(done).arg(total));
-                                            },
-                                            Qt::QueuedConnection);
-                                    });
-            QMetaObject::invokeMethod(
-                this,
-                [this, result = std::move(result)]
-                {
-                    _Finished(result);
-                },
-                Qt::QueuedConnection);
-        });
-}
-
-void ExportDialog::_Finished(const std::expected<ExportResult, QString> &result)
-{
-    if (_worker.joinable())
-    {
-        _worker.join();
-    }
-    _SetRunning(false);
-    if (result.has_value())
-    {
-        _progress->setValue(_progress->maximum());
-        _status->setText(
-            tr("Готово: %1\n%2 кадров · %3").arg(QDir::toNativeSeparators(result->path)).arg(result->frames).arg(HumanSize(result->bytes)));
-    }
-    else
-    {
-        _progress->setValue(0);
-        _status->setText(result.error());
-    }
+    // the job renders from a snapshot: editing can continue while it runs
+    _job_id = _ctl.Context().Exports().Start(Qs(_ctl.GetModel().meta.name), _ctl.GetModel(), _ctl.Reg(), o);
+    accept();
 }
 
 } // namespace ad::ui

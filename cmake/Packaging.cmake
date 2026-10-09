@@ -7,7 +7,7 @@ set(CPACK_PACKAGE_NAME "animated-diagrams")
 set(CPACK_PACKAGE_VENDOR "Animated Diagrams")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Animated architecture diagram editor: request flows, timers, retries; GIF/WebM/MP4 export")
-set(CPACK_PACKAGE_DESCRIPTION "Animated Diagrams draws architecture diagrams and animates request flows between services: messages, unavailability, timers/timeouts, retries, parallel actions and fallbacks. Animations export to GIF, PNG frames, WebM and MP4 (via ffmpeg).")
+set(CPACK_PACKAGE_DESCRIPTION "Animated Diagrams draws architecture diagrams and animates request flows between services: messages, unavailability, timers/timeouts, retries, parallel actions and fallbacks. Animations export to GIF, PNG frames, WebM and MP4 (encoded with the FFmpeg libraries).")
 set(CPACK_PACKAGE_HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}")
 set(CPACK_PACKAGE_CONTACT "Animated Diagrams <noreply@animateddiagrams.app>")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "Animated Diagrams")
@@ -21,7 +21,6 @@ set(CPACK_DEBIAN_PACKAGE_RELEASE "1${AD_PACKAGE_RELEASE_SUFFIX}")
 set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)            # libqt6* dependencies via dpkg-shlibdeps
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-qpa-plugins") # Qt platform plugins (xcb / wayland)
-set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "ffmpeg")       # WebM / MP4 export
 
 # ---- RPM --------------------------------------------------------------------
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
@@ -31,7 +30,6 @@ set(CPACK_RPM_PACKAGE_LICENSE "MIT")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/Productivity")
 set(CPACK_RPM_PACKAGE_URL "${PROJECT_HOMEPAGE_URL}")
 set(CPACK_RPM_PACKAGE_AUTOREQ ON)                 # libQt6*.so automatically
-set(CPACK_RPM_PACKAGE_SUGGESTS "ffmpeg")
 set(CPACK_RPM_SPEC_MORE_DEFINE "%define _build_id_links none")
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
     /usr/share/applications

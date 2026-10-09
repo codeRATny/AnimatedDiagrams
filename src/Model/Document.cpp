@@ -540,10 +540,16 @@ void Document::UpsertAnimation(const AnimationTemplate &a)
     _model.library.Upsert(a);
 }
 
+void Document::UpsertDesignSystem(const DesignSystem &d)
+{
+    Checkpoint();
+    _model.library.Upsert(d);
+}
+
 bool Document::RemoveLibraryItem(std::string_view id)
 {
     auto      &lib = _model.library;
-    const bool has = lib.Element(id) != nullptr || lib.Effect(id) != nullptr || lib.Animation(id) != nullptr;
+    const bool has = lib.Element(id) != nullptr || lib.Effect(id) != nullptr || lib.Animation(id) != nullptr || lib.Design(id) != nullptr;
     if (!has)
     {
         return false;
@@ -556,6 +562,7 @@ bool Document::RemoveLibraryItem(std::string_view id)
     std::erase_if(lib.elements, by_id);
     std::erase_if(lib.effects, by_id);
     std::erase_if(lib.animations, by_id);
+    std::erase_if(lib.design_systems, by_id);
     return true;
 }
 

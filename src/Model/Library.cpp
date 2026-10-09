@@ -44,6 +44,52 @@ NodeStyle NodeStyle::Merged(const NodeStyle &over) const
 
 bool NodeStyle::Empty() const { return *this == NodeStyle{}; }
 
+EdgeStyle EdgeStyle::Merged(const EdgeStyle &over) const
+{
+    EdgeStyle out = *this;
+    Override(out.color, over.color);
+    Override(out.width, over.width);
+    Override(out.stroke_style, over.stroke_style);
+    Override(out.arrow_end, over.arrow_end);
+    Override(out.arrow_start, over.arrow_start);
+    Override(out.routing, over.routing);
+    Override(out.label_color, over.label_color);
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// Design system tokens
+// ---------------------------------------------------------------------------
+
+const std::map<std::string, std::string> &DefaultTokens()
+{
+    static const std::map<std::string, std::string> kTokens{
+        {"surface", "#3b4a63"}, {"surface-alt", "#1e293b"}, {"border", "#5a6b86"},    {"text", "#f2f6ff"},
+        {"muted", "#b7c6e4"},   {"primary", "#4f8cff"},     {"secondary", "#a855f7"}, {"success", "#22c55e"},
+        {"warning", "#f59e0b"}, {"danger", "#ef4444"},      {"info", "#38bdf8"},      {"accent", "#22d3ee"},
+    };
+    return kTokens;
+}
+
+std::string ResolveColorToken(std::string_view value, const DesignSystem *ds)
+{
+    if (!value.starts_with('$'))
+    {
+        return std::string(value);
+    }
+    const std::string name(value.substr(1));
+    if (ds != nullptr)
+    {
+        if (const auto it = ds->colors.find(name); it != ds->colors.end())
+        {
+            return it->second;
+        }
+    }
+    const auto &defs = DefaultTokens();
+    const auto  it   = defs.find(name);
+    return it != defs.end() ? it->second : std::string();
+}
+
 // ---------------------------------------------------------------------------
 // EffectProperty
 // ---------------------------------------------------------------------------
@@ -123,6 +169,8 @@ const AnimationTemplate *LibrarySet::Animation(std::string_view id) const { retu
 void                     LibrarySet::Upsert(const ElementType &e) { UpsertById(elements, e); }
 void                     LibrarySet::Upsert(const EffectDef &e) { UpsertById(effects, e); }
 void                     LibrarySet::Upsert(const AnimationTemplate &a) { UpsertById(animations, a); }
+const DesignSystem      *LibrarySet::Design(std::string_view id) const { return FindById(design_systems, id); }
+void                     LibrarySet::Upsert(const DesignSystem &d) { UpsertById(design_systems, d); }
 
 // ---------------------------------------------------------------------------
 // Built-in library
@@ -230,6 +278,100 @@ AnimationTemplate MakeTemplate(std::string id, std::string label, std::string de
     return a;
 }
 
+std::vector<DesignSystem> MakeDesignSystems()
+{
+    std::vector<DesignSystem> out;
+
+    DesignSystem dark;
+    dark.id          = "dark";
+    dark.label       = "Тёмная (по умолчанию)";
+    dark.category    = "Встроенные";
+    dark.description = "Исходный вид редактора: тёмный холст, мягкие акценты";
+    dark.background  = "#0a111f";
+    dark.edge_color  = "#5f7196";
+    dark.text_color  = "#f2f6ff";
+    dark.grid        = true;
+    dark.grid_size   = 26;
+    dark.colors      = DefaultTokens();
+    out.push_back(dark);
+
+    DesignSystem light;
+    light.id               = "light";
+    light.label            = "Светлая";
+    light.category         = "Встроенные";
+    light.description      = "Белый холст для документации и презентаций";
+    light.background       = "#f6f8fc";
+    light.edge_color       = "#94a3b8";
+    light.text_color       = "#0f172a";
+    light.grid             = true;
+    light.grid_size        = 26;
+    light.subtitle_color   = "#64748b";
+    light.colors           = {{"surface", "#ffffff"}, {"surface-alt", "#f1f5f9"}, {"border", "#cbd5e1"},    {"text", "#0f172a"},
+                              {"muted", "#64748b"},   {"primary", "#2563eb"},     {"secondary", "#7c3aed"}, {"success", "#16a34a"},
+                              {"warning", "#d97706"}, {"danger", "#dc2626"},      {"info", "#0284c7"},      {"accent", "#0891b2"}};
+    light.states           = {{"ok", {"#ffffff", "#cbd5e1"}},      {"active", {"#dbeafe", "#3b82f6"}}, {"busy", {"#fef3c7", "#f59e0b"}},
+                              {"warn", {"#ffedd5", "#f97316"}},    {"down", {"#fee2e2", "#ef4444"}},   {"success", {"#dcfce7", "#22c55e"}},
+                              {"disabled", {"#f1f5f9", "#cbd5e1"}}};
+    light.variants         = {{"request", "#2563eb"}, {"response", "#059669"}, {"retry", "#d97706"},
+                              {"error", "#dc2626"},   {"success", "#16a34a"},  {"event", "#9333ea"}};
+    light.node.text_color  = "#0f172a";
+    light.edge.label_color = "#475569";
+    out.push_back(light);
+
+    DesignSystem blueprint;
+    blueprint.id             = "blueprint";
+    blueprint.label          = "Чертёж";
+    blueprint.category       = "Встроенные";
+    blueprint.description    = "Синий фон, тонкие линии, моноширинный шрифт, ортогональные связи";
+    blueprint.background     = "#0b3a6e";
+    blueprint.edge_color     = "#cfe8ff";
+    blueprint.text_color     = "#ffffff";
+    blueprint.grid           = true;
+    blueprint.grid_size      = 20;
+    blueprint.font_family    = "DejaVu Sans Mono";
+    blueprint.subtitle_color = "#a9d1ff";
+    blueprint.colors         = {{"surface", "#0f4c8a"}, {"surface-alt", "#0b3a6e"}, {"border", "#e6f3ff"},    {"text", "#ffffff"},
+                                {"muted", "#a9d1ff"},   {"primary", "#7cc4ff"},     {"secondary", "#c4b5fd"}, {"success", "#86efac"},
+                                {"warning", "#fde68a"}, {"danger", "#fca5a5"},      {"info", "#7dd3fc"},      {"accent", "#ffffff"}};
+    blueprint.states         = {{"ok", {"#0f4c8a", "#e6f3ff"}},      {"active", {"#1d6fbf", "#ffffff"}}, {"busy", {"#5b4a12", "#fde68a"}},
+                                {"warn", {"#6b3a12", "#fdba74"}},    {"down", {"#6b1d1d", "#fca5a5"}},   {"success", {"#14532d", "#86efac"}},
+                                {"disabled", {"#0b3a6e", "#7aa7d6"}}};
+    blueprint.node.corner_radius = 2;
+    blueprint.node.stroke_width  = 1.5;
+    blueprint.node.shadow        = false;
+    blueprint.edge.width         = 1.5;
+    blueprint.edge.routing       = "orthogonal";
+    blueprint.edge.arrow_end     = "open";
+    blueprint.edge.label_color   = "#cfe8ff";
+    out.push_back(blueprint);
+
+    DesignSystem contrast;
+    contrast.id                = "high-contrast";
+    contrast.label             = "Высокий контраст";
+    contrast.category          = "Встроенные";
+    contrast.description       = "Максимальная читаемость: чёрный фон, толстые белые линии, яркие состояния";
+    contrast.background        = "#000000";
+    contrast.edge_color        = "#ffffff";
+    contrast.text_color        = "#ffffff";
+    contrast.grid              = false;
+    contrast.subtitle_color    = "#e5e5e5";
+    contrast.colors            = {{"surface", "#000000"}, {"surface-alt", "#1a1a1a"}, {"border", "#ffffff"},    {"text", "#ffffff"},
+                                  {"muted", "#e5e5e5"},   {"primary", "#4da3ff"},     {"secondary", "#d08cff"}, {"success", "#33ff77"},
+                                  {"warning", "#ffd400"}, {"danger", "#ff3b3b"},      {"info", "#33ccff"},      {"accent", "#00ffff"}};
+    contrast.states            = {{"ok", {"#000000", "#ffffff"}},      {"active", {"#003a8c", "#4da3ff"}}, {"busy", {"#5c4400", "#ffd400"}},
+                                  {"warn", {"#663300", "#ff9900"}},    {"down", {"#7a0000", "#ff3b3b"}},   {"success", {"#004d1a", "#33ff77"}},
+                                  {"disabled", {"#1a1a1a", "#808080"}}};
+    contrast.variants          = {{"request", "#4da3ff"}, {"response", "#33ff77"}, {"retry", "#ffd400"},
+                                  {"error", "#ff3b3b"},   {"success", "#33ff77"},  {"event", "#d08cff"}};
+    contrast.node.stroke_width = 3;
+    contrast.node.shadow       = false;
+    contrast.node.font_size    = 16;
+    contrast.edge.width        = 3;
+    contrast.edge.label_color  = "#ffffff";
+    out.push_back(contrast);
+    return out;
+}
+
 LibrarySet MakeBuiltins()
 {
     using P = EffectProperty;
@@ -252,6 +394,7 @@ LibrarySet MakeBuiltins()
         MakeElement("note", "Заметка", "✎", "Прочее", "#fbbf24", "note", 150, 70),
     };
     set.elements[4].style.stroke_style = "dashed"; // external
+    set.design_systems                 = MakeDesignSystems();
 
     set.effects = {
         MakeEffect("pulse", "Пульс", "Пульсация с подсветкой", 2,

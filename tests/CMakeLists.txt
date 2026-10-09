@@ -3,6 +3,7 @@ include(GoogleTest)
 add_executable(ad_core_tests
     CatalogTest.cpp
     ColorTest.cpp
+    DesignSystemTest.cpp
     DocumentTest.cpp
     DocumentToolsTest.cpp
     DrawioImporterTest.cpp
@@ -28,6 +29,7 @@ add_executable(ad_core_tests
     TemplatesTest.cpp
     TextTest.cpp
     TimelineLayoutTest.cpp
+    VideoEncoderTest.cpp
     XmlReaderTest.cpp
 )
 target_link_libraries(ad_core_tests PRIVATE ad::core GTest::gtest_main)
@@ -37,7 +39,11 @@ gtest_discover_tests(ad_core_tests DISCOVERY_TIMEOUT 60)
 
 # Application smoke tests: headless export and MCP stdio session.
 if(TARGET animated_diagrams)
-    foreach(fmt gif png)
+    set(smoke_formats gif png)
+    if(WITH_LIBAV)
+        list(APPEND smoke_formats webm mp4)
+    endif()
+    foreach(fmt IN LISTS smoke_formats)
         add_test(NAME AppExportSmoke.${fmt}
             COMMAND ${CMAKE_COMMAND}
                 -DAPP=$<TARGET_FILE:animated_diagrams>

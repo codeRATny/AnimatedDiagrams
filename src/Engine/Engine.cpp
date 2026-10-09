@@ -42,22 +42,38 @@ std::vector<const Step *> ActiveSteps(const Model &m, double t)
     return out;
 }
 
-ResolvedState ResolveNodeState(const Step *step, const NodeStyle &style)
+ResolvedState ResolveNodeState(const Step *step, const NodeStyle &style, const DesignSystem *ds)
 {
+    // preset colors, optionally replaced by the design system
+    auto preset = [ds](std::string_view id, Color &fill, Color &ring)
+    {
+        const auto &b = NodeState(id);
+        fill          = b.fill;
+        ring          = b.ring;
+        if (ds == nullptr)
+        {
+            return;
+        }
+        if (const auto it = ds->states.find(std::string(b.id)); it != ds->states.end())
+        {
+            fill = Color::Parse(ResolveColorToken(it->second.fill.value_or(""), ds), fill);
+            ring = Color::Parse(ResolveColorToken(it->second.ring.value_or(""), ds), ring);
+        }
+    };
+
     ResolvedState r;
     if (step == nullptr)
     {
-        const auto &b = NodeState("ok");
-        r.label       = std::string(b.label);
-        r.fill        = Color::Parse(style.fill.value_or(""), b.fill);
-        r.ring        = Color::Parse(style.stroke.value_or(""), b.ring);
+        r.label = std::string(NodeState("ok").label);
+        preset("ok", r.fill, r.ring);
+        r.fill = Color::Parse(ResolveColorToken(style.fill.value_or(""), ds), r.fill);
+        r.ring = Color::Parse(ResolveColorToken(style.stroke.value_or(""), ds), r.ring);
         return r;
     }
     const auto &base = NodeState(step->state);
     r.id             = std::string(base.id);
-    r.fill           = base.fill;
-    r.ring           = base.ring;
-    if (const auto c = Color::Parse(step->color); c.has_value())
+    preset(base.id, r.fill, r.ring);
+    if (const auto c = Color::Parse(ResolveColorToken(step->color, ds)); c.has_value())
     {
         r.ring = *c;
         r.fill = c->Darker(1.9); // dark fill derived from the accent, as d3.color().darker(1.9)
@@ -70,7 +86,42 @@ ResolvedState ResolveNodeState(const Step *step, const NodeStyle &style)
 
 NodeStyle ResolveNodeStyle(const Model &m, const Node &n, const Registry &reg)
 {
-    return reg.Element(n.type, &m.library).style.Merged(n.style);
+    const DesignSystem *ds   = reg.DesignOf(m);
+    const NodeStyle    &type = reg.Element(n.type, &m.library).style;
+    if (ds == nullptr)
+    {
+        return type.Merged(n.style);
+    }
+    NodeStyle style = ds->node.Merged(type);
+    if (const auto it = ds->elements.find(n.type); it != ds->elements.end())
+    {
+        style = style.Merged(it->second.style);
+    }
+    return style.Merged(n.style);
+}
+
+Color ResolveAccent(const Model &m, const Node &n, const Registry &reg)
+{
+    const DesignSystem *ds    = reg.DesignOf(m);
+    std::string         value = n.accent;
+    if (value.empty() && ds != nullptr)
+    {
+        if (const auto it = ds->elements.find(n.type); it != ds->elements.end())
+        {
+            value = it->second.accent.value_or("");
+        }
+    }
+    if (value.empty())
+    {
+        value = reg.Element(n.type, &m.library).accent;
+    }
+    return Color::Parse(ResolveColorToken(value, ds), Color::Rgb(0x4f8cff));
+}
+
+EdgeStyle ResolveEdgeStyle(const Model &m, const Edge &e, const Registry &reg)
+{
+    const DesignSystem *ds = reg.DesignOf(m);
+    return ds != nullptr ? ds->edge.Merged(e.style) : e.style;
 }
 
 std::string ResolveShape(const NodeStyle &style)
@@ -98,7 +149,8 @@ std::optional<EdgeGeometry> ComputeEdgeGeometry(const Model &m, const Edge &e, c
     constexpr double  kGap    = 4; // gap between the arrow tip and the node
     const std::string shape_a = ResolveShape(ResolveNodeStyle(m, *a, reg));
     const std::string shape_b = ResolveShape(ResolveNodeStyle(m, *b, reg));
-    const std::string routing = e.style.routing.value_or("curved");
+    const EdgeStyle   style   = ResolveEdgeStyle(m, e, reg);
+    const std::string routing = style.routing.value_or("curved");
     const Vec2        ca      = a->Center();
     const Vec2        cb      = b->Center();
     const auto       &wps     = e.waypoints;
@@ -106,8 +158,8 @@ std::optional<EdgeGeometry> ComputeEdgeGeometry(const Model &m, const Edge &e, c
     const Port       *tp      = b->FindPort(e.to_port);
 
     EdgeGeometry g;
-    g.arrow_start = HasArrow(e.style.arrow_start, false);
-    g.arrow_end   = HasArrow(e.style.arrow_end, true);
+    g.arrow_start = HasArrow(style.arrow_start, false);
+    g.arrow_end   = HasArrow(style.arrow_end, true);
 
     Vec2 ctrl;
     Vec2 start_ref;

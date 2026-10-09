@@ -23,6 +23,7 @@ class QVBoxLayout;
 namespace ad::ui
 {
 
+class AppContext;
 class Controller;
 class PreviewWidget;
 
@@ -35,10 +36,15 @@ public:
     {
         Elements,
         Effects,
-        Animations
+        Animations,
+        Designs
     };
+    static constexpr int kTabCount = 4;
 
-    explicit LibraryDialog(Controller &ctl, QWidget *parent = nullptr);
+    LibraryDialog(AppContext &ctx, Controller *ctl, QWidget *parent = nullptr);
+
+    /// Work with another document (the active tab changed).
+    void SetController(Controller *ctl);
 
     /// Switch to the tab holding `id` and select it.
     void SelectItem(const QString &id);
@@ -69,11 +75,13 @@ private:
     void _BuildElementEditor(QVBoxLayout *box, const ElementType &e);
     void _BuildEffectEditor(QVBoxLayout *box, const EffectDef &e);
     void _BuildAnimationEditor(QVBoxLayout *box, const AnimationTemplate &a);
+    void _BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d);
 
     /// Modify a document definition; an empty key starts a new undo step.
     void _EditElement(const std::string &key, const std::function<void(ElementType &)> &fn, bool rebuild = false);
     void _EditEffect(const std::string &key, const std::function<void(EffectDef &)> &fn, bool rebuild = false);
     void _EditAnimation(const std::string &key, const std::function<void(AnimationTemplate &)> &fn, bool rebuild = false);
+    void _EditDesign(const std::string &key, const std::function<void(DesignSystem &)> &fn, bool rebuild = false);
     void _AfterEdit(bool rebuild);
 
     void _New();
@@ -82,20 +90,22 @@ private:
     void _Delete();
     void _ExportPlugin();
 
-    Controller    &_ctl;
-    QTabWidget    *_tabs         = nullptr;
-    QListWidget   *_lists[3]     = {};
-    QScrollArea   *_editor       = nullptr;
-    PreviewWidget *_preview      = nullptr;
-    QLabel        *_origin       = nullptr;
-    QPushButton   *_new_button   = nullptr;
-    QPushButton   *_dup_button   = nullptr;
-    QPushButton   *_del_button   = nullptr;
-    QPushButton   *_apply_button = nullptr;
+    AppContext    &_ctx;
+    Controller    *_ctl              = nullptr;
+    QTabWidget    *_tabs             = nullptr;
+    QListWidget   *_lists[kTabCount] = {};
+    QScrollArea   *_editor           = nullptr;
+    PreviewWidget *_preview          = nullptr;
+    QLabel        *_origin           = nullptr;
+    QPushButton   *_new_button       = nullptr;
+    QPushButton   *_dup_button       = nullptr;
+    QPushButton   *_del_button       = nullptr;
+    QPushButton   *_apply_button     = nullptr;
 
     Current _current;
     bool    _applying        = false; // our own edit is being applied (ignore model notifications)
     bool    _rebuild_pending = false;
+    QString _override_type; // element type whose design system override is edited
 };
 
 } // namespace ad::ui

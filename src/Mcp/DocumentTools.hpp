@@ -21,8 +21,18 @@ struct ExportRequest
 {
     std::string path;
     std::string format; // gif | png | webm | mp4 (empty -- by extension)
-    double      fps   = 15;
-    double      scale = 1;
+    double      fps     = 15;
+    double      scale   = 1;
+    int         quality = 2; // WebM / MP4: 0 (smallest) .. 4 (best)
+};
+
+/// One open document (a GUI tab).
+struct DocumentInfo
+{
+    std::string name;
+    std::string path;
+    bool        active   = false;
+    bool        modified = false;
 };
 
 /// What the tools operate on. The GUI implements it on top of its controller,
@@ -46,6 +56,14 @@ public:
     virtual std::expected<std::vector<uint8_t>, std::string> RenderPng(double time_ms, double scale);
     /// Export the animation; returns a human readable result line.
     virtual std::expected<std::string, std::string> Export(const ExportRequest &request);
+
+    /// Open documents; a single-document host returns just the current one.
+    virtual std::vector<DocumentInfo> Documents();
+    /// Make document `index` the target of the tools; false when out of range.
+    virtual bool SelectDocument(size_t index);
+    /// Called right before new_document / open_document / import_drawio replace the
+    /// document: the GUI opens a new tab here instead of overwriting the current one.
+    virtual void BeginNewDocument() {}
 };
 
 /// Host owning its document; rendering / export are unsupported unless overridden.

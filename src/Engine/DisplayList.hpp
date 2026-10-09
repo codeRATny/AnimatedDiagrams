@@ -19,8 +19,12 @@ namespace ad
 
 struct Font
 {
-    double      size                                   = 12; // px in world units
-    bool        bold                                   = false;
+    double      size = 12; // px in world units
+    bool        bold = false;
+    std::string family; // empty -- the default UI font
+
+    Font() = default;
+    Font(double s, bool b, std::string f = {}) : size(s), bold(b), family(std::move(f)) {}
     friend bool operator==(const Font &, const Font &) = default;
 };
 

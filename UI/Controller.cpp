@@ -7,16 +7,13 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QSettings>
-#include <QStandardPaths>
+#include <QUuid>
 
 #include <algorithm>
 
+#include "AppContext.hpp"
 #include "Import/DrawioImporter.hpp"
 #include "Io/JsonIo.hpp"
-#include "Mcp/DocumentTools.hpp"
-#include "Mcp/McpServer.hpp"
-#include "McpHosts.hpp"
-#include "McpHttpServer.hpp"
 #include "Model/Sample.hpp"
 #include "QtRender.hpp"
 
@@ -25,10 +22,6 @@ namespace ad::ui
 
 namespace
 {
-
-constexpr auto kSessionFileKey     = "session/file";
-constexpr auto kSessionModifiedKey = "session/modified";
-constexpr auto kDisabledPluginsKey = "plugins/disabled";
 
 std::optional<QByteArray> ReadAll(const QString &path, QString *error)
 {
@@ -48,7 +41,8 @@ std::string_view AsView(const QByteArray &b) { return {b.constData(), static_cas
 
 } // namespace
 
-Controller::Controller(QObject *parent) : QObject(parent)
+Controller::Controller(AppContext &ctx, QObject *parent)
+    : QObject(parent), _ctx(ctx), _session_id(QUuid::createUuid().toString(QUuid::WithoutBraces))
 {
     _frame_timer.setTimerType(Qt::PreciseTimer);
     _frame_timer.setInterval(16);
@@ -58,15 +52,15 @@ Controller::Controller(QObject *parent) : QObject(parent)
     _autosave_timer.setInterval(800);
     connect(&_autosave_timer, &QTimer::timeout, this, &Controller::_WriteAutosave);
 
-    _host = std::make_unique<AppDocumentHost>(*this);
-    _mcp  = std::make_unique<mcp::McpServer>(mcp::ServerInfo{
-        "animated-diagrams", "Animated Diagrams", QCoreApplication::applicationVersion().toStdString(), mcp::DefaultInstructions()});
-    mcp::RegisterDocumentTools(*_mcp, *_host);
-    _http = new McpHttpServer(*_mcp, this);
-    connect(_http, &McpHttpServer::RequestHandled, this, &Controller::McpActivity);
-
-    ReloadPlugins();
+    connect(&_ctx, &AppContext::LibraryChanged, this,
+            [this]
+            {
+                Q_EMIT LibraryChanged();
+                Q_EMIT ModelChanged(true);
+            });
 }
+
+const Registry &Controller::Reg() const { return _ctx.Reg(); }
 
 Controller::~Controller() = default;
 
@@ -238,7 +232,7 @@ bool Controller::OpenFile(const QString &path, QString *error)
 bool Controller::SaveFile(const QString &path, QString *error)
 {
     Model copy = GetModel();
-    _registry.EmbedUsedDefinitions(copy); // plugin definitions travel with the file
+    Reg().EmbedUsedDefinitions(copy); // plugin definitions travel with the file
     const std::string json = SerializeModel(copy);
     QSaveFile         f(path);
     if (!f.open(QIODevice::WriteOnly) || f.write(json.data(), static_cast<qint64>(json.size())) < 0 || !f.commit())
@@ -307,44 +301,30 @@ void Controller::Rename(const QString &name)
          });
 }
 
-QString Controller::AutosavePath()
-{
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/autosave.json");
-}
+QString Controller::AutosavePath() const { return AppContext::SessionDir() + QLatin1Char('/') + _session_id + QStringLiteral(".json"); }
 
-QString Controller::UserPluginDir()
+bool Controller::RestoreAutosave(const QString &session_id, const QString &path, bool modified)
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/plugins");
-}
-
-QStringList Controller::SystemPluginDirs()
-{
-    const QString app = QCoreApplication::applicationDirPath();
-    // next to the exe, Windows install root (exe in bin/), Linux prefix
-    QStringList dirs{app + QStringLiteral("/plugins"), app + QStringLiteral("/../plugins"),
-                     app + QStringLiteral("/../share/animated-diagrams/plugins")};
-    // extra directories (tests, development, portable setups)
-    for (const QString &d : qEnvironmentVariable("AD_PLUGIN_PATH").split(QDir::listSeparator(), Qt::SkipEmptyParts))
-    {
-        dirs << d;
-    }
-    return dirs;
-}
-
-void Controller::RestoreSession()
-{
+    _session_id = session_id;
     QString    err;
     const auto bytes = ReadAll(AutosavePath(), &err);
-    if (bytes.has_value())
+    if (!bytes.has_value())
     {
-        if (auto parsed = ParseModel(AsView(*bytes)); parsed.has_value())
-        {
-            const QSettings s;
-            ReplaceModel(std::move(*parsed), s.value(kSessionFileKey).toString(), s.value(kSessionModifiedKey).toBool());
-            return;
-        }
+        return false;
     }
-    LoadSample();
+    auto parsed = ParseModel(AsView(*bytes));
+    if (!parsed.has_value())
+    {
+        return false;
+    }
+    ReplaceModel(std::move(*parsed), path, modified);
+    return true;
+}
+
+void Controller::DiscardAutosave()
+{
+    _autosave_timer.stop();
+    QFile::remove(AutosavePath());
 }
 
 void Controller::_ScheduleAutosave() { _autosave_timer.start(); }
@@ -360,9 +340,6 @@ void Controller::_WriteAutosave()
     {
         f.commit();
     }
-    QSettings s;
-    s.setValue(kSessionFileKey, _path);
-    s.setValue(kSessionModifiedKey, _modified);
 }
 
 // ---------------------------------------------------------------------------
@@ -440,68 +417,5 @@ void Controller::_Tick()
     }
     Q_EMIT TimeChanged(_time);
 }
-
-// ---------------------------------------------------------------------------
-// Plugins
-// ---------------------------------------------------------------------------
-
-void Controller::LoadPlugins(PluginManager &plugins, Registry &registry)
-{
-    std::vector<std::filesystem::path> system_dirs;
-    for (const QString &d : SystemPluginDirs())
-    {
-        system_dirs.emplace_back(d.toStdU16String());
-    }
-    plugins.SetDirectories(std::filesystem::path(UserPluginDir().toStdU16String()), system_dirs);
-    std::set<std::string> disabled;
-    for (const QString &id : QSettings().value(kDisabledPluginsKey).toStringList())
-    {
-        disabled.insert(Us(id));
-    }
-    plugins.SetDisabledIds(disabled);
-    plugins.Scan();
-    plugins.ApplyTo(registry);
-}
-
-void Controller::ReloadPlugins()
-{
-    LoadPlugins(_plugins, _registry);
-    Q_EMIT LibraryChanged();
-    Q_EMIT ModelChanged(true);
-}
-
-void Controller::SetPluginEnabled(const std::string &id, bool enabled)
-{
-    _plugins.SetEnabled(id, enabled);
-    QStringList disabled;
-    for (const auto &d : _plugins.DisabledIds())
-    {
-        disabled << Qs(d);
-    }
-    QSettings().setValue(kDisabledPluginsKey, disabled);
-    _plugins.ApplyTo(_registry);
-    Q_EMIT LibraryChanged();
-    Q_EMIT ModelChanged(true);
-}
-
-// ---------------------------------------------------------------------------
-// MCP
-// ---------------------------------------------------------------------------
-
-bool Controller::StartMcp(quint16 port, QString *error)
-{
-    const bool ok = _http->Start(port, error);
-    Q_EMIT McpStateChanged();
-    return ok;
-}
-
-void Controller::StopMcp()
-{
-    _http->Stop();
-    Q_EMIT McpStateChanged();
-}
-
-bool    Controller::IsMcpRunning() const { return _http->IsRunning(); }
-QString Controller::McpUrl() const { return _http->Url(); }
 
 } // namespace ad::ui

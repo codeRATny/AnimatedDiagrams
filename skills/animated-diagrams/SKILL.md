@@ -1,6 +1,6 @@
 ---
 name: animated-diagrams
-description: Create and edit animated architecture diagrams (request flows, retries, timeouts, failovers, state changes) with the Animated Diagrams app via its MCP server or CLI; import draw.io files, apply animation templates, define custom elements / effects / plugins, render frames and export GIF/MP4/WebM. Use when the user asks for an animated diagram, a flow/sequence animation, a GIF of an architecture or wants to animate a draw.io diagram.
+description: Create and edit animated architecture diagrams (request flows, retries, timeouts, failovers, state changes) with the Animated Diagrams app via its MCP server or CLI; import draw.io files, apply animation templates, style with design systems, define custom elements / effects / design systems / plugins, render frames and export GIF/MP4/WebM. Use when the user asks for an animated diagram, a flow/sequence animation, a GIF of an architecture or wants to animate a draw.io diagram.
 ---
 
 # Animated Diagrams
@@ -17,6 +17,11 @@ Prefer the MCP server; fall back to the CLI only for one-shot conversions/export
 |---|---|---|
 | stdio (headless) | `claude mcp add animated-diagrams -- animated-diagrams --mcp [file.json]` | no window needed; most automation |
 | HTTP (live window) | user enables *Инструменты → MCP-сервер* (or starts `animated-diagrams --mcp-port 8765`), then `claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp` | the user watches/edits the same document; changes are undoable with Ctrl+Z |
+
+In the live window the editor has several documents in tabs: tools work on the **active tab**;
+`list_documents` / `select_document {index}` switch it, and `new_document` / `open_document` /
+`import_drawio` open a new tab instead of replacing the user's work. `export_animation` runs as a
+background job there (the user keeps working) and returns when the file is written.
 
 If no MCP tools named `get_summary`, `add_node`, … are available, use the CLI (section 6) or ask the
 user to connect the server. Never edit the user's open document over HTTP without being asked.
@@ -71,14 +76,30 @@ Built-in templates: `request-response`, `retry-backoff`, `timeout-fallback`, `pu
   needed for several nodes; an effect for a custom node animation; an animation template for a pattern
   you will apply more than once.
 
-## 5. draw.io
+## 5. Design systems
+
+A design system restyles the whole document: canvas colors, color tokens, node state and message
+colors, font, default node / edge styles and per-element-type overrides.
+
+- `list_library {kind: "designSystems"}` — available ones (`dark`, `light`, `blueprint`, `high-contrast`,
+  plugin ones such as `clickhouse`, `terminal`) and the active one.
+- `set_scene {designSystem: "light"}` applies one (canvas colors are copied into the scene; explicit colors
+  in the same call win); `designSystem: ""` detaches it.
+- Colors anywhere may be tokens: `"$primary"`, `"$surface"`, `"$danger"`… They follow the active design
+  system — prefer tokens when you define element types or step colors so the diagram stays restylable.
+- Custom: `upsert_library_item {kind: "design-system", definition: {...}}` — format in
+  [references/definitions.md](references/definitions.md#design-system).
+
+Pick a light design system for documents / slides on white backgrounds, `high-contrast` for small GIFs.
+
+## 6. draw.io
 
 `import_drawio {path | xml, page, keepColors}` replaces the document: shapes → nodes (type guessed from
 the shape: cylinder → db, rhombus → decision, cloud, document, actor → user…), connectors → edges
 (arrows, dashes, orthogonal routing kept), free text → notes, containers are skipped. Then add the
 scenario as usual. Check `get_summary` after import: node ids are generated.
 
-## 6. CLI (no MCP)
+## 7. CLI (no MCP)
 
 ```bash
 animated-diagrams --export out.gif diagram.json            # gif | png | webm | mp4 by extension
@@ -87,16 +108,22 @@ animated-diagrams --convert out.json input.drawio --page 1  # draw.io -> native 
 animated-diagrams --convert out.json --export out.gif input.drawio
 ```
 
-`--background '#ffffff'`, `--no-loop` (GIF). WebM/MP4 need `ffmpeg` in PATH. To author a document
+`--background '#ffffff'`, `--no-loop` (GIF). WebM / MP4 are encoded in process (libav: VP9 / H.264, with
+fallbacks), no external ffmpeg is needed; `export_animation` takes `quality` 0..4. To author a document
 without MCP, write JSON in the native format — see [references/document-format.md](references/document-format.md).
 
-## 7. Plugins
+## 8. Plugins
 
-A plugin is a JSON file bundling element types, effects and animation templates
+A plugin is a JSON file bundling element types, effects, animation templates and design systems
 ([references/definitions.md](references/definitions.md#plugin-file)). Install it by copying into the
 user plugin directory (Linux `~/.local/share/AnimatedDiagrams/animated-diagrams/plugins/`, Windows
 `%APPDATA%\AnimatedDiagrams\animated-diagrams\plugins\`) or via *Библиотека → Плагины → Установить*;
 `AD_PLUGIN_PATH` adds directories for a single run. The MCP server sees plugins loaded at its start.
+Bundled: **Cloud kit** (k8s pod, function, topic, bucket, CDN, firewall; circuit-breaker, saga),
+**Data platform** (postgres, pg-replica, clickhouse, kafka, redis, object-store, etl-job, bi-dashboard;
+templates `cdc-pipeline`, `replica-failover`, `batch-etl`; design system `clickhouse`),
+**Security kit** (idp, policy, vault, waf, token, ca, attacker; templates `oauth-code-flow`,
+`jwt-validation`, `block-attack`; design system `terminal`).
 
 ## Pitfalls
 
@@ -104,5 +131,6 @@ user plugin directory (Linux `~/.local/share/AnimatedDiagrams/animated-diagrams/
 - `apply_animation` needs every role mapped to an existing node; `link` steps of a template are skipped
   when the mapped nodes have no edge.
 - Scene duration grows automatically with the steps unless set with `set_scene.durationMs`.
+- In the live window, check `list_documents` before editing: the user may have switched tabs.
 - Keep labels short (≤ 20 chars) — long labels overlap edges; use `subtitle` for detail.
 - Render before exporting; exporting long scenes at high fps/scale is slow and large (prefer MP4/WebM).

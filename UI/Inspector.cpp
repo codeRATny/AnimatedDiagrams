@@ -14,6 +14,7 @@
 #include <map>
 
 #include "Controller.hpp"
+#include "Engine/Design.hpp"
 #include "Engine/Engine.hpp"
 #include "Model/Catalog.hpp"
 #include "Model/Document.hpp"
@@ -289,6 +290,63 @@ void Inspector::_BuildScene(QVBoxLayout *box)
                                                                    });
                                                     })));
 
+    box->addWidget(Section(tr("Дизайн-система")));
+    Options designs{{QString(), tr("— не задана —")}};
+    for (const auto &d : _ctl.Reg().DesignSystems(&m.library))
+    {
+        designs.emplace_back(Qs(d.def->id), Qs(d.def->label));
+    }
+    box->addWidget(Combo(designs, Qs(m.design_system),
+                         [this](const QString &v)
+                         {
+                             const DesignSystem *ds = v.isEmpty() ? nullptr : _ctl.Reg().FindDesignSystem(Us(v), &_ctl.GetModel().library);
+                             const DesignSystem  copy = ds != nullptr ? *ds : DesignSystem{};
+                             _ctl.Edit(
+                                 {},
+                                 [&](Model &mm)
+                                 {
+                                     if (ds != nullptr)
+                                     {
+                                         ApplyDesignSystem(mm, copy);
+                                     }
+                                     else
+                                     {
+                                         ClearDesignSystem(mm);
+                                     }
+                                 },
+                                 true);
+                         }));
+    auto *edit_ds = Button(tr("Редактировать…"),
+                           [this]
+                           {
+                               Q_EMIT LibraryRequested(Qs(_ctl.GetModel().design_system));
+                           });
+    edit_ds->setEnabled(!m.design_system.empty());
+    box->addWidget(Row(edit_ds, Button(tr("Сохранить вид как…"),
+                                       [this]
+                                       {
+                                           bool          ok   = false;
+                                           const QString name = QInputDialog::getText(this, tr("Новая дизайн-система"), tr("Название:"),
+                                                                                      QLineEdit::Normal, tr("Моя тема"), &ok);
+                                           if (!ok || name.trimmed().isEmpty())
+                                           {
+                                               return;
+                                           }
+                                           const auto &mm = _ctl.GetModel();
+                                           std::string id = Slugify(Us(name), "design");
+                                           for (int i = 2; _ctl.Reg().FindDesignSystem(id, &mm.library) != nullptr; ++i)
+                                           {
+                                               id = Slugify(Us(name), "design") + "-" + std::to_string(i);
+                                           }
+                                           const DesignSystem ds = DesignFromScene(mm, _ctl.Reg().DesignOf(mm), id, Us(name.trimmed()));
+                                           _ctl.Doc().UpsertDesignSystem(ds); // checkpoints; applying joins the same undo step
+                                           ApplyDesignSystem(_ctl.Doc().Mutable(), ds);
+                                           _ctl.Changed(true);
+                                           Q_EMIT LibraryRequested(Qs(id));
+                                       })));
+    box->addWidget(Hint(tr("Дизайн-система задаёт цвета холста, состояний и сообщений, шрифт и стили по умолчанию. "
+                           "Цвета холста ниже копируются из неё и остаются редактируемыми.")));
+
     box->addWidget(Section(tr("Холст")));
     box->addWidget(Row(Labeled(tr("Фон"), ColorButton(Qs(m.scene.background),
                                                       [edit_scene](const QString &v)
@@ -428,36 +486,41 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
                                                              },
                                                              true);
                                                      })));
-    box->addWidget(
-        Row(Labeled(tr("Акцент"), OptColor(n->accent.empty() ? std::nullopt : std::optional<std::string>(n->accent), Qs(type.accent),
-                                           [=](std::optional<std::string> v)
-                                           {
-                                               edit_node(
-                                                   {},
-                                                   [&](Node &x)
-                                                   {
-                                                       x.accent = v.value_or("");
-                                                   },
-                                                   true);
-                                           })),
-            Row(Labeled(tr("Ширина"), Spin(n->w, 20, 4000, 10, 0,
-                                           [=](double v)
-                                           {
-                                               edit_node(key + ":w",
-                                                         [&](Node &x)
-                                                         {
-                                                             x.w = v;
-                                                         });
-                                           })),
-                Labeled(tr("Высота"), Spin(n->h, 20, 4000, 10, 0,
-                                           [=](double v)
-                                           {
-                                               edit_node(key + ":h",
-                                                         [&](Node &x)
-                                                         {
-                                                             x.h = v;
-                                                         });
-                                           })))));
+    box->addWidget(Row(
+        Labeled(tr("Акцент"), OptColor(n->accent.empty() ? std::nullopt : std::optional<std::string>(n->accent),
+                                       Qs(ResolveColorToken(type.accent, _ctl.Reg().DesignOf(m))),
+                                       [=](std::optional<std::string> v)
+                                       {
+                                           edit_node(
+                                               {},
+                                               [&](Node &x)
+                                               {
+                                                   x.accent = v.value_or("");
+                                               },
+                                               true);
+                                       })),
+        Row(Labeled(tr("Ширина"), Spin(n->w, 20, 4000, 10, 0,
+                                       [=](double v)
+                                       {
+                                           edit_node(key + ":w",
+                                                     [&](Node &x)
+                                                     {
+                                                         x.w = v;
+                                                     });
+                                       })),
+            Labeled(
+                tr("Высота"),
+                Spin(
+                    n->h, 20,
+                    4000, 10, 0,
+                    [=](double v)
+                    {
+                        edit_node(key + ":h",
+                                  [&](Node &x)
+                                  {
+                                      x.h = v;
+                                  });
+                    })))));
 
     box->addWidget(Section(tr("Стиль узла")));
     AddNodeStyleFields(box, n->style, type.style,

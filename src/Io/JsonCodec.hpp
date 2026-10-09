@@ -29,6 +29,7 @@ std::optional<Step>              StepFromJson(const Json &j);
 std::optional<ElementType>       ElementFromJson(const Json &j, Warnings *warnings = nullptr);
 std::optional<EffectDef>         EffectFromJson(const Json &j, Warnings *warnings = nullptr);
 std::optional<AnimationTemplate> AnimationFromJson(const Json &j, Warnings *warnings = nullptr);
+std::optional<DesignSystem>      DesignSystemFromJson(const Json &j, Warnings *warnings = nullptr);
 LibrarySet                       LibraryFromJson(const Json &j, Warnings *warnings = nullptr);
 /// Whole model without normalization (see NormalizeModel in JsonIo.hpp).
 Model ModelFromJson(const Json &j);
@@ -42,6 +43,7 @@ OrderedJson ToJson(const Step &s);
 OrderedJson ToJson(const ElementType &e);
 OrderedJson ToJson(const EffectDef &e);
 OrderedJson ToJson(const AnimationTemplate &a);
+OrderedJson ToJson(const DesignSystem &d);
 OrderedJson ToJson(const LibrarySet &l);
 OrderedJson ToJson(const Model &m);
 

@@ -6,6 +6,7 @@
 #include <cmath>
 #include <set>
 
+#include "Engine/Design.hpp"
 #include "Engine/Scene.hpp"
 #include "Engine/Templates.hpp"
 #include "Model/Document.hpp"
@@ -165,10 +166,63 @@ void PreviewWidget::ShowAnimation(const AnimationTemplate &tpl, const Registry &
     _SetScene(std::move(m), reg, true);
 }
 
+void PreviewWidget::ShowDesignSystem(const DesignSystem &ds, const Registry &reg)
+{
+    Model m;
+    m.library.Upsert(ds);
+    m.nodes.push_back(MakeNode("c", "Клиент", "client", 0, 40, 140, 64));
+    m.nodes.push_back(MakeNode("s", "Сервис", "service", 240, 40, 140, 64));
+    m.nodes.push_back(MakeNode("d", "БД", "db", 480, 34, 140, 74));
+    for (const auto &[from, to] : {std::pair{"c", "s"}, std::pair{"s", "d"}})
+    {
+        Edge e;
+        e.id    = std::string(from) + to;
+        e.from  = from;
+        e.to    = to;
+        e.label = from == std::string("c") ? "HTTP" : "SQL";
+        m.edges.push_back(e);
+    }
+    auto msg = [&m](const char *id, const char *from, const char *to, const char *variant, double start)
+    {
+        Step s;
+        s.id       = id;
+        s.type     = StepType::Message;
+        s.from     = from;
+        s.to       = to;
+        s.variant  = variant;
+        s.label    = variant;
+        s.start    = start;
+        s.duration = 900;
+        m.scenario.steps.push_back(s);
+    };
+    msg("m1", "c", "s", "request", 0);
+    msg("m2", "s", "d", "request", 900);
+    Step down;
+    down.id       = "st";
+    down.type     = StepType::State;
+    down.node_id  = "d";
+    down.state    = "down";
+    down.start    = 1800;
+    down.duration = 1400;
+    m.scenario.steps.push_back(down);
+    msg("m3", "s", "c", "error", 1900);
+    Step ok;
+    ok.id       = "ok";
+    ok.type     = StepType::State;
+    ok.node_id  = "s";
+    ok.state    = "active";
+    ok.start    = 900;
+    ok.duration = 1000;
+    m.scenario.steps.push_back(ok);
+    m.scenario.duration = 3600;
+    ApplyDesignSystem(m, ds);
+    _SetScene(std::move(m), reg, true);
+}
+
 void PreviewWidget::paintEvent(QPaintEvent * /*e*/)
 {
     QPainter p(this);
-    p.fillRect(rect(), ToQColor(palette::kCanvasBg));
+    p.fillRect(rect(), _has_scene ? ToQColor(Color::Parse(_model.scene.background, palette::kCanvasBg)) : ToQColor(palette::kCanvasBg));
     p.setPen(QPen(QColor(0x22, 0x31, 0x4f), 1));
     p.drawRect(rect().adjusted(0, 0, -1, -1));
     if (!_has_scene)

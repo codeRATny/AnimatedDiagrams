@@ -69,7 +69,7 @@ class FrameBuilder
 {
 public:
     FrameBuilder(const Model &m, double t, const SceneOptions &o, const TextMeasurer &tm, const Registry &reg)
-        : _m(m), _t(t), _o(o), _tm(tm), _reg(reg)
+        : _m(m), _t(t), _o(o), _tm(tm), _reg(reg), _ds(reg.DesignOf(m)), _family(_ds != nullptr ? _ds->font_family : std::string())
     {
     }
 
@@ -114,6 +114,23 @@ public:
     }
 
 private:
+    /// Color value or "$token" (design system), with a fallback.
+    [[nodiscard]] Color _C(std::string_view value, Color fallback) const { return Color::Parse(ResolveColorToken(value, _ds), fallback); }
+    [[nodiscard]] Font  _Font(double size, bool bold) const { return {size, bold, _family}; }
+
+    [[nodiscard]] Color _VariantColor(std::string_view variant) const
+    {
+        const Color base = MsgVariant(variant).color;
+        if (_ds != nullptr)
+        {
+            if (const auto it = _ds->variants.find(std::string(variant)); it != _ds->variants.end())
+            {
+                return _C(it->second, base);
+            }
+        }
+        return base;
+    }
+
     void _Add(Shape shape, Paint paint, std::optional<Transform> tr = std::nullopt, std::optional<Path> clip = std::nullopt)
     {
         _frame.items.push_back(Item{std::move(shape), std::move(paint), std::move(tr), std::move(clip)});
@@ -145,15 +162,14 @@ private:
             case StepType::Effect:
                 if (const EffectDef *def = _reg.FindEffect(s->effect, &_m.library); def != nullptr)
                 {
-                    const auto override_color = Color::Parse(s->color);
-                    const auto st =
-                        EvaluateEffect(*def, p, s->repeat, s->intensity, override_color.has_value() ? &*override_color : nullptr);
+                    const Color color = _C(s->color.empty() ? def->color : s->color, kCyan);
+                    const auto  st    = EvaluateEffect(*def, p, s->repeat, s->intensity, &color);
                     _fx[s->node_id].Combine(st);
                 }
                 break;
             case StepType::Message:
             {
-                const Color c = Color::Parse(s->color, MsgVariant(s->variant).color);
+                const Color c = _C(s->color, _VariantColor(s->variant));
                 if (p < 0.2)
                 {
                     soft(s->from, c);
@@ -165,7 +181,7 @@ private:
                 break;
             }
             case StepType::Action:
-                soft(s->node_id, Color::Parse(s->color, Color::Rgb(0x38bdf8)));
+                soft(s->node_id, _C(s->color, Color::Rgb(0x38bdf8)));
                 break;
             default:
                 break;
@@ -214,30 +230,31 @@ private:
         {
             return;
         }
-        const bool   selected = _o.editor_chrome && _o.selection.Is(Selection::Kind::Edge, e.id);
-        const Color  base     = Color::Parse(e.style.color.value_or(""), Color::Parse(_m.scene.edge_color, Color::Rgb(0x5f7196)));
-        const double width    = e.style.width.value_or(2.2);
-        Stroke       st       = Solid(selected ? kWhite : base, selected ? width + 0.8 : width);
-        st.dash               = DashFor(e.style.stroke_style.value_or("solid"), width);
-        st.round_cap          = e.style.stroke_style.value_or("") == "dotted";
+        const EdgeStyle style    = ResolveEdgeStyle(_m, e, _reg);
+        const bool      selected = _o.editor_chrome && _o.selection.Is(Selection::Kind::Edge, e.id);
+        const Color     base     = _C(style.color.value_or(""), Color::Parse(_m.scene.edge_color, Color::Rgb(0x5f7196)));
+        const double    width    = style.width.value_or(2.2);
+        Stroke          st       = Solid(selected ? kWhite : base, selected ? width + 0.8 : width);
+        st.dash                  = DashFor(style.stroke_style.value_or("solid"), width);
+        st.round_cap             = style.stroke_style.value_or("") == "dotted";
         _Add(PathShape{g->path}, StrokeOnly(st));
 
-        const Color arrow = e.style.color.has_value() ? base : kArrowColor;
+        const Color arrow = style.color.has_value() || _ds != nullptr ? base : kArrowColor;
         if (g->arrow_end)
         {
-            _ArrowHead(e.style.arrow_end.value_or("triangle"), g->end, g->path.EndDirection(), arrow, 1);
+            _ArrowHead(style.arrow_end.value_or("triangle"), g->end, g->path.EndDirection(), arrow, 1);
         }
         if (g->arrow_start)
         {
-            _ArrowHead(e.style.arrow_start.value_or("triangle"), g->start, g->path.StartDirection() * -1.0, arrow, 1);
+            _ArrowHead(style.arrow_start.value_or("triangle"), g->start, g->path.StartDirection() * -1.0, arrow, 1);
         }
 
         if (!e.label.empty())
         {
             const FlatPath fp(g->path);
             const Vec2     pt    = fp.PointAlong(e.label_pos.value_or(0.5), e.label_off.value_or(10));
-            const Color    color = Color::Parse(e.style.label_color.value_or(""), palette::kEdgeLabel);
-            _Text(pt, e.label, Font{e.label_size.value_or(12), false}, color, HAlign::Center, VAlign::Middle, 1,
+            const Color    color = _C(style.label_color.value_or(""), palette::kEdgeLabel);
+            _Text(pt, e.label, _Font(e.label_size.value_or(12), false), color, HAlign::Center, VAlign::Middle, 1,
                   Solid(Color::Parse(_m.scene.background, palette::kCanvasBg), 3));
         }
         if (selected)
@@ -255,11 +272,11 @@ private:
     void _DrawNode(const Node &n)
     {
         const ElementType  &type        = _reg.Element(n.type, &_m.library);
-        const NodeStyle     style       = type.style.Merged(n.style);
+        const NodeStyle     style       = ResolveNodeStyle(_m, n, _reg);
         const std::string   shape       = ResolveShape(style);
         const double        rad         = style.corner_radius.value_or(DefaultCornerRadius(shape));
         const std::string   custom      = style.custom_path.value_or("");
-        const ResolvedState st          = ResolveNodeState(StateAt(_m, n.id, _t), style);
+        const ResolvedState st          = ResolveNodeState(StateAt(_m, n.id, _t), style, _ds);
         const auto          fx_it       = _fx.find(n.id);
         const EffectState   fx          = fx_it != _fx.end() ? fx_it->second : EffectState{};
         const auto          hl_it       = _hl.find(n.id);
@@ -292,7 +309,7 @@ private:
         const bool centered = IsCenteredShape(shape);
         if (!centered)
         {
-            const Color accent = Color::Parse(n.accent, Color::Parse(type.accent, Color::Rgb(0x4f8cff)));
+            const Color accent = ResolveAccent(_m, n, _reg);
             _Add(RectShape{{n.x, n.y, 6, n.h}, 0}, FillOnly(accent, 0.9 * opacity), tr, body);
         }
         if (const Path deco = ShapeDecoration(shape, r); !deco.Empty())
@@ -300,7 +317,8 @@ private:
             _Add(PathShape{deco}, StrokeOnly(Solid(st.ring, 1.5), 0.6 * opacity), tr);
         }
 
-        const Color  text_color = Color::Parse(style.text_color.value_or(""), Color::Parse(_m.scene.text_color, Color::Rgb(0xf2f6ff)));
+        const Color  text_color = _C(style.text_color.value_or(""), Color::Parse(_m.scene.text_color, Color::Rgb(0xf2f6ff)));
+        const Color  sub_color  = _ds != nullptr && _ds->subtitle_color.has_value() ? _C(*_ds->subtitle_color, kSubtitle) : kSubtitle;
         const double title_fs   = style.font_size.value_or(15);
         // subtitle priority: step label > node subtitle (in the default state) > state label
         const std::string &sub = (st.id == "ok" && !st.custom_label && !n.subtitle.empty()) ? n.subtitle : st.label;
@@ -308,22 +326,24 @@ private:
         if (centered)
         {
             const double cy = n.y + n.h / 2;
-            _Text({n.x + n.w / 2, cy - 1}, n.label, Font{title_fs, true}, text_color, HAlign::Center, VAlign::Baseline, opacity,
+            _Text({n.x + n.w / 2, cy - 1}, n.label, _Font(title_fs, true), text_color, HAlign::Center, VAlign::Baseline, opacity,
                   std::nullopt, tr);
-            _Text({n.x + n.w / 2, cy + 15}, sub, sub_font, kSubtitle, HAlign::Center, VAlign::Baseline, 0.85 * opacity, std::nullopt, tr);
+            _Text({n.x + n.w / 2, cy + 15}, sub, sub_font, sub_color, HAlign::Center, VAlign::Baseline, 0.85 * opacity, std::nullopt, tr);
         }
         else
         {
-            const bool   icon   = style.show_icon.value_or(true) && !type.icon.empty();
-            const double text_x = n.x + (icon ? 40 : 16);
+            const bool icon = style.show_icon.value_or(true) && !type.icon.empty();
+            // the title starts after the icon (icons may be several characters, e.g. "PG")
+            const double icon_w = icon ? std::max(16.0, _tm.Width(type.icon, _Font(16, false))) : 0;
+            const double text_x = n.x + (icon ? 18 + icon_w + 7 : 16);
             if (icon)
             {
-                _Text({n.x + 18, n.y + n.h / 2 + 6}, type.icon, Font{16, false}, Color::Rgb(0xe6eefc), HAlign::Left, VAlign::Baseline,
-                      opacity, std::nullopt, tr);
+                _Text({n.x + 18, n.y + n.h / 2 + 6}, type.icon, _Font(16, false), _ds != nullptr ? text_color : Color::Rgb(0xe6eefc),
+                      HAlign::Left, VAlign::Baseline, opacity, std::nullopt, tr);
             }
-            _Text({text_x, n.y + n.h / 2 - 4}, n.label, Font{title_fs, true}, text_color, HAlign::Left, VAlign::Baseline, opacity,
+            _Text({text_x, n.y + n.h / 2 - 4}, n.label, _Font(title_fs, true), text_color, HAlign::Left, VAlign::Baseline, opacity,
                   std::nullopt, tr);
-            _Text({text_x, n.y + n.h / 2 + 14}, sub, sub_font, kSubtitle, HAlign::Left, VAlign::Baseline, 0.85 * opacity, std::nullopt, tr);
+            _Text({text_x, n.y + n.h / 2 + 14}, sub, sub_font, sub_color, HAlign::Left, VAlign::Baseline, 0.85 * opacity, std::nullopt, tr);
         }
 
         for (const auto &port : n.ports)
@@ -406,7 +426,7 @@ private:
             return;
         }
         const auto &variant = MsgVariant(s.variant);
-        const Color color   = Color::Parse(s.color, variant.color);
+        const Color color   = _C(s.color, _VariantColor(s.variant));
 
         const Edge *edge    = !s.edge_id.empty() ? _m.FindEdge(s.edge_id) : _m.EdgeBetween(s.from, s.to);
         const auto  g       = edge != nullptr ? ComputeEdgeGeometry(_m, *edge, _reg) : std::nullopt;
@@ -463,8 +483,8 @@ private:
 
         if (lead && !s.label.empty())
         {
-            const Font   font{11, true};
-            const double tw = _tm.Width(s.label, font) + 14;
+            const Font   font = _Font(11, true);
+            const double tw   = _tm.Width(s.label, font) + 14;
             const Vec2   o{lead_pos.x, lead_pos.y - 16 - (s.packet_size - 1) * 8};
             _Add(RectShape{{o.x - tw / 2, o.y - 13, tw, 18}, 5}, Paint{kDark, Solid(color, 1), 0.82, PaintEffect::None});
             _Text(o, s.label, font, color, HAlign::Center);
@@ -490,17 +510,17 @@ private:
         _Add(EllipseShape{c, kR, kR}, StrokeOnly(Solid(Color::Rgb(0x334155), 4)));
         if (p < 1)
         {
-            Stroke arc    = Solid(Color::Parse(s.color, danger ? Color::Rgb(0xef4444) : Color::Rgb(0xf59e0b)), 4);
+            Stroke arc    = Solid(_C(s.color, danger ? Color::Rgb(0xef4444) : Color::Rgb(0xf59e0b)), 4);
             arc.round_cap = true;
             _Add(ArcShape{c, kR, -90, 360 * (1 - p)}, StrokeOnly(arc));
         }
         const std::string label = std::format("{}{}", static_cast<int64_t>(std::ceil(remaining)), TimeUnit(s.unit).short_label);
         const auto        len   = Utf8Length(label);
         const double      fs    = len >= 5 ? 10 : len == 4 ? 12 : 15; // longer labels get smaller
-        _Text({c.x, c.y + 5}, label, Font{fs, true}, danger ? Color::Rgb(0xfca5a5) : Color::Rgb(0xfcd34d), HAlign::Center);
+        _Text({c.x, c.y + 5}, label, _Font(fs, true), danger ? Color::Rgb(0xfca5a5) : Color::Rgb(0xfcd34d), HAlign::Center);
         if (!s.label.empty())
         {
-            _Text({c.x, c.y + kR + 15}, s.label, Font{10, false}, Color::Rgb(0xcbd5e1), HAlign::Center);
+            _Text({c.x, c.y + kR + 15}, s.label, _Font(10, false), Color::Rgb(0xcbd5e1), HAlign::Center);
         }
     }
 
@@ -509,11 +529,11 @@ private:
     // -----------------------------------------------------------------------
     void _DrawNote(const Step &s, double p)
     {
-        const double       fade = p < 0.12 ? p / 0.12 : p > 0.88 ? (1 - p) / 0.12 : 1;
-        const std::string &txt  = s.text.empty() ? kNoteDefault : s.text;
-        const Font         font{12.5, false};
+        const double       fade  = p < 0.12 ? p / 0.12 : p > 0.88 ? (1 - p) / 0.12 : 1;
+        const std::string &txt   = s.text.empty() ? kNoteDefault : s.text;
+        const Font         font  = _Font(12.5, false);
         const double       w     = _tm.Width(txt, font) + 28;
-        const Color        color = Color::Parse(s.color, Color::Rgb(0xfbbf24));
+        const Color        color = _C(s.color, Color::Rgb(0xfbbf24));
         const Rect         r{s.x, s.y, w, 30};
         const Path         card = Path::RoundedRect(r.x, r.y, r.w, r.h, 8);
         _Add(RectShape{r, 8}, Paint{Color::Rgb(0x111a2e), Solid(color, 1.5), fade, PaintEffect::Shadow});
@@ -531,10 +551,10 @@ private:
         {
             return;
         }
-        const Color        color = Color::Parse(s.color, Color::Rgb(0x38bdf8));
+        const Color        color = _C(s.color, Color::Rgb(0x38bdf8));
         const std::string &txt   = s.text.empty() ? kActionDefault : s.text;
-        const Font         font{12, true};
-        const double       tw   = _tm.Width(txt, font);
+        const Font         font  = _Font(12, true);
+        const double       tw    = _tm.Width(txt, font);
         constexpr double   kPad = 12, kSr = 7, kGapX = 7;
         const double       w = kPad + kSr * 2 + kGapX + tw + kPad;
         const Vec2         c{n->x + n->w / 2, n->y + n->h + 18};
@@ -559,7 +579,7 @@ private:
         {
             return;
         }
-        const Color color = Color::Parse(s.color, Color::Rgb(0xf87171));
+        const Color color = _C(s.color, Color::Rgb(0xf87171));
         const auto &anim  = LinkAnim(s.anim);
         Stroke      st    = Solid(color, 4);
         st.round_cap      = true;
@@ -586,11 +606,11 @@ private:
         }
         const double   fs = s.label_size.value_or(12);
         const FlatPath fp(g->path);
-        const Vec2     pt = fp.PointAlong(s.label_pos.value_or(0.5), s.label_off.value_or(22));
-        const Font     font{fs, true};
-        const double   tw = _tm.Width(s.text, font);
-        const double   h  = std::max(24.0, fs + 12);
-        const double   w  = tw + std::max(12.0, fs) * 2;
+        const Vec2     pt   = fp.PointAlong(s.label_pos.value_or(0.5), s.label_off.value_or(22));
+        const Font     font = _Font(fs, true);
+        const double   tw   = _tm.Width(s.text, font);
+        const double   h    = std::max(24.0, fs + 12);
+        const double   w    = tw + std::max(12.0, fs) * 2;
         _Add(RectShape{{pt.x - w / 2, pt.y - h / 2, w, h}, h / 2}, Paint{kDark, Solid(color, 1.2), 0.95, PaintEffect::Shadow});
         _Text(pt, s.text, font, color, HAlign::Center, VAlign::Middle);
     }
@@ -603,6 +623,8 @@ private:
     const SceneOptions                             &_o;
     const TextMeasurer                             &_tm;
     const Registry                                 &_reg;
+    const DesignSystem                             *_ds;
+    std::string                                     _family;
     std::map<std::string, EffectState, std::less<>> _fx;
     std::map<std::string, Highlight, std::less<>>   _hl;
     Frame                                           _frame;
@@ -617,7 +639,9 @@ Frame BuildFrame(const Model &m, double t, const SceneOptions &opt, const TextMe
 
 Rect ContentBounds(const Model &m, const TextMeasurer &tm, const Registry &reg)
 {
-    Bounds b;
+    const DesignSystem *ds     = reg.DesignOf(m);
+    const std::string   family = ds != nullptr ? ds->font_family : std::string();
+    Bounds              b;
     for (const auto &n : m.nodes)
     {
         b.Add(n.Bounds());
@@ -633,14 +657,14 @@ Rect ContentBounds(const Model &m, const TextMeasurer &tm, const Registry &reg)
     {
         if (s.type == StepType::Note)
         {
-            const double w = tm.Width(s.text.empty() ? "заметка" : s.text, Font{12.5, false}) + 28;
+            const double w = tm.Width(s.text.empty() ? "заметка" : s.text, Font(12.5, false, family)) + 28;
             b.Add(Rect{s.x, s.y, w, 30});
         }
         else if (s.type == StepType::Action)
         {
             if (const Node *n = m.FindNode(s.node_id); n != nullptr)
             {
-                const double w = tm.Width(s.text, Font{12, true}) + 50;
+                const double w = tm.Width(s.text, Font(12, true, family)) + 50;
                 b.Add(Rect{n->Center().x - w / 2, n->y + n->h + 5, w, 26});
             }
         }
@@ -652,7 +676,7 @@ Rect ContentBounds(const Model &m, const TextMeasurer &tm, const Registry &reg)
             {
                 const Vec2   pt = FlatPath(g->path).PointAlong(s.label_pos.value_or(0.5), s.label_off.value_or(22));
                 const double fs = s.label_size.value_or(12);
-                const double w  = tm.Width(s.text, Font{fs, true}) + std::max(12.0, fs) * 2;
+                const double w  = tm.Width(s.text, Font(fs, true, family)) + std::max(12.0, fs) * 2;
                 const double h  = std::max(24.0, fs + 12);
                 b.Add(Rect{pt.x - w / 2, pt.y - h / 2, w, h});
             }

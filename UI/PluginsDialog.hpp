@@ -13,14 +13,14 @@ class QTreeWidget;
 namespace ad::ui
 {
 
-class Controller;
+class AppContext;
 
 class PluginsDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit PluginsDialog(Controller &ctl, QWidget *parent = nullptr);
+    explicit PluginsDialog(AppContext &ctx, QWidget *parent = nullptr);
 
 private:
     void _Refresh();
@@ -28,7 +28,7 @@ private:
     void _Uninstall();
     void _UpdateButtons();
 
-    Controller  &_ctl;
+    AppContext  &_ctx;
     QTreeWidget *_tree             = nullptr;
     QLabel      *_details          = nullptr;
     QLabel      *_errors           = nullptr;

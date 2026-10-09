@@ -41,10 +41,17 @@ struct ResolvedState
 
 /// State preset + step overrides (label, accent color, font size). The default state
 /// uses the node style fill / stroke when they are set.
-ResolvedState ResolveNodeState(const Step *step, const NodeStyle &style = {});
+ResolvedState ResolveNodeState(const Step *step, const NodeStyle &style = {}, const DesignSystem *ds = nullptr);
 
-/// Effective style of a node: element type style overridden by the node style.
+/// Effective style of a node: design system base < element type < design system
+/// element override < node style. Color tokens ("$name") are not resolved here.
 NodeStyle ResolveNodeStyle(const Model &m, const Node &n, const Registry &reg = Registry::Default());
+
+/// Accent stripe color: node > design system element override > element type (tokens resolved).
+Color ResolveAccent(const Model &m, const Node &n, const Registry &reg = Registry::Default());
+
+/// Effective edge style: design system defaults < edge style.
+EdgeStyle ResolveEdgeStyle(const Model &m, const Edge &e, const Registry &reg = Registry::Default());
 
 /// Shape id of a node after style resolution ("rounded" by default).
 std::string ResolveShape(const NodeStyle &style);

@@ -44,8 +44,12 @@ public:
     [[nodiscard]] Rect VisibleWorldRect() const;
     void               CancelInteraction();
 
+    [[nodiscard]] Controller &GetController() const { return _ctl; }
+
 Q_SIGNALS:
     void ToolChanged(ad::ui::CanvasWidget::Tool tool);
+    /// Files dropped on the canvas (opened by the main window).
+    void FilesDropped(const QStringList &paths);
 
 protected:
     void paintEvent(QPaintEvent *e) override;
@@ -54,6 +58,9 @@ protected:
     void mouseReleaseEvent(QMouseEvent *e) override;
     void mouseDoubleClickEvent(QMouseEvent *e) override;
     void wheelEvent(QWheelEvent *e) override;
+    void dragEnterEvent(QDragEnterEvent *e) override;
+    void dragMoveEvent(QDragMoveEvent *e) override;
+    void dropEvent(QDropEvent *e) override;
 
 private:
     enum class Drag

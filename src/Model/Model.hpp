@@ -52,18 +52,6 @@ struct Node
     friend bool               operator==(const Node &, const Node &) = default;
 };
 
-struct EdgeStyle
-{
-    std::optional<std::string> color;
-    std::optional<double>      width;
-    std::optional<std::string> stroke_style; // solid | dashed | dotted
-    std::optional<std::string> arrow_end;    // triangle | open | diamond | circle | none
-    std::optional<std::string> arrow_start;
-    std::optional<std::string> routing; // curved | straight | orthogonal
-    std::optional<std::string> label_color;
-    friend bool                operator==(const EdgeStyle &, const EdgeStyle &) = default;
-};
-
 struct Edge
 {
     std::string           id;
@@ -125,7 +113,8 @@ struct Model
     std::vector<Node> nodes;
     std::vector<Edge> edges;
     Scenario          scenario;
-    LibrarySet        library; // definitions created in / embedded into this document
+    LibrarySet        library;       // definitions created in / embedded into this document
+    std::string       design_system; // active design system id (empty -- none)
 
     [[nodiscard]] const Node *FindNode(std::string_view id) const;
     [[nodiscard]] Node       *FindNode(std::string_view id);

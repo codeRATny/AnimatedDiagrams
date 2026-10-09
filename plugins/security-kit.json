@@ -1,0 +1,726 @@
+{
+  "format": "animated-diagrams-plugin",
+  "formatVersion": 1,
+  "id": "animated-diagrams.security-kit",
+  "name": "Security kit",
+  "version": "1.0.0",
+  "author": "Animated Diagrams",
+  "description": "Демо-плагин: IdP, WAF, хранилище секретов, токены; эффекты «отказ» и «проверено»; сценарии OAuth 2.0, проверки JWT и блокировки атаки; дизайн-система «Терминал».",
+  "elements": [
+    {
+      "id": "idp",
+      "label": "Identity provider",
+      "icon": "ID",
+      "category": "Безопасность",
+      "description": "Keycloak / Auth0 / OIDC-провайдер",
+      "accent": "$secondary",
+      "width": 160.0,
+      "height": 66.0,
+      "style": {
+        "shape": "rounded",
+        "fill": "$surface",
+        "stroke": "$secondary"
+      }
+    },
+    {
+      "id": "policy",
+      "label": "Policy engine",
+      "icon": "PDP",
+      "category": "Безопасность",
+      "description": "OPA / решения о доступе",
+      "accent": "$info",
+      "width": 150.0,
+      "height": 62.0,
+      "style": {
+        "shape": "rect",
+        "fill": "$surface",
+        "stroke": "$info"
+      }
+    },
+    {
+      "id": "vault",
+      "label": "Хранилище секретов",
+      "icon": "V",
+      "category": "Безопасность",
+      "description": "HashiCorp Vault / KMS",
+      "accent": "#ffd814",
+      "width": 160.0,
+      "height": 66.0,
+      "style": {
+        "shape": "hexagon",
+        "fill": "$surface",
+        "stroke": "#ffd814"
+      }
+    },
+    {
+      "id": "waf",
+      "label": "WAF",
+      "icon": "W",
+      "category": "Безопасность",
+      "description": "Web application firewall (свой SVG-контур щита)",
+      "accent": "$danger",
+      "width": 120.0,
+      "height": 90.0,
+      "style": {
+        "shape": "custom",
+        "customPath": "M0.5 0 L1 0.15 L0.92 0.7 L0.5 1 L0.08 0.7 L0 0.15 Z",
+        "fill": "$surface",
+        "stroke": "$danger"
+      }
+    },
+    {
+      "id": "token",
+      "label": "Токен",
+      "icon": "T",
+      "category": "Безопасность",
+      "description": "JWT / access token",
+      "accent": "$warning",
+      "width": 120.0,
+      "height": 52.0,
+      "style": {
+        "shape": "ellipse",
+        "fill": "$surface-alt",
+        "stroke": "$warning"
+      }
+    },
+    {
+      "id": "ca",
+      "label": "Удостоверяющий центр",
+      "icon": "CA",
+      "category": "Безопасность",
+      "description": "PKI, выпуск сертификатов",
+      "accent": "$success",
+      "width": 150.0,
+      "height": 72.0,
+      "style": {
+        "shape": "document",
+        "fill": "$surface",
+        "stroke": "$success"
+      }
+    },
+    {
+      "id": "attacker",
+      "label": "Злоумышленник",
+      "icon": "!",
+      "category": "Безопасность",
+      "description": "Источник атаки",
+      "accent": "$danger",
+      "width": 140.0,
+      "height": 70.0,
+      "style": {
+        "shape": "ellipse",
+        "fill": "$surface-alt",
+        "stroke": "$danger",
+        "strokeStyle": "dashed"
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "denied",
+      "label": "Отказ",
+      "category": "Безопасность",
+      "description": "Красная вспышка и встряхивание — доступ запрещён",
+      "color": "$danger",
+      "repeat": 1,
+      "tracks": [
+        {
+          "property": "tint",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.15,
+              "value": 0.7,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 0.0,
+              "easing": "ease-in"
+            }
+          ]
+        },
+        {
+          "property": "offset_x",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.1,
+              "value": -8.0
+            },
+            {
+              "t": 0.2,
+              "value": 8.0
+            },
+            {
+              "t": 0.3,
+              "value": -6.0
+            },
+            {
+              "t": 0.4,
+              "value": 6.0
+            },
+            {
+              "t": 0.5,
+              "value": -3.0
+            },
+            {
+              "t": 0.6,
+              "value": 0.0
+            },
+            {
+              "t": 1.0,
+              "value": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "verified",
+      "label": "Проверено",
+      "category": "Безопасность",
+      "description": "Зелёное свечение с отскоком — проверка пройдена",
+      "color": "$success",
+      "repeat": 1,
+      "tracks": [
+        {
+          "property": "scale",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 1.0
+            },
+            {
+              "t": 0.25,
+              "value": 1.1,
+              "easing": "back-out"
+            },
+            {
+              "t": 0.6,
+              "value": 1.0,
+              "easing": "ease-in-out"
+            },
+            {
+              "t": 1.0,
+              "value": 1.0
+            }
+          ]
+        },
+        {
+          "property": "glow",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.25,
+              "value": 1.0,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 0.0,
+              "easing": "ease-in"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "locked",
+      "label": "Блокировка",
+      "category": "Безопасность",
+      "description": "Узел «сжимается» и тускнеет — заблокирован",
+      "color": "$warning",
+      "repeat": 1,
+      "tracks": [
+        {
+          "property": "scale",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 1.0
+            },
+            {
+              "t": 0.3,
+              "value": 0.88,
+              "easing": "ease-in"
+            },
+            {
+              "t": 1.0,
+              "value": 0.92,
+              "easing": "ease-out"
+            }
+          ]
+        },
+        {
+          "property": "opacity",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 1.0
+            },
+            {
+              "t": 1.0,
+              "value": 0.55,
+              "easing": "ease-out"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan",
+      "label": "Сканирование",
+      "category": "Безопасность",
+      "description": "Ритмичная подсветка — идёт анализ трафика",
+      "color": "$info",
+      "repeat": 3,
+      "tracks": [
+        {
+          "property": "glow",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.1
+            },
+            {
+              "t": 0.5,
+              "value": 0.9,
+              "easing": "ease-in-out"
+            },
+            {
+              "t": 1.0,
+              "value": 0.1,
+              "easing": "ease-in-out"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "id": "oauth-code-flow",
+      "label": "OAuth 2.0: authorization code",
+      "category": "Безопасность",
+      "description": "Вход пользователя через IdP, обмен кода на токен и вызов API",
+      "roles": [
+        {
+          "id": "user",
+          "label": "Пользователь"
+        },
+        {
+          "id": "client",
+          "label": "Приложение"
+        },
+        {
+          "id": "idp",
+          "label": "IdP"
+        },
+        {
+          "id": "api",
+          "label": "API"
+        }
+      ],
+      "steps": [
+        {
+          "id": "t1",
+          "type": "message",
+          "start": 0.0,
+          "duration": 700.0,
+          "from": "user",
+          "to": "client",
+          "variant": "request",
+          "label": "войти"
+        },
+        {
+          "id": "t2",
+          "type": "message",
+          "start": 700.0,
+          "duration": 700.0,
+          "from": "client",
+          "to": "user",
+          "variant": "response",
+          "label": "redirect"
+        },
+        {
+          "id": "t3",
+          "type": "message",
+          "start": 1400.0,
+          "duration": 900.0,
+          "from": "user",
+          "to": "idp",
+          "variant": "request",
+          "label": "логин + пароль"
+        },
+        {
+          "id": "t4",
+          "type": "effect",
+          "start": 2300.0,
+          "duration": 700.0,
+          "nodeId": "idp",
+          "effect": "verified"
+        },
+        {
+          "id": "t5",
+          "type": "message",
+          "start": 3000.0,
+          "duration": 800.0,
+          "from": "idp",
+          "to": "client",
+          "variant": "response",
+          "label": "code"
+        },
+        {
+          "id": "t6",
+          "type": "message",
+          "start": 3800.0,
+          "duration": 800.0,
+          "from": "client",
+          "to": "idp",
+          "variant": "request",
+          "label": "code + secret"
+        },
+        {
+          "id": "t7",
+          "type": "message",
+          "start": 4600.0,
+          "duration": 900.0,
+          "from": "idp",
+          "to": "client",
+          "variant": "success",
+          "label": "access token",
+          "packet": "envelope"
+        },
+        {
+          "id": "t8",
+          "type": "message",
+          "start": 5500.0,
+          "duration": 800.0,
+          "from": "client",
+          "to": "api",
+          "variant": "request",
+          "label": "Bearer …"
+        },
+        {
+          "id": "t9",
+          "type": "action",
+          "start": 6300.0,
+          "duration": 700.0,
+          "nodeId": "api",
+          "text": "проверка токена"
+        },
+        {
+          "id": "t10",
+          "type": "message",
+          "start": 7000.0,
+          "duration": 800.0,
+          "from": "api",
+          "to": "client",
+          "variant": "success",
+          "label": "200 OK"
+        }
+      ]
+    },
+    {
+      "id": "jwt-validation",
+      "label": "Проверка JWT на шлюзе",
+      "category": "Безопасность",
+      "description": "Шлюз проверяет подпись токена по ключам IdP; просроченный токен отклоняется",
+      "roles": [
+        {
+          "id": "client",
+          "label": "Клиент"
+        },
+        {
+          "id": "gateway",
+          "label": "Шлюз"
+        },
+        {
+          "id": "idp",
+          "label": "IdP (JWKS)"
+        },
+        {
+          "id": "service",
+          "label": "Сервис"
+        }
+      ],
+      "steps": [
+        {
+          "id": "t1",
+          "type": "message",
+          "start": 0.0,
+          "duration": 800.0,
+          "from": "client",
+          "to": "gateway",
+          "variant": "request",
+          "label": "JWT"
+        },
+        {
+          "id": "t2",
+          "type": "message",
+          "start": 800.0,
+          "duration": 700.0,
+          "from": "gateway",
+          "to": "idp",
+          "variant": "request",
+          "label": "JWKS"
+        },
+        {
+          "id": "t3",
+          "type": "message",
+          "start": 1500.0,
+          "duration": 700.0,
+          "from": "idp",
+          "to": "gateway",
+          "variant": "response",
+          "label": "keys"
+        },
+        {
+          "id": "t4",
+          "type": "effect",
+          "start": 2200.0,
+          "duration": 600.0,
+          "nodeId": "gateway",
+          "effect": "verified"
+        },
+        {
+          "id": "t5",
+          "type": "message",
+          "start": 2800.0,
+          "duration": 800.0,
+          "from": "gateway",
+          "to": "service",
+          "variant": "request",
+          "label": "user=42"
+        },
+        {
+          "id": "t6",
+          "type": "message",
+          "start": 3600.0,
+          "duration": 900.0,
+          "from": "service",
+          "to": "client",
+          "variant": "success",
+          "label": "200"
+        },
+        {
+          "id": "t7",
+          "type": "message",
+          "start": 4700.0,
+          "duration": 800.0,
+          "from": "client",
+          "to": "gateway",
+          "variant": "request",
+          "label": "JWT (exp)"
+        },
+        {
+          "id": "t8",
+          "type": "effect",
+          "start": 5500.0,
+          "duration": 700.0,
+          "nodeId": "gateway",
+          "effect": "denied"
+        },
+        {
+          "id": "t9",
+          "type": "message",
+          "start": 5700.0,
+          "duration": 800.0,
+          "from": "gateway",
+          "to": "client",
+          "variant": "error",
+          "label": "401"
+        }
+      ]
+    },
+    {
+      "id": "block-attack",
+      "label": "Блокировка атаки WAF",
+      "category": "Безопасность",
+      "description": "Флуд с одного адреса упирается в WAF и блокируется; легитимные запросы проходят",
+      "roles": [
+        {
+          "id": "attacker",
+          "label": "Злоумышленник"
+        },
+        {
+          "id": "user",
+          "label": "Пользователь"
+        },
+        {
+          "id": "waf",
+          "label": "WAF"
+        },
+        {
+          "id": "api",
+          "label": "API"
+        }
+      ],
+      "steps": [
+        {
+          "id": "t1",
+          "type": "message",
+          "start": 0.0,
+          "duration": 700.0,
+          "from": "user",
+          "to": "waf",
+          "variant": "request",
+          "label": "GET"
+        },
+        {
+          "id": "t2",
+          "type": "message",
+          "start": 700.0,
+          "duration": 700.0,
+          "from": "waf",
+          "to": "api",
+          "variant": "request",
+          "label": "GET"
+        },
+        {
+          "id": "t3",
+          "type": "message",
+          "start": 600.0,
+          "duration": 1600.0,
+          "from": "attacker",
+          "to": "waf",
+          "variant": "error",
+          "label": "flood",
+          "packet": "dot",
+          "packetCount": 8
+        },
+        {
+          "id": "t4",
+          "type": "effect",
+          "start": 1000.0,
+          "duration": 1800.0,
+          "nodeId": "waf",
+          "effect": "scan"
+        },
+        {
+          "id": "t5",
+          "type": "message",
+          "start": 2400.0,
+          "duration": 800.0,
+          "from": "waf",
+          "to": "attacker",
+          "variant": "error",
+          "label": "429"
+        },
+        {
+          "id": "t6",
+          "type": "effect",
+          "start": 3200.0,
+          "duration": 900.0,
+          "nodeId": "attacker",
+          "effect": "locked"
+        },
+        {
+          "id": "t7",
+          "type": "state",
+          "start": 3200.0,
+          "duration": 2600.0,
+          "nodeId": "attacker",
+          "state": "disabled",
+          "label": "заблокирован"
+        },
+        {
+          "id": "t8",
+          "type": "message",
+          "start": 1500.0,
+          "duration": 800.0,
+          "from": "api",
+          "to": "user",
+          "variant": "success",
+          "label": "200"
+        }
+      ]
+    }
+  ],
+  "designSystems": [
+    {
+      "id": "terminal",
+      "label": "Терминал",
+      "category": "Безопасность",
+      "description": "Зелёный на чёрном, моноширинный шрифт, прямые связи",
+      "background": "#070b08",
+      "edgeColor": "#2f8f4e",
+      "textColor": "#c4f5cf",
+      "grid": false,
+      "fontFamily": "DejaVu Sans Mono",
+      "subtitleColor": "#7fcf95",
+      "colors": {
+        "accent": "#39ff88",
+        "border": "#2f8f4e",
+        "danger": "#ff4d6d",
+        "info": "#7ee8fa",
+        "muted": "#7fcf95",
+        "primary": "#39ff88",
+        "secondary": "#7ee8fa",
+        "success": "#39ff88",
+        "surface": "#0d1a10",
+        "surface-alt": "#08120b",
+        "text": "#c4f5cf",
+        "warning": "#f2ff5c"
+      },
+      "states": {
+        "active": {
+          "fill": "#0f2e1a",
+          "ring": "#39ff88"
+        },
+        "busy": {
+          "fill": "#2a2d0d",
+          "ring": "#f2ff5c"
+        },
+        "disabled": {
+          "fill": "#0a0f0b",
+          "ring": "#3d5243"
+        },
+        "down": {
+          "fill": "#2d0d14",
+          "ring": "#ff4d6d"
+        },
+        "ok": {
+          "fill": "#0d1a10",
+          "ring": "#2f8f4e"
+        },
+        "success": {
+          "fill": "#0f2e1a",
+          "ring": "#39ff88"
+        },
+        "warn": {
+          "fill": "#2d200d",
+          "ring": "#ffb84d"
+        }
+      },
+      "variants": {
+        "error": "#ff4d6d",
+        "event": "#c792ea",
+        "request": "#7ee8fa",
+        "response": "#39ff88",
+        "retry": "#f2ff5c",
+        "success": "#39ff88"
+      },
+      "node": {
+        "strokeWidth": 1.5,
+        "cornerRadius": 0.0,
+        "shadow": false
+      },
+      "edge": {
+        "arrowEnd": "open",
+        "routing": "straight",
+        "labelColor": "#7fcf95"
+      }
+    }
+  ]
+}

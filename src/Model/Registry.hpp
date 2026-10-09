@@ -46,6 +46,9 @@ public:
     [[nodiscard]] const ElementType       *FindElement(std::string_view id, const LibrarySet *doc = nullptr) const;
     [[nodiscard]] const EffectDef         *FindEffect(std::string_view id, const LibrarySet *doc = nullptr) const;
     [[nodiscard]] const AnimationTemplate *FindAnimation(std::string_view id, const LibrarySet *doc = nullptr) const;
+    [[nodiscard]] const DesignSystem      *FindDesignSystem(std::string_view id, const LibrarySet *doc = nullptr) const;
+    /// Design system of the model (nullptr when none is set or it is unknown).
+    [[nodiscard]] const DesignSystem *DesignOf(const Model &m) const;
     /// Never null: falls back to the built-in "service" element type.
     [[nodiscard]] const ElementType &Element(std::string_view id, const LibrarySet *doc = nullptr) const;
 
@@ -54,8 +57,9 @@ public:
     [[nodiscard]] std::vector<RegistryEntry<ElementType>>       Elements(const LibrarySet *doc = nullptr) const;
     [[nodiscard]] std::vector<RegistryEntry<EffectDef>>         Effects(const LibrarySet *doc = nullptr) const;
     [[nodiscard]] std::vector<RegistryEntry<AnimationTemplate>> Animations(const LibrarySet *doc = nullptr) const;
+    [[nodiscard]] std::vector<RegistryEntry<DesignSystem>>      DesignSystems(const LibrarySet *doc = nullptr) const;
 
-    /// Copy non-built-in definitions referenced by the model (node types, effects)
+    /// Copy non-built-in definitions referenced by the model (node types, effects, design system)
     /// into its library so the document renders the same without the plugins.
     /// Returns the number of copied definitions.
     int EmbedUsedDefinitions(Model &model) const;

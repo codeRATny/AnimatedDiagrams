@@ -25,6 +25,7 @@ public:
     void ShowElement(const ElementType &type, const Registry &reg);
     void ShowEffect(const EffectDef &effect, const Registry &reg);
     void ShowAnimation(const AnimationTemplate &tpl, const Registry &reg);
+    void ShowDesignSystem(const DesignSystem &ds, const Registry &reg);
     void Clear();
 
     /// Scene with one node per role (used by the preview and by tests).

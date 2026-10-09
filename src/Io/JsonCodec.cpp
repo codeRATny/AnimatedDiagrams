@@ -343,6 +343,58 @@ std::optional<AnimationTemplate> AnimationFromJson(const Json &j, Warnings *warn
     return a;
 }
 
+std::optional<DesignSystem> DesignSystemFromJson(const Json &j, Warnings *warnings)
+{
+    if (!j.is_object() || Str(j, "id").empty())
+    {
+        Warn(warnings, "design system without id skipped");
+        return std::nullopt;
+    }
+    DesignSystem d;
+    d.id             = Str(j, "id");
+    d.label          = Str(j, "label", d.id);
+    d.category       = Str(j, "category", d.category);
+    d.description    = Str(j, "description");
+    d.background     = OptStr(j, "background");
+    d.edge_color     = OptStr(j, "edgeColor");
+    d.text_color     = OptStr(j, "textColor");
+    d.grid           = OptBool(j, "grid");
+    d.grid_size      = OptNum(j, "gridSize");
+    d.font_family    = Str(j, "fontFamily");
+    d.subtitle_color = OptStr(j, "subtitleColor");
+    for (const auto &[k, v] : Obj(j, "colors").items())
+    {
+        if (v.is_string())
+        {
+            d.colors[k] = v.get<std::string>();
+        }
+    }
+    for (const auto &[k, v] : Obj(j, "states").items())
+    {
+        if (v.is_object())
+        {
+            d.states[k] = StateColors{OptStr(v, "fill"), OptStr(v, "ring")};
+        }
+    }
+    for (const auto &[k, v] : Obj(j, "variants").items())
+    {
+        if (v.is_string())
+        {
+            d.variants[k] = v.get<std::string>();
+        }
+    }
+    d.node = NodeStyleFromJson(Obj(j, "node"));
+    d.edge = EdgeStyleFromJson(Obj(j, "edge"));
+    for (const auto &[k, v] : Obj(j, "elements").items())
+    {
+        if (v.is_object())
+        {
+            d.elements[k] = ElementOverride{OptStr(v, "accent"), NodeStyleFromJson(Obj(v, "style"))};
+        }
+    }
+    return d;
+}
+
 LibrarySet LibraryFromJson(const Json &j, Warnings *warnings)
 {
     LibrarySet set;
@@ -367,6 +419,13 @@ LibrarySet LibraryFromJson(const Json &j, Warnings *warnings)
     for (const auto &a : Arr(j, "animations"))
     {
         if (auto v = AnimationFromJson(a, warnings); v.has_value())
+        {
+            set.Upsert(*v);
+        }
+    }
+    for (const auto &d : Arr(j, "designSystems"))
+    {
+        if (auto v = DesignSystemFromJson(d, warnings); v.has_value())
         {
             set.Upsert(*v);
         }
@@ -413,7 +472,8 @@ Model ModelFromJson(const Json &j)
             m.scenario.steps.push_back(std::move(*step));
         }
     }
-    m.library = LibraryFromJson(Obj(j, "library"));
+    m.library       = LibraryFromJson(Obj(j, "library"));
+    m.design_system = Str(j, "designSystem");
     return m;
 }
 
@@ -644,6 +704,73 @@ OrderedJson ToJson(const AnimationTemplate &a)
     return j;
 }
 
+OrderedJson ToJson(const DesignSystem &d)
+{
+    OrderedJson j{{"id", d.id}, {"label", d.label}, {"category", d.category}};
+    PutStr(j, "description", d.description);
+    Put(j, "background", d.background);
+    Put(j, "edgeColor", d.edge_color);
+    Put(j, "textColor", d.text_color);
+    Put(j, "grid", d.grid);
+    Put(j, "gridSize", d.grid_size);
+    PutStr(j, "fontFamily", d.font_family);
+    Put(j, "subtitleColor", d.subtitle_color);
+    if (!d.colors.empty())
+    {
+        OrderedJson colors = OrderedJson::object();
+        for (const auto &[k, v] : d.colors)
+        {
+            colors[k] = v;
+        }
+        j["colors"] = std::move(colors);
+    }
+    if (!d.states.empty())
+    {
+        OrderedJson states = OrderedJson::object();
+        for (const auto &[k, v] : d.states)
+        {
+            OrderedJson sj = OrderedJson::object();
+            Put(sj, "fill", v.fill);
+            Put(sj, "ring", v.ring);
+            states[k] = std::move(sj);
+        }
+        j["states"] = std::move(states);
+    }
+    if (!d.variants.empty())
+    {
+        OrderedJson variants = OrderedJson::object();
+        for (const auto &[k, v] : d.variants)
+        {
+            variants[k] = v;
+        }
+        j["variants"] = std::move(variants);
+    }
+    if (!d.node.Empty())
+    {
+        j["node"] = ToJson(d.node);
+    }
+    if (d.edge != EdgeStyle{})
+    {
+        j["edge"] = ToJson(d.edge);
+    }
+    if (!d.elements.empty())
+    {
+        OrderedJson elements = OrderedJson::object();
+        for (const auto &[k, v] : d.elements)
+        {
+            OrderedJson ej = OrderedJson::object();
+            Put(ej, "accent", v.accent);
+            if (!v.style.Empty())
+            {
+                ej["style"] = ToJson(v.style);
+            }
+            elements[k] = std::move(ej);
+        }
+        j["elements"] = std::move(elements);
+    }
+    return j;
+}
+
 OrderedJson ToJson(const LibrarySet &l)
 {
     OrderedJson j    = OrderedJson::object();
@@ -667,6 +794,10 @@ OrderedJson ToJson(const LibrarySet &l)
     if (!l.animations.empty())
     {
         j["animations"] = list(l.animations);
+    }
+    if (!l.design_systems.empty())
+    {
+        j["designSystems"] = list(l.design_systems);
     }
     return j;
 }
@@ -708,6 +839,7 @@ OrderedJson ToJson(const Model &m)
     {
         j["scenario"]["userDuration"] = true;
     }
+    PutStr(j, "designSystem", m.design_system);
     if (!m.library.Empty())
     {
         j["library"] = ToJson(m.library);

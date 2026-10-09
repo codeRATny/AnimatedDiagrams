@@ -1,0 +1,701 @@
+{
+  "format": "animated-diagrams-plugin",
+  "formatVersion": 1,
+  "id": "animated-diagrams.data-platform",
+  "name": "Data platform",
+  "version": "1.0.0",
+  "author": "Animated Diagrams",
+  "description": "Демо-плагин: PostgreSQL, ClickHouse, Kafka, Redis, ETL; эффекты записи и репликации; сценарии CDC, отказа мастера и ETL; дизайн-система ClickHouse. Элементы используют токены ($surface…) и подстраиваются под выбранную дизайн-систему.",
+  "elements": [
+    {
+      "id": "postgres",
+      "label": "PostgreSQL",
+      "icon": "PG",
+      "category": "Платформа данных",
+      "description": "OLTP-база PostgreSQL",
+      "accent": "#336791",
+      "width": 150.0,
+      "height": 76.0,
+      "style": {
+        "shape": "cylinder",
+        "fill": "$surface",
+        "stroke": "#5b8fc7"
+      }
+    },
+    {
+      "id": "pg-replica",
+      "label": "Реплика PG",
+      "icon": "PG",
+      "category": "Платформа данных",
+      "description": "Реплика PostgreSQL (hot standby)",
+      "accent": "#336791",
+      "width": 150.0,
+      "height": 76.0,
+      "style": {
+        "shape": "cylinder",
+        "fill": "$surface-alt",
+        "stroke": "#5b8fc7",
+        "strokeStyle": "dashed"
+      }
+    },
+    {
+      "id": "clickhouse",
+      "label": "ClickHouse",
+      "icon": "CH",
+      "category": "Платформа данных",
+      "description": "Аналитическая СУБД ClickHouse",
+      "accent": "#faff69",
+      "width": 160.0,
+      "height": 76.0,
+      "style": {
+        "shape": "cylinder",
+        "fill": "$surface",
+        "stroke": "#e6d84f"
+      }
+    },
+    {
+      "id": "kafka",
+      "label": "Kafka",
+      "icon": "≋",
+      "category": "Платформа данных",
+      "description": "Топик Kafka / брокер событий",
+      "accent": "#e4572e",
+      "width": 170.0,
+      "height": 62.0,
+      "style": {
+        "shape": "queue",
+        "fill": "$surface",
+        "stroke": "#e4572e"
+      }
+    },
+    {
+      "id": "redis",
+      "label": "Redis",
+      "icon": "R",
+      "category": "Платформа данных",
+      "description": "Кэш / очередь Redis",
+      "accent": "#dc382d",
+      "width": 140.0,
+      "height": 66.0,
+      "style": {
+        "shape": "hexagon",
+        "fill": "$surface",
+        "stroke": "#dc382d"
+      }
+    },
+    {
+      "id": "object-store",
+      "label": "Объектное хранилище",
+      "icon": "▤",
+      "category": "Платформа данных",
+      "description": "S3-совместимое хранилище",
+      "accent": "#34d399",
+      "width": 170.0,
+      "height": 70.0,
+      "style": {
+        "shape": "document",
+        "fill": "$surface",
+        "stroke": "#34d399"
+      }
+    },
+    {
+      "id": "etl-job",
+      "label": "ETL-задача",
+      "icon": "⚙",
+      "category": "Платформа данных",
+      "description": "Пакетная обработка / Airflow DAG",
+      "accent": "$warning",
+      "width": 150.0,
+      "height": 60.0,
+      "style": {
+        "shape": "parallelogram",
+        "fill": "$surface",
+        "stroke": "$warning"
+      }
+    },
+    {
+      "id": "bi-dashboard",
+      "label": "BI-дашборд",
+      "icon": "▥",
+      "category": "Платформа данных",
+      "description": "Отчёт / дашборд",
+      "accent": "$info",
+      "width": 160.0,
+      "height": 70.0,
+      "style": {
+        "shape": "rect",
+        "fill": "$surface",
+        "stroke": "$info"
+      }
+    }
+  ],
+  "effects": [
+    {
+      "id": "write-burst",
+      "label": "Запись",
+      "category": "Платформа данных",
+      "description": "Серия записей: узел пульсирует и подкрашивается",
+      "color": "$success",
+      "repeat": 3,
+      "tracks": [
+        {
+          "property": "scale",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 1.0
+            },
+            {
+              "t": 0.3,
+              "value": 1.07,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 1.0,
+              "easing": "ease-in"
+            }
+          ]
+        },
+        {
+          "property": "tint",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.3,
+              "value": 0.45,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 0.0,
+              "easing": "ease-in"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "replicate",
+      "label": "Репликация",
+      "category": "Платформа данных",
+      "description": "Волна свечения — данные догоняют мастер",
+      "color": "$info",
+      "repeat": 2,
+      "tracks": [
+        {
+          "property": "glow",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.4,
+              "value": 1.0,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 0.0,
+              "easing": "ease-in"
+            }
+          ]
+        },
+        {
+          "property": "offset_y",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.4,
+              "value": -4.0,
+              "easing": "ease-out"
+            },
+            {
+              "t": 1.0,
+              "value": 0.0,
+              "easing": "bounce-out"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "replication-lag",
+      "label": "Отставание",
+      "category": "Платформа данных",
+      "description": "Мерцание: реплика отстаёт",
+      "color": "$warning",
+      "repeat": 4,
+      "tracks": [
+        {
+          "property": "opacity",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 1.0
+            },
+            {
+              "t": 0.5,
+              "value": 0.5,
+              "easing": "ease-in-out"
+            },
+            {
+              "t": 1.0,
+              "value": 1.0,
+              "easing": "ease-in-out"
+            }
+          ]
+        },
+        {
+          "property": "tint",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.2
+            },
+            {
+              "t": 0.5,
+              "value": 0.5
+            },
+            {
+              "t": 1.0,
+              "value": 0.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "merge",
+      "label": "Слияние партов",
+      "category": "Платформа данных",
+      "description": "Фоновое слияние частей таблицы (ClickHouse merges)",
+      "color": "$accent",
+      "repeat": 1,
+      "tracks": [
+        {
+          "property": "scale",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 1.0
+            },
+            {
+              "t": 0.35,
+              "value": 0.9,
+              "easing": "ease-in"
+            },
+            {
+              "t": 0.7,
+              "value": 1.06,
+              "easing": "back-out"
+            },
+            {
+              "t": 1.0,
+              "value": 1.0
+            }
+          ]
+        },
+        {
+          "property": "rotate",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.35,
+              "value": -4.0
+            },
+            {
+              "t": 0.7,
+              "value": 3.0
+            },
+            {
+              "t": 1.0,
+              "value": 0.0
+            }
+          ]
+        },
+        {
+          "property": "glow",
+          "keys": [
+            {
+              "t": 0.0,
+              "value": 0.0
+            },
+            {
+              "t": 0.7,
+              "value": 0.8
+            },
+            {
+              "t": 1.0,
+              "value": 0.0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "id": "cdc-pipeline",
+      "label": "CDC: OLTP → Kafka → ClickHouse",
+      "category": "Платформа данных",
+      "description": "Запись в PostgreSQL попадает в Kafka через CDC и пачками загружается в ClickHouse",
+      "roles": [
+        {
+          "id": "app",
+          "label": "Приложение"
+        },
+        {
+          "id": "db",
+          "label": "PostgreSQL"
+        },
+        {
+          "id": "broker",
+          "label": "Kafka"
+        },
+        {
+          "id": "olap",
+          "label": "ClickHouse"
+        }
+      ],
+      "steps": [
+        {
+          "id": "t1",
+          "type": "message",
+          "start": 0.0,
+          "duration": 800.0,
+          "from": "app",
+          "to": "db",
+          "variant": "request",
+          "label": "INSERT"
+        },
+        {
+          "id": "t2",
+          "type": "effect",
+          "start": 800.0,
+          "duration": 900.0,
+          "nodeId": "db",
+          "effect": "write-burst"
+        },
+        {
+          "id": "t3",
+          "type": "message",
+          "start": 1200.0,
+          "duration": 1000.0,
+          "from": "db",
+          "to": "broker",
+          "variant": "event",
+          "label": "WAL → CDC",
+          "packetCount": 3
+        },
+        {
+          "id": "t4",
+          "type": "action",
+          "start": 2200.0,
+          "duration": 700.0,
+          "nodeId": "broker",
+          "text": "партиционирование"
+        },
+        {
+          "id": "t5",
+          "type": "message",
+          "start": 2900.0,
+          "duration": 1000.0,
+          "from": "broker",
+          "to": "olap",
+          "variant": "event",
+          "label": "batch",
+          "packet": "square",
+          "packetCount": 4
+        },
+        {
+          "id": "t6",
+          "type": "effect",
+          "start": 3900.0,
+          "duration": 1100.0,
+          "nodeId": "olap",
+          "effect": "merge"
+        },
+        {
+          "id": "t7",
+          "type": "state",
+          "start": 3900.0,
+          "duration": 1600.0,
+          "nodeId": "olap",
+          "state": "success",
+          "label": "в витрине"
+        }
+      ]
+    },
+    {
+      "id": "replica-failover",
+      "label": "Отказ мастера и переключение",
+      "category": "Платформа данных",
+      "description": "Мастер недоступен — по таймауту реплика становится новым мастером",
+      "roles": [
+        {
+          "id": "app",
+          "label": "Приложение"
+        },
+        {
+          "id": "primary",
+          "label": "Мастер"
+        },
+        {
+          "id": "replica",
+          "label": "Реплика"
+        }
+      ],
+      "steps": [
+        {
+          "id": "t1",
+          "type": "message",
+          "start": 0.0,
+          "duration": 800.0,
+          "from": "app",
+          "to": "primary",
+          "variant": "request",
+          "label": "UPDATE"
+        },
+        {
+          "id": "t2",
+          "type": "state",
+          "start": 800.0,
+          "duration": 5200.0,
+          "nodeId": "primary",
+          "state": "down",
+          "label": "недоступен"
+        },
+        {
+          "id": "t3",
+          "type": "timer",
+          "start": 800.0,
+          "duration": 3000.0,
+          "nodeId": "app",
+          "seconds": 3.0,
+          "unit": "s",
+          "label": "failover"
+        },
+        {
+          "id": "t4",
+          "type": "effect",
+          "start": 1800.0,
+          "duration": 1600.0,
+          "nodeId": "replica",
+          "effect": "replicate"
+        },
+        {
+          "id": "t5",
+          "type": "state",
+          "start": 3800.0,
+          "duration": 2200.0,
+          "nodeId": "replica",
+          "state": "active",
+          "label": "новый мастер"
+        },
+        {
+          "id": "t6",
+          "type": "message",
+          "start": 3900.0,
+          "duration": 900.0,
+          "from": "app",
+          "to": "replica",
+          "variant": "retry",
+          "label": "UPDATE"
+        },
+        {
+          "id": "t7",
+          "type": "message",
+          "start": 4900.0,
+          "duration": 900.0,
+          "from": "replica",
+          "to": "app",
+          "variant": "success",
+          "label": "COMMIT"
+        }
+      ]
+    },
+    {
+      "id": "batch-etl",
+      "label": "Пакетный ETL",
+      "category": "Платформа данных",
+      "description": "Извлечение, трансформация и загрузка в хранилище, обновление отчёта",
+      "roles": [
+        {
+          "id": "source",
+          "label": "Источник"
+        },
+        {
+          "id": "etl",
+          "label": "ETL"
+        },
+        {
+          "id": "warehouse",
+          "label": "Хранилище"
+        },
+        {
+          "id": "bi",
+          "label": "BI"
+        }
+      ],
+      "steps": [
+        {
+          "id": "t1",
+          "type": "action",
+          "start": 0.0,
+          "duration": 700.0,
+          "nodeId": "etl",
+          "text": "extract"
+        },
+        {
+          "id": "t2",
+          "type": "message",
+          "start": 600.0,
+          "duration": 1100.0,
+          "from": "source",
+          "to": "etl",
+          "variant": "response",
+          "label": "rows",
+          "packet": "dot",
+          "packetCount": 5
+        },
+        {
+          "id": "t3",
+          "type": "action",
+          "start": 1700.0,
+          "duration": 900.0,
+          "nodeId": "etl",
+          "text": "transform"
+        },
+        {
+          "id": "t4",
+          "type": "message",
+          "start": 2600.0,
+          "duration": 1000.0,
+          "from": "etl",
+          "to": "warehouse",
+          "variant": "event",
+          "label": "load",
+          "packet": "square",
+          "packetCount": 3
+        },
+        {
+          "id": "t5",
+          "type": "effect",
+          "start": 3600.0,
+          "duration": 900.0,
+          "nodeId": "warehouse",
+          "effect": "write-burst"
+        },
+        {
+          "id": "t6",
+          "type": "message",
+          "start": 4500.0,
+          "duration": 900.0,
+          "from": "warehouse",
+          "to": "bi",
+          "variant": "response",
+          "label": "refresh"
+        },
+        {
+          "id": "t7",
+          "type": "effect",
+          "start": 5400.0,
+          "duration": 600.0,
+          "nodeId": "bi",
+          "effect": "pop"
+        }
+      ]
+    }
+  ],
+  "designSystems": [
+    {
+      "id": "clickhouse",
+      "label": "ClickHouse",
+      "category": "Платформа данных",
+      "description": "Графитовый фон, жёлтые акценты, ортогональные связи",
+      "background": "#151515",
+      "edgeColor": "#7a7a6a",
+      "textColor": "#ffffff",
+      "grid": true,
+      "gridSize": 24.0,
+      "subtitleColor": "#c8c8b0",
+      "colors": {
+        "accent": "#faff69",
+        "border": "#5a5a48",
+        "danger": "#ff6b6b",
+        "info": "#7ad7f0",
+        "muted": "#c8c8b0",
+        "primary": "#faff69",
+        "secondary": "#ffb86b",
+        "success": "#9ae66e",
+        "surface": "#262626",
+        "surface-alt": "#1c1c1c",
+        "text": "#ffffff",
+        "warning": "#ffd23f"
+      },
+      "states": {
+        "active": {
+          "fill": "#3a3a10",
+          "ring": "#faff69"
+        },
+        "busy": {
+          "fill": "#3d3010",
+          "ring": "#ffd23f"
+        },
+        "disabled": {
+          "fill": "#1c1c1c",
+          "ring": "#4a4a4a"
+        },
+        "down": {
+          "fill": "#401515",
+          "ring": "#ff6b6b"
+        },
+        "ok": {
+          "fill": "#262626",
+          "ring": "#5a5a48"
+        },
+        "success": {
+          "fill": "#1d3315",
+          "ring": "#9ae66e"
+        },
+        "warn": {
+          "fill": "#40250f",
+          "ring": "#ffb86b"
+        }
+      },
+      "variants": {
+        "error": "#ff6b6b",
+        "event": "#ffb86b",
+        "request": "#faff69",
+        "response": "#9ae66e",
+        "retry": "#ffd23f",
+        "success": "#9ae66e"
+      },
+      "node": {
+        "cornerRadius": 6.0
+      },
+      "edge": {
+        "routing": "orthogonal",
+        "labelColor": "#c8c8b0"
+      },
+      "elements": {
+        "clickhouse": {
+          "style": {
+            "fill": "#33330f"
+          }
+        }
+      }
+    }
+  ]
+}

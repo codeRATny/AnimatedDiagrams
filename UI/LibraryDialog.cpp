@@ -3,8 +3,10 @@
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
+#include <QFontDatabase>
 #include <QFormLayout>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -13,13 +15,16 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSplitter>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
 
 #include <algorithm>
 
+#include "AppContext.hpp"
 #include "Controller.hpp"
+#include "Engine/Design.hpp"
 #include "Engine/Templates.hpp"
 #include "Fields.hpp"
 #include "Plugins/Plugin.hpp"
@@ -117,20 +122,24 @@ QPushButton *SmallButton(const QString &text, const QString &tip, std::function<
 
 } // namespace
 
-LibraryDialog::LibraryDialog(Controller &ctl, QWidget *parent) : QDialog(parent), _ctl(ctl)
+LibraryDialog::LibraryDialog(AppContext &ctx, Controller *ctl, QWidget *parent) : QDialog(parent), _ctx(ctx), _ctl(ctl)
 {
     setWindowTitle(tr("Библиотека"));
-    resize(1080, 700);
+    resize(1200, 720);
 
     _tabs                  = new QTabWidget;
-    const QString titles[] = {tr("Элементы"), tr("Эффекты"), tr("Анимации")};
-    for (int i = 0; i < 3; ++i)
+    const QString titles[] = {tr("Элементы"), tr("Эффекты"), tr("Анимации"), tr("Дизайн")};
+    for (int i = 0; i < kTabCount; ++i)
     {
         _lists[i] = new QListWidget;
         _lists[i]->setSelectionMode(QAbstractItemView::SingleSelection);
         connect(_lists[i], &QListWidget::currentItemChanged, this, &LibraryDialog::_OnSelectionChanged);
         _tabs->addTab(_lists[i], titles[i]);
     }
+    _tabs->tabBar()->setExpanding(false);
+    _tabs->setStyleSheet(QStringLiteral("QTabBar::tab { padding: 6px 9px; }"));
+    _tabs->tabBar()->setUsesScrollButtons(true);
+    _tabs->setTabToolTip(3, tr("Дизайн-системы: цвета, шрифт и стили для всего документа"));
     connect(_tabs, &QTabWidget::currentChanged, this,
             [this]
             {
@@ -148,7 +157,24 @@ LibraryDialog::LibraryDialog(Controller &ctl, QWidget *parent) : QDialog(parent)
     connect(_apply_button, &QPushButton::clicked, this,
             [this]
             {
-                Q_EMIT ApplyAnimationRequested(Qs(_current.id));
+                if (_CurrentTab() != Tab::Designs)
+                {
+                    Q_EMIT ApplyAnimationRequested(Qs(_current.id));
+                    return;
+                }
+                const DesignSystem *d = _ctl->Reg().FindDesignSystem(_current.id, &_ctl->GetModel().library);
+                if (d == nullptr)
+                {
+                    return;
+                }
+                const DesignSystem copy = *d;
+                _ctl->Edit(
+                    {},
+                    [&](Model &m)
+                    {
+                        ApplyDesignSystem(m, copy);
+                    },
+                    true);
             });
 
     auto *left   = new QWidget;
@@ -187,7 +213,7 @@ LibraryDialog::LibraryDialog(Controller &ctl, QWidget *parent) : QDialog(parent)
     split->setStretchFactor(0, 2);
     split->setStretchFactor(1, 3);
     split->setStretchFactor(2, 3);
-    split->setSizes({260, 420, 380});
+    split->setSizes({360, 450, 390});
 
     auto *export_button = new QPushButton(tr("Экспорт в плагин…"));
     connect(export_button, &QPushButton::clicked, this, &LibraryDialog::_ExportPlugin);
@@ -200,13 +226,27 @@ LibraryDialog::LibraryDialog(Controller &ctl, QWidget *parent) : QDialog(parent)
     layout->addWidget(split, 1);
     layout->addWidget(buttons);
 
-    connect(&_ctl, &Controller::LibraryChanged, this,
+    connect(&_ctx, &AppContext::LibraryChanged, this,
             [this]
             {
                 _RefreshLists();
                 _RequestEditorRebuild();
             });
-    connect(&_ctl, &Controller::ModelChanged, this,
+    SetController(ctl);
+}
+
+void LibraryDialog::SetController(Controller *ctl)
+{
+    if (_ctl != nullptr)
+    {
+        disconnect(_ctl, nullptr, this, nullptr);
+    }
+    _ctl = ctl;
+    if (_ctl == nullptr)
+    {
+        return;
+    }
+    connect(_ctl, &Controller::ModelChanged, this,
             [this](bool structural)
             {
                 if (!_applying && structural)
@@ -215,6 +255,13 @@ LibraryDialog::LibraryDialog(Controller &ctl, QWidget *parent) : QDialog(parent)
                     _RequestEditorRebuild();
                 }
             });
+    connect(_ctl, &Controller::DocumentStateChanged, this,
+            [this]
+            {
+                setWindowTitle(tr("Библиотека — %1").arg(Qs(_ctl->GetModel().meta.name)));
+            });
+    setWindowTitle(tr("Библиотека — %1").arg(Qs(_ctl->GetModel().meta.name)));
+    _current = {};
     _RefreshLists();
 }
 
@@ -230,11 +277,11 @@ bool LibraryDialog::_Editable() const { return !_current.id.empty() && _current.
 
 std::string LibraryDialog::_UniqueId(const std::string &base) const
 {
-    const auto &lib   = _ctl.GetModel().library;
+    const auto &lib   = _ctl->GetModel().library;
     const auto  taken = [&](const std::string &id)
     {
-        return _ctl.Reg().FindElement(id, &lib) != nullptr || _ctl.Reg().FindEffect(id, &lib) != nullptr ||
-               _ctl.Reg().FindAnimation(id, &lib) != nullptr;
+        return _ctl->Reg().FindElement(id, &lib) != nullptr || _ctl->Reg().FindEffect(id, &lib) != nullptr ||
+               _ctl->Reg().FindAnimation(id, &lib) != nullptr;
     };
     if (!taken(base))
     {
@@ -252,8 +299,8 @@ std::string LibraryDialog::_UniqueId(const std::string &base) const
 
 void LibraryDialog::_RefreshLists()
 {
-    const auto &lib  = _ctl.GetModel().library;
-    const auto &reg  = _ctl.Reg();
+    const auto &lib  = _ctl->GetModel().library;
+    const auto &reg  = _ctl->Reg();
     auto        fill = [&](QListWidget *list, const auto &entries)
     {
         const QString        selected = list->currentItem() != nullptr ? list->currentItem()->data(kIdRole).toString() : QString();
@@ -284,13 +331,14 @@ void LibraryDialog::_RefreshLists()
     fill(_lists[0], reg.Elements(&lib));
     fill(_lists[1], reg.Effects(&lib));
     fill(_lists[2], reg.Animations(&lib));
+    fill(_lists[3], reg.DesignSystems(&lib));
     _OnSelectionChanged();
 }
 
 void LibraryDialog::SelectItem(const QString &id)
 {
     _RefreshLists();
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < kTabCount; ++i)
     {
         for (int row = 0; row < _lists[i]->count(); ++row)
         {
@@ -325,8 +373,9 @@ void LibraryDialog::_UpdateButtons()
 {
     _dup_button->setEnabled(!_current.id.empty());
     _del_button->setEnabled(_Editable());
-    _apply_button->setVisible(_CurrentTab() == Tab::Animations);
-    _apply_button->setEnabled(!_current.id.empty() && !_ctl.GetModel().nodes.empty());
+    _apply_button->setVisible(_CurrentTab() == Tab::Animations || _CurrentTab() == Tab::Designs);
+    _apply_button->setText(_CurrentTab() == Tab::Designs ? tr("✓ Применить к документу") : tr("▶ Применить к диаграмме…"));
+    _apply_button->setEnabled(!_current.id.empty() && (_CurrentTab() == Tab::Designs || !_ctl->GetModel().nodes.empty()));
 }
 
 void LibraryDialog::_RequestEditorRebuild()
@@ -364,8 +413,8 @@ void LibraryDialog::_RebuildEditor()
     outer->addWidget(form);
     outer->addStretch(1);
 
-    const auto &lib   = _ctl.GetModel().library;
-    const auto &reg   = _ctl.Reg();
+    const auto &lib   = _ctl->GetModel().library;
+    const auto &reg   = _ctl->Reg();
     bool        found = false;
     switch (_CurrentTab())
     {
@@ -387,6 +436,13 @@ void LibraryDialog::_RebuildEditor()
         if (const AnimationTemplate *a = reg.FindAnimation(_current.id, &lib); a != nullptr)
         {
             _BuildAnimationEditor(box, AnimationTemplate(*a));
+            found = true;
+        }
+        break;
+    case Tab::Designs:
+        if (const DesignSystem *d = reg.FindDesignSystem(_current.id, &lib); d != nullptr)
+        {
+            _BuildDesignEditor(box, DesignSystem(*d));
             found = true;
         }
         break;
@@ -424,8 +480,8 @@ void LibraryDialog::_RebuildEditor()
 
 void LibraryDialog::_UpdatePreview()
 {
-    const auto &lib = _ctl.GetModel().library;
-    const auto &reg = _ctl.Reg();
+    const auto &lib = _ctl->GetModel().library;
+    const auto &reg = _ctl->Reg();
     switch (_CurrentTab())
     {
     case Tab::Elements:
@@ -449,6 +505,13 @@ void LibraryDialog::_UpdatePreview()
             return;
         }
         break;
+    case Tab::Designs:
+        if (const DesignSystem *d = reg.FindDesignSystem(_current.id, &lib); d != nullptr)
+        {
+            _preview->ShowDesignSystem(*d, reg);
+            return;
+        }
+        break;
     }
     _preview->Clear();
 }
@@ -458,7 +521,7 @@ void LibraryDialog::_AfterEdit(bool rebuild)
     // refresh the list caption in place (the list is not rebuilt to keep the focus)
     if (QListWidgetItem *item = _List(_CurrentTab())->currentItem(); item != nullptr)
     {
-        const auto &lib = _ctl.GetModel().library;
+        const auto &lib = _ctl->GetModel().library;
         if (const auto *e = lib.Element(_current.id); e != nullptr && _CurrentTab() == Tab::Elements)
         {
             item->setText(ItemText(*e));
@@ -470,6 +533,10 @@ void LibraryDialog::_AfterEdit(bool rebuild)
         else if (const auto *a = lib.Animation(_current.id); a != nullptr && _CurrentTab() == Tab::Animations)
         {
             item->setText(ItemText(*a));
+        }
+        else if (const auto *d = lib.Design(_current.id); d != nullptr && _CurrentTab() == Tab::Designs)
+        {
+            item->setText(ItemText(*d));
         }
     }
     _UpdatePreview();
@@ -483,7 +550,7 @@ void LibraryDialog::_EditElement(const std::string &key, const std::function<voi
 {
     const std::string id = _current.id;
     _applying            = true;
-    _ctl.Edit(
+    _ctl->Edit(
         key.empty() ? std::string() : "lib:" + id + ":" + key,
         [&](Model &m)
         {
@@ -501,7 +568,7 @@ void LibraryDialog::_EditEffect(const std::string &key, const std::function<void
 {
     const std::string id = _current.id;
     _applying            = true;
-    _ctl.Edit(
+    _ctl->Edit(
         key.empty() ? std::string() : "lib:" + id + ":" + key,
         [&](Model &m)
         {
@@ -519,13 +586,31 @@ void LibraryDialog::_EditAnimation(const std::string &key, const std::function<v
 {
     const std::string id = _current.id;
     _applying            = true;
-    _ctl.Edit(
+    _ctl->Edit(
         key.empty() ? std::string() : "lib:" + id + ":" + key,
         [&](Model &m)
         {
             if (AnimationTemplate *a = FindById(m.library.animations, id); a != nullptr)
             {
                 fn(*a);
+            }
+        },
+        true);
+    _applying = false;
+    _AfterEdit(rebuild);
+}
+
+void LibraryDialog::_EditDesign(const std::string &key, const std::function<void(DesignSystem &)> &fn, bool rebuild)
+{
+    const std::string id = _current.id;
+    _applying            = true;
+    _ctl->Edit(
+        key.empty() ? std::string() : "lib:" + id + ":" + key,
+        [&](Model &m)
+        {
+            if (DesignSystem *d = FindById(m.library.design_systems, id); d != nullptr)
+            {
+                fn(*d);
             }
         },
         true);
@@ -948,6 +1033,349 @@ void LibraryDialog::_BuildAnimationEditor(QVBoxLayout *box, const AnimationTempl
 }
 
 // ---------------------------------------------------------------------------
+// Design system editor
+// ---------------------------------------------------------------------------
+
+void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
+{
+    auto *title = new QLabel(tr("Дизайн-система «%1»").arg(Qs(d.label)));
+    title->setObjectName(QStringLiteral("inspectorTitle"));
+    box->addWidget(title);
+    const bool active = _ctl->GetModel().design_system == d.id;
+    box->addWidget(Hint(tr("Идентификатор: %1%2").arg(Qs(d.id), active ? tr(" · используется документом") : QString())));
+
+    auto text = [this](const std::string &key, std::string DesignSystem::*field)
+    {
+        return [this, key, field](const QString &v)
+        {
+            _EditDesign(key,
+                        [&](DesignSystem &t)
+                        {
+                            t.*field = Us(v);
+                        });
+        };
+    };
+    auto opt_color = [this](std::optional<std::string> DesignSystem::*field)
+    {
+        return [this, field](std::optional<std::string> v)
+        {
+            _EditDesign(
+                {},
+                [&](DesignSystem &t)
+                {
+                    t.*field = std::move(v);
+                },
+                true);
+        };
+    };
+    box->addWidget(Labeled(tr("Название"), LineEdit(Qs(d.label), text("label", &DesignSystem::label))));
+    box->addWidget(Row(Labeled(tr("Категория"), LineEdit(Qs(d.category), text("category", &DesignSystem::category))),
+                       Labeled(tr("Описание"), LineEdit(Qs(d.description), text("description", &DesignSystem::description)))));
+
+    // ---- canvas and typography ---------------------------------------------
+    box->addWidget(Section(tr("Холст и шрифт")));
+    box->addWidget(Row(Labeled(tr("Фон"), OptColor(d.background, QStringLiteral("#0a111f"), opt_color(&DesignSystem::background))),
+                       Labeled(tr("Связи"), OptColor(d.edge_color, QStringLiteral("#5f7196"), opt_color(&DesignSystem::edge_color)))));
+    box->addWidget(
+        Row(Labeled(tr("Текст"), OptColor(d.text_color, QStringLiteral("#f2f6ff"), opt_color(&DesignSystem::text_color))),
+            Labeled(tr("Подзаголовок"), OptColor(d.subtitle_color, QStringLiteral("#b7c6e4"), opt_color(&DesignSystem::subtitle_color)))));
+    box->addWidget(Row(OptCheck(tr("Сетка"), d.grid, true,
+                                [this](std::optional<bool> v)
+                                {
+                                    _EditDesign({},
+                                                [&](DesignSystem &t)
+                                                {
+                                                    t.grid = v;
+                                                });
+                                }),
+                       Labeled(tr("Шаг сетки"), OptSpin(d.grid_size, 4, 200, 1, 0, QStringLiteral("26"),
+                                                        [this](std::optional<double> v)
+                                                        {
+                                                            _EditDesign("grid_size",
+                                                                        [&](DesignSystem &t)
+                                                                        {
+                                                                            t.grid_size = v;
+                                                                        });
+                                                        }))));
+    Options fonts{{QString(), tr("Шрифт приложения")}};
+    for (const QString &family : QFontDatabase::families())
+    {
+        fonts.emplace_back(family, family);
+    }
+    box->addWidget(Labeled(tr("Шрифт"), Combo(fonts, Qs(d.font_family),
+                                              [this](const QString &v)
+                                              {
+                                                  _EditDesign({},
+                                                              [&](DesignSystem &t)
+                                                              {
+                                                                  t.font_family = Us(v);
+                                                              });
+                                              })));
+
+    // ---- color tokens --------------------------------------------------------
+    box->addWidget(Section(tr("Цветовые токены")));
+    box->addWidget(Hint(tr("На токены можно ссылаться в любом цвете элементов и шагов: «$primary», «$surface»… "
+                           "Тогда при смене дизайн-системы цвет меняется вместе с ней.")));
+    std::vector<std::string> names;
+    for (const auto &[k, v] : DefaultTokens())
+    {
+        names.push_back(k);
+    }
+    for (const auto &[k, v] : d.colors)
+    {
+        if (!DefaultTokens().contains(k))
+        {
+            names.push_back(k);
+        }
+    }
+    for (const auto &name : names)
+    {
+        const auto        it       = d.colors.find(name);
+        const bool        standard = DefaultTokens().contains(name);
+        const std::string fallback = standard ? DefaultTokens().at(name) : std::string("#888888");
+        auto             *label    = new QLabel(QStringLiteral("$") + Qs(name));
+        label->setMinimumWidth(110);
+        QWidget *color = OptColor(it != d.colors.end() ? std::optional<std::string>(it->second) : std::nullopt, Qs(fallback),
+                                  [this, name](std::optional<std::string> v)
+                                  {
+                                      _EditDesign(
+                                          {},
+                                          [&](DesignSystem &t)
+                                          {
+                                              if (v.has_value())
+                                              {
+                                                  t.colors[name] = *v;
+                                              }
+                                              else
+                                              {
+                                                  t.colors.erase(name);
+                                              }
+                                          },
+                                          true);
+                                  });
+        box->addWidget(RowOf({{label, 0}, {color, 1}}));
+    }
+    box->addWidget(Button(tr("＋ Свой токен…"),
+                          [this]
+                          {
+                              bool              ok   = false;
+                              const QString     name = QInputDialog::getText(this, tr("Новый токен"), tr("Имя (латиница, без $):"),
+                                                                             QLineEdit::Normal, QStringLiteral("brand"), &ok);
+                              const std::string id   = Slugify(Us(name.trimmed()), "");
+                              if (!ok || id.empty())
+                              {
+                                  return;
+                              }
+                              _EditDesign(
+                                  {},
+                                  [&](DesignSystem &t)
+                                  {
+                                      t.colors.try_emplace(id, "#4f8cff");
+                                  },
+                                  true);
+                          }));
+
+    // ---- node states and message variants -------------------------------------
+    box->addWidget(Section(tr("Состояния узлов (заливка / обводка)")));
+    for (const auto &st : NodeStates())
+    {
+        const std::string sid = std::string(st.id);
+        const auto        it  = d.states.find(sid);
+        const StateColors cur = it != d.states.end() ? it->second : StateColors{};
+        auto              set = [this, sid](bool ring)
+        {
+            return [this, sid, ring](std::optional<std::string> v)
+            {
+                _EditDesign(
+                    {},
+                    [&](DesignSystem &t)
+                    {
+                        StateColors &sc            = t.states[sid];
+                        (ring ? sc.ring : sc.fill) = std::move(v);
+                        if (!sc.fill.has_value() && !sc.ring.has_value())
+                        {
+                            t.states.erase(sid);
+                        }
+                    },
+                    true);
+            };
+        };
+        auto *label = new QLabel(Qs(st.label));
+        label->setMinimumWidth(110);
+        box->addWidget(RowOf(
+            {{label, 0}, {OptColor(cur.fill, Qs(st.fill.Hex()), set(false)), 1}, {OptColor(cur.ring, Qs(st.ring.Hex()), set(true)), 1}}));
+    }
+    box->addWidget(Section(tr("Варианты сообщений")));
+    for (const auto &v : MsgVariants())
+    {
+        const std::string vid   = std::string(v.id);
+        const auto        it    = d.variants.find(vid);
+        auto             *label = new QLabel(Qs(v.label));
+        label->setMinimumWidth(110);
+        box->addWidget(RowOf({{label, 0},
+                              {OptColor(it != d.variants.end() ? std::optional<std::string>(it->second) : std::nullopt, Qs(v.color.Hex()),
+                                        [this, vid](std::optional<std::string> c)
+                                        {
+                                            _EditDesign(
+                                                {},
+                                                [&](DesignSystem &t)
+                                                {
+                                                    if (c.has_value())
+                                                    {
+                                                        t.variants[vid] = *c;
+                                                    }
+                                                    else
+                                                    {
+                                                        t.variants.erase(vid);
+                                                    }
+                                                },
+                                                true);
+                                        }),
+                               1}}));
+    }
+
+    // ---- default styles ------------------------------------------------------
+    box->addWidget(Section(tr("Узлы по умолчанию")));
+    AddNodeStyleFields(box, d.node, {},
+                       [this](const std::string &merge_key, const std::function<void(NodeStyle &)> &fn)
+                       {
+                           _EditDesign(
+                               merge_key.empty() ? std::string() : "node:" + merge_key,
+                               [&](DesignSystem &t)
+                               {
+                                   fn(t.node);
+                               },
+                               merge_key.empty());
+                       });
+    box->addWidget(Section(tr("Связи по умолчанию")));
+    auto edge = [this](const std::function<void(EdgeStyle &)> &fn, const std::string &key = {})
+    {
+        _EditDesign(
+            key,
+            [&](DesignSystem &t)
+            {
+                fn(t.edge);
+            },
+            key.empty());
+    };
+    box->addWidget(Row(Labeled(tr("Цвет"), OptColor(d.edge.color, tr("цвет связей"),
+                                                    [edge](std::optional<std::string> v)
+                                                    {
+                                                        edge(
+                                                            [&](EdgeStyle &e)
+                                                            {
+                                                                e.color = std::move(v);
+                                                            });
+                                                    })),
+                       Labeled(tr("Цвет подписи"), OptColor(d.edge.label_color, QStringLiteral("#9fb3d6"),
+                                                            [edge](std::optional<std::string> v)
+                                                            {
+                                                                edge(
+                                                                    [&](EdgeStyle &e)
+                                                                    {
+                                                                        e.label_color = std::move(v);
+                                                                    });
+                                                            }))));
+    box->addWidget(Row(Labeled(tr("Толщина"), OptSpin(d.edge.width, 0.5, 20, 0.5, 1, QStringLiteral("2.2"),
+                                                      [edge](std::optional<double> v)
+                                                      {
+                                                          edge(
+                                                              [&](EdgeStyle &e)
+                                                              {
+                                                                  e.width = v;
+                                                              },
+                                                              "edge:width");
+                                                      })),
+                       Labeled(tr("Линия"), OptCombo(FromCatalog(StrokeStyles()), d.edge.stroke_style, QStringLiteral("solid"),
+                                                     [edge](std::optional<std::string> v)
+                                                     {
+                                                         edge(
+                                                             [&](EdgeStyle &e)
+                                                             {
+                                                                 e.stroke_style = std::move(v);
+                                                             });
+                                                     }))));
+    box->addWidget(Row(Labeled(tr("Маршрут"), OptCombo(FromCatalog(Routings()), d.edge.routing, QStringLiteral("curved"),
+                                                       [edge](std::optional<std::string> v)
+                                                       {
+                                                           edge(
+                                                               [&](EdgeStyle &e)
+                                                               {
+                                                                   e.routing = std::move(v);
+                                                               });
+                                                       })),
+                       Labeled(tr("Стрелка"), OptCombo(FromCatalog(ArrowHeads()), d.edge.arrow_end, QStringLiteral("triangle"),
+                                                       [edge](std::optional<std::string> v)
+                                                       {
+                                                           edge(
+                                                               [&](EdgeStyle &e)
+                                                               {
+                                                                   e.arrow_end = std::move(v);
+                                                               });
+                                                       }))));
+
+    // ---- per element type overrides ------------------------------------------------
+    box->addWidget(Section(tr("Переопределения типов элементов")));
+    Options types;
+    for (const auto &e : _ctl->Reg().Elements(&_ctl->GetModel().library))
+    {
+        const bool has = d.elements.contains(e.def->id);
+        types.emplace_back(Qs(e.def->id), (has ? QStringLiteral("● ") : QString()) + Qs(e.def->label));
+    }
+    if (_override_type.isEmpty() && !d.elements.empty())
+    {
+        _override_type = Qs(d.elements.begin()->first);
+    }
+    if (_override_type.isEmpty() && !types.empty())
+    {
+        _override_type = types.front().first;
+    }
+    box->addWidget(Labeled(tr("Тип элемента (● — переопределён)"), Combo(types, _override_type,
+                                                                         [this](const QString &v)
+                                                                         {
+                                                                             _override_type = v;
+                                                                             _RequestEditorRebuild();
+                                                                         })));
+    const std::string     type_id       = Us(_override_type);
+    const auto            ov_it         = d.elements.find(type_id);
+    const ElementOverride ov            = ov_it != d.elements.end() ? ov_it->second : ElementOverride{};
+    const ElementType    &type          = _ctl->Reg().Element(type_id, &_ctl->GetModel().library);
+    auto                  edit_override = [this, type_id](const std::string &key, const std::function<void(ElementOverride &)> &fn)
+    {
+        _EditDesign(
+            key,
+            [&](DesignSystem &t)
+            {
+                ElementOverride &o = t.elements[type_id];
+                fn(o);
+                if (!o.accent.has_value() && o.style.Empty())
+                {
+                    t.elements.erase(type_id);
+                }
+            },
+            key.empty());
+    };
+    box->addWidget(Labeled(tr("Акцент"), OptColor(ov.accent, Qs(type.accent),
+                                                  [edit_override](std::optional<std::string> v)
+                                                  {
+                                                      edit_override({},
+                                                                    [&](ElementOverride &o)
+                                                                    {
+                                                                        o.accent = std::move(v);
+                                                                    });
+                                                  })));
+    AddNodeStyleFields(box, ov.style, type.style,
+                       [edit_override](const std::string &merge_key, const std::function<void(NodeStyle &)> &fn)
+                       {
+                           edit_override(merge_key.empty() ? std::string() : "elem:" + merge_key,
+                                         [&](ElementOverride &o)
+                                         {
+                                             fn(o.style);
+                                         });
+                       });
+}
+
+// ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------
 
@@ -958,13 +1386,13 @@ void LibraryDialog::_New()
     {
     case Tab::Elements:
     {
-        ElementType e = _ctl.Reg().Element(kDefaultType);
+        ElementType e = _ctl->Reg().Element(kDefaultType);
         id            = _UniqueId("element");
         e.id          = id;
         e.label       = Us(tr("Новый элемент"));
         e.category    = "Мои";
         e.description.clear();
-        _ctl.Doc().UpsertElement(e);
+        _ctl->Doc().UpsertElement(e);
         break;
     }
     case Tab::Effects:
@@ -975,22 +1403,34 @@ void LibraryDialog::_New()
         e.label    = Us(tr("Новый эффект"));
         e.category = "Мои";
         e.tracks.push_back({EffectProperty::Scale, {{0, 1, Easing::Linear}, {0.5, 1.15, Easing::EaseOut}, {1, 1, Easing::EaseIn}}});
-        _ctl.Doc().UpsertEffect(e);
+        _ctl->Doc().UpsertEffect(e);
         break;
     }
     case Tab::Animations:
         _NewAnimation();
         return;
+    case Tab::Designs:
+    {
+        // start from the current look of the document
+        const auto &m    = _ctl->GetModel();
+        const auto *base = _ctl->Reg().DesignOf(m);
+        id               = _UniqueId("design");
+        DesignSystem d =
+            DesignFromScene(m, base != nullptr ? base : _ctl->Reg().FindDesignSystem("dark"), id, Us(tr("Новая дизайн-система")));
+        d.description.clear();
+        _ctl->Doc().UpsertDesignSystem(d);
+        break;
+    }
     }
     _applying = true;
-    _ctl.Changed(true);
+    _ctl->Changed(true);
     _applying = false;
     SelectItem(Qs(id));
 }
 
 void LibraryDialog::_NewAnimation()
 {
-    const auto &m = _ctl.GetModel();
+    const auto &m = _ctl->GetModel();
     if (m.scenario.steps.empty())
     {
         QMessageBox::information(this, tr("Новая анимация"),
@@ -999,9 +1439,9 @@ void LibraryDialog::_NewAnimation()
     }
     double from = 0;
     double to   = m.scenario.duration;
-    if (m.FindStep(_ctl.GetSelection().id) != nullptr && _ctl.GetSelection().kind == Selection::Kind::Step)
+    if (m.FindStep(_ctl->GetSelection().id) != nullptr && _ctl->GetSelection().kind == Selection::Kind::Step)
     {
-        from = m.FindStep(_ctl.GetSelection().id)->start;
+        from = m.FindStep(_ctl->GetSelection().id)->start;
     }
 
     QDialog dlg(this);
@@ -1048,9 +1488,9 @@ void LibraryDialog::_NewAnimation()
     const std::string id    = _UniqueId(Slugify(label, "animation"));
     AnimationTemplate tpl   = MakeTemplate(m, ids, id, label);
     tpl.category            = "Мои";
-    _ctl.Doc().UpsertAnimation(tpl);
+    _ctl->Doc().UpsertAnimation(tpl);
     _applying = true;
-    _ctl.Changed(true);
+    _ctl->Changed(true);
     _applying = false;
     SelectItem(Qs(id));
 }
@@ -1061,8 +1501,8 @@ void LibraryDialog::_Duplicate()
     {
         return;
     }
-    const auto       &lib    = _ctl.GetModel().library;
-    const auto       &reg    = _ctl.Reg();
+    const auto       &lib    = _ctl->GetModel().library;
+    const auto       &reg    = _ctl->Reg();
     const std::string id     = _UniqueId(_current.id + "-copy");
     const std::string suffix = Us(tr(" (копия)"));
     switch (_CurrentTab())
@@ -1073,7 +1513,7 @@ void LibraryDialog::_Duplicate()
             ElementType e = *src;
             e.id          = id;
             e.label += suffix;
-            _ctl.Doc().UpsertElement(e);
+            _ctl->Doc().UpsertElement(e);
         }
         break;
     case Tab::Effects:
@@ -1082,7 +1522,7 @@ void LibraryDialog::_Duplicate()
             EffectDef e = *src;
             e.id        = id;
             e.label += suffix;
-            _ctl.Doc().UpsertEffect(e);
+            _ctl->Doc().UpsertEffect(e);
         }
         break;
     case Tab::Animations:
@@ -1091,12 +1531,22 @@ void LibraryDialog::_Duplicate()
             AnimationTemplate a = *src;
             a.id                = id;
             a.label += suffix;
-            _ctl.Doc().UpsertAnimation(a);
+            _ctl->Doc().UpsertAnimation(a);
+        }
+        break;
+    case Tab::Designs:
+        if (const DesignSystem *src = reg.FindDesignSystem(_current.id, &lib); src != nullptr)
+        {
+            DesignSystem d = *src;
+            d.id           = id;
+            d.label += suffix;
+            d.category = "Мои";
+            _ctl->Doc().UpsertDesignSystem(d);
         }
         break;
     }
     _applying = true;
-    _ctl.Changed(true);
+    _ctl->Changed(true);
     _applying = false;
     SelectItem(Qs(id));
 }
@@ -1115,18 +1565,18 @@ void LibraryDialog::_Delete()
     {
         return;
     }
-    if (_ctl.Doc().RemoveLibraryItem(_current.id))
+    if (_ctl->Doc().RemoveLibraryItem(_current.id))
     {
         _current = {};
-        _ctl.Changed(true);
+        _ctl->Changed(true);
     }
 }
 
 void LibraryDialog::_ExportPlugin()
 {
     // everything visible in the registry; later sources override earlier ones
-    const auto &lib = _ctl.GetModel().library;
-    const auto &reg = _ctl.Reg();
+    const auto &lib = _ctl->GetModel().library;
+    const auto &reg = _ctl->Reg();
     LibrarySet  all;
     QDialog     dlg(this);
     dlg.setWindowTitle(tr("Экспорт в плагин"));
@@ -1147,10 +1597,11 @@ void LibraryDialog::_ExportPlugin()
     add(tr("Элемент"), reg.Elements(&lib));
     add(tr("Эффект"), reg.Effects(&lib));
     add(tr("Анимация"), reg.Animations(&lib));
+    add(tr("Дизайн-система"), reg.DesignSystems(&lib));
 
-    const std::string slug        = Slugify(_ctl.GetModel().meta.name, "library");
+    const std::string slug        = Slugify(_ctl->GetModel().meta.name, "library");
     auto             *id_edit     = new QLineEdit(QStringLiteral("user.%1").arg(Qs(slug)));
-    auto             *name_edit   = new QLineEdit(Qs(_ctl.GetModel().meta.name));
+    auto             *name_edit   = new QLineEdit(Qs(_ctl->GetModel().meta.name));
     auto             *ver_edit    = new QLineEdit(QStringLiteral("1.0.0"));
     auto             *author_edit = new QLineEdit;
     auto             *desc_edit   = new QLineEdit;
@@ -1244,13 +1695,13 @@ void LibraryDialog::_ExportPlugin()
                 {
                     return;
                 }
-                const auto installed = _ctl.Plugins().Install(*plugin);
+                const auto installed = _ctx.Plugins().Install(*plugin);
                 if (!installed.has_value())
                 {
                     QMessageBox::warning(&dlg, tr("Установка"), Qs(installed.error()));
                     return;
                 }
-                _ctl.ReloadPlugins();
+                _ctx.ReloadPlugins();
                 QMessageBox::information(&dlg, tr("Установка"), tr("Плагин установлен:\n%1").arg(Qs(PathToUtf8(*installed))));
                 dlg.accept();
             });

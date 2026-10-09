@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "Exporter.hpp"
 #include "Mcp/DocumentTools.hpp"
 
 /// @file McpHosts.hpp
@@ -12,13 +13,14 @@
 namespace ad::ui
 {
 
+class AppContext;
 class Controller;
 
-/// MCP tools operate on the document open in the editor; every change is shown live.
+/// MCP tools operate on the active tab of the editor; every change is shown live.
 class AppDocumentHost final : public mcp::DocumentHost
 {
 public:
-    explicit AppDocumentHost(Controller &ctl) : _ctl(ctl) {}
+    explicit AppDocumentHost(AppContext &ctx) : _ctx(ctx) {}
 
     Document                                        &Doc() override;
     const Registry                                  &Reg() const override;
@@ -28,9 +30,14 @@ public:
     void                                             SetCurrentPath(std::string path) override;
     std::expected<std::vector<uint8_t>, std::string> RenderPng(double time_ms, double scale) override;
     std::expected<std::string, std::string>          Export(const mcp::ExportRequest &request) override;
+    std::vector<mcp::DocumentInfo>                   Documents() override;
+    bool                                             SelectDocument(size_t index) override;
+    void                                             BeginNewDocument() override;
 
 private:
-    Controller &_ctl;
+    [[nodiscard]] Controller &_Ctl() const;
+
+    AppContext &_ctx;
 };
 
 /// Standalone host for `animated-diagrams --mcp` (no window).
@@ -43,7 +50,9 @@ public:
     std::expected<std::string, std::string>          Export(const mcp::ExportRequest &request) override;
 };
 
-/// Shared export implementation for both hosts.
+/// Export options for an MCP request (format by extension when not given).
+std::expected<ExportOptions, std::string> ExportOptionsFor(const Model &m, const mcp::ExportRequest &request);
+/// Synchronous export for the headless host.
 std::expected<std::string, std::string> ExportForMcp(const Model &m, const Registry &reg, const mcp::ExportRequest &request);
 
 } // namespace ad::ui

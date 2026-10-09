@@ -39,6 +39,11 @@ install(DIRECTORY "${PROJECT_SOURCE_DIR}/samples/" DESTINATION ${AD_SHARE_DIR}/s
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/plugins/" DESTINATION ${AD_SHARE_DIR}/plugins)
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/skills/" DESTINATION ${AD_SHARE_DIR}/skills)
 
+if(WIN32 AND WITH_LIBAV AND LibAV_RUNTIME_DIR)
+    # FFmpeg DLLs next to the exe
+    install(DIRECTORY "${LibAV_RUNTIME_DIR}/" DESTINATION ${CMAKE_INSTALL_BINDIR} FILES_MATCHING PATTERN "*.dll")
+endif()
+
 if(WIN32)
     # windeployqt: Qt libraries and plugins next to the exe (for ZIP / NSIS)
     qt_generate_deploy_app_script(

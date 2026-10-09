@@ -129,6 +129,10 @@ Plugin MakePlugin(const PluginInfo &info, const LibrarySet &source, const std::v
         {
             p.library.Upsert(*a);
         }
+        if (const DesignSystem *d = source.Design(id); d != nullptr)
+        {
+            p.library.Upsert(*d);
+        }
     }
     return p;
 }

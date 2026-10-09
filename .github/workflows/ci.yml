@@ -70,19 +70,21 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates git cmake ninja-build ${{ matrix.packages }} \
+            ca-certificates git cmake ninja-build pkg-config ${{ matrix.packages }} \
             qt6-base-dev qt6-qpa-plugins libgl-dev \
             libgtest-dev nlohmann-json3-dev \
+            libavcodec-dev libavformat-dev libswscale-dev \
             dpkg-dev file fonts-dejavu-core
 
       - name: Install dependencies (dnf)
         if: matrix.family == 'fedora'
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            git cmake ninja-build ${{ matrix.packages }} \
+            git cmake ninja-build pkgconf-pkg-config ${{ matrix.packages }} \
             qt6-qtbase-devel mesa-libGL-devel \
             gtest-devel json-devel \
-            rpm-build dejavu-sans-fonts
+            libavcodec-free-devel libavformat-free-devel libavutil-free-devel libswscale-free-devel \
+            rpm-build dejavu-sans-fonts dejavu-sans-mono-fonts
 
       - uses: actions/checkout@v5
 
@@ -130,7 +132,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ninja-build clang-19 libclang-rt-19-dev libgtest-dev nlohmann-json3-dev
+            ninja-build pkg-config clang-19 libclang-rt-19-dev libgtest-dev nlohmann-json3-dev \
+            libavcodec-dev libavformat-dev libswscale-dev
       - uses: actions/checkout@v5
       - name: Configure
         run: >
@@ -155,8 +158,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ninja-build clang-19 clang-format-19 clang-tidy-19 \
-            qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev
+            ninja-build pkg-config clang-19 clang-format-19 clang-tidy-19 \
+            qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev \
+            libavcodec-dev libavformat-dev libswscale-dev
       - uses: actions/checkout@v5
       - name: clang-format
         run: |
@@ -186,6 +190,22 @@ jobs:
           version: '6.8.*'
           arch: win64_msvc2022_64
           cache: true
+
+      - name: Install FFmpeg libraries (LGPL, shared)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # newest release-branch build (n7.1, n8.0, ...) of BtbN/FFmpeg-Builds: include/, lib/ (import libs), bin/ (DLLs)
+          url=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest \
+                | grep -o '"browser_download_url": *"[^"]*-win64-lgpl-shared-[0-9.]*\.zip"' \
+                | sed 's/.*"\(https[^"]*\)"/\1/' | sort -V | tail -1)
+          echo "FFmpeg SDK: $url"
+          curl -fsSL -o "$RUNNER_TEMP/ffmpeg.zip" "$url"
+          7z x -y "$RUNNER_TEMP/ffmpeg.zip" -o"$RUNNER_TEMP" > /dev/null
+          root="$RUNNER_TEMP/$(basename "$url" .zip)"
+          echo "FFMPEG_ROOT=$(cygpath -m "$root")" >> "$GITHUB_ENV"
+          cygpath -w "$root/bin" >> "$GITHUB_PATH"
 
       - name: Ensure NSIS
         shell: bash

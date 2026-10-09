@@ -92,6 +92,7 @@ public:
     void UpsertElement(const ElementType &e);
     void UpsertEffect(const EffectDef &e);
     void UpsertAnimation(const AnimationTemplate &a);
+    void UpsertDesignSystem(const DesignSystem &d);
     /// Remove a library item by id from any of the three lists; false if absent.
     bool RemoveLibraryItem(std::string_view id);
 

@@ -13,35 +13,32 @@
 
 #include "Model/Document.hpp"
 #include "Model/Registry.hpp"
-#include "Plugins/PluginManager.hpp"
 
 /// @file Controller.hpp
-/// @brief Application controller: document + selection + playback + files / autosave +
-///        plugins + the built-in MCP server. Widgets talk to each other only through it.
-
-namespace ad::mcp
-{
-class McpServer;
-}
+/// @brief Controller of one open document (a tab): document + selection + playback +
+///        file / autosave. Widgets of the tab talk to each other only through it;
+///        shared state (registry, plugins, MCP, exports) lives in AppContext.
 
 namespace ad::ui
 {
 
-class AppDocumentHost;
-class McpHttpServer;
+class AppContext;
 
 class Controller : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit Controller(QObject *parent = nullptr);
+    explicit Controller(AppContext &ctx, QObject *parent = nullptr);
     ~Controller() override;
+
+    Controller(const Controller &)            = delete;
+    Controller &operator=(const Controller &) = delete;
 
     [[nodiscard]] const Model    &GetModel() const { return _doc.Get(); }
     [[nodiscard]] Document       &Doc() { return _doc; }
-    [[nodiscard]] const Registry &Reg() const { return _registry; }
-    [[nodiscard]] PluginManager  &Plugins() { return _plugins; }
+    [[nodiscard]] const Registry &Reg() const;
+    [[nodiscard]] AppContext     &Context() { return _ctx; }
 
     // -----------------------------------------------------------------------
     // Selection
@@ -72,8 +69,12 @@ public:
     bool SaveFile(const QString &path, QString *error);
     bool ImportDrawio(const QString &path, int page, bool keep_colors, QString *error, QString *report = nullptr);
     void ReplaceModel(Model m, const QString &path, bool modified);
-    /// Restore the last session from the autosave (or load the example).
-    void                         RestoreSession();
+    /// Load the autosave of a previous session (tab id from the session list).
+    bool RestoreAutosave(const QString &session_id, const QString &path, bool modified);
+    /// Delete the autosave (the tab is closed).
+    void                         DiscardAutosave();
+    [[nodiscard]] const QString &SessionId() const { return _session_id; }
+    [[nodiscard]] QString        AutosavePath() const;
     [[nodiscard]] const QString &FilePath() const { return _path; }
     void                         SetFilePath(const QString &path);
     [[nodiscard]] bool           IsModified() const { return _modified; }
@@ -95,28 +96,6 @@ public:
     void                 SetSpeed(double s) { _speed = s; }
     void                 SetLoop(bool l) { _loop = l; }
 
-    // -----------------------------------------------------------------------
-    // Plugins
-    // -----------------------------------------------------------------------
-    /// Rescan plugin directories and rebuild the registry.
-    void ReloadPlugins();
-    void SetPluginEnabled(const std::string &id, bool enabled);
-
-    // -----------------------------------------------------------------------
-    // MCP server (HTTP, localhost only)
-    // -----------------------------------------------------------------------
-    bool                          StartMcp(quint16 port, QString *error);
-    void                          StopMcp();
-    [[nodiscard]] bool            IsMcpRunning() const;
-    [[nodiscard]] QString         McpUrl() const;
-    [[nodiscard]] mcp::McpServer &Mcp() { return *_mcp; }
-
-    /// Configure directories and disabled ids from the settings, scan and fill the registry.
-    static void        LoadPlugins(PluginManager &plugins, Registry &registry);
-    static QString     AutosavePath();
-    static QString     UserPluginDir();
-    static QStringList SystemPluginDirs();
-
 Q_SIGNALS:
     void ModelChanged(bool structural);
     void SelectionChanged();
@@ -126,9 +105,6 @@ Q_SIGNALS:
     void DocumentStateChanged();
     /// Plugins or the registry changed (palette and library lists must be refreshed).
     void LibraryChanged();
-    void McpStateChanged();
-    /// A tool call arrived over MCP (for the status bar).
-    void McpActivity(const QString &text);
 
 private:
     friend class AppDocumentHost;
@@ -139,12 +115,12 @@ private:
     void _WriteAutosave();
     void _OnReplaced();
 
-    Document      _doc;
-    Registry      _registry;
-    PluginManager _plugins;
-    Selection     _selection;
-    QString       _path;
-    bool          _modified = false;
+    AppContext &_ctx;
+    Document    _doc;
+    Selection   _selection;
+    QString     _session_id;
+    QString     _path;
+    bool        _modified = false;
 
     double        _time    = 0;
     bool          _playing = false;
@@ -154,10 +130,6 @@ private:
     QElapsedTimer _clock;
     qint64        _last_ms = 0;
     QTimer        _autosave_timer;
-
-    std::unique_ptr<AppDocumentHost> _host;
-    std::unique_ptr<mcp::McpServer>  _mcp;
-    McpHttpServer                   *_http = nullptr;
 };
 
 } // namespace ad::ui

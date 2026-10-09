@@ -5,6 +5,8 @@
 #include <QPainter>
 
 #include <algorithm>
+#include <map>
+#include <memory>
 #include <variant>
 
 namespace ad::ui
@@ -15,32 +17,38 @@ namespace
 
 constexpr double kRefPx = 100; // reference font size; the real size is a painter scale
 
-struct Fonts
+struct FontEntry
 {
-    QFont         regular;
-    QFont         bold;
-    QFontMetricsF regular_fm;
-    QFontMetricsF bold_fm;
+    QFont         font;
+    QFontMetricsF metrics;
 
-    Fonts() : regular(MakeFont(false)), bold(MakeFont(true)), regular_fm(regular), bold_fm(bold) {}
+    FontEntry(const QString &family, bool bold) : font(Make(family, bold)), metrics(font) {}
 
-    static QFont MakeFont(bool is_bold)
+    static QFont Make(const QString &family, bool bold)
     {
         QFont f;
+        if (!family.isEmpty())
+        {
+            f.setFamily(family);
+        }
         f.setPixelSize(static_cast<int>(kRefPx));
-        f.setBold(is_bold);
+        f.setBold(bold);
         f.setHintingPreference(QFont::PreferNoHinting); // metrics independent of the scale
         f.setStyleStrategy(QFont::PreferAntialias);
         return f;
     }
-    [[nodiscard]] const QFont         &Get(bool b) const { return b ? bold : regular; }
-    [[nodiscard]] const QFontMetricsF &Metrics(bool b) const { return b ? bold_fm : regular_fm; }
 };
 
-const Fonts &GetFonts()
+/// Per-thread cache (export renders in worker threads), keyed by family and weight.
+const FontEntry &GetFont(const Font &font)
 {
-    thread_local const Fonts kFonts; // export renders in a worker thread
-    return kFonts;
+    thread_local std::map<std::pair<std::string, bool>, std::unique_ptr<FontEntry>> cache;
+    auto                                                                           &slot = cache[{font.family, font.bold}];
+    if (!slot)
+    {
+        slot = std::make_unique<FontEntry>(Qs(font.family), font.bold);
+    }
+    return *slot;
 }
 
 template <class... Ts>
@@ -117,9 +125,9 @@ void DrawText(QPainter &p, const TextShape &t, const Paint &paint)
     {
         return;
     }
-    const Fonts         &f    = GetFonts();
-    const QFont         &font = f.Get(t.font.bold);
-    const QFontMetricsF &fm   = f.Metrics(t.font.bold);
+    const FontEntry     &f    = GetFont(t.font);
+    const QFont         &font = f.font;
+    const QFontMetricsF &fm   = f.metrics;
     const double         k    = t.font.size / kRefPx;
     const QString        s    = Qs(t.text);
     const double         w    = fm.horizontalAdvance(s) * k;
@@ -193,7 +201,7 @@ QPainterPath ToQPath(const Path &path)
 
 double QtTextMeasurer::Width(std::string_view utf8, const Font &font) const
 {
-    return GetFonts().Metrics(font.bold).horizontalAdvance(Qs(utf8)) * font.size / kRefPx;
+    return GetFont(font).metrics.horizontalAdvance(Qs(utf8)) * font.size / kRefPx;
 }
 
 void RenderFrame(QPainter &p, const Frame &frame)

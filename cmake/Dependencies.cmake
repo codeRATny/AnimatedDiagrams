@@ -19,3 +19,15 @@ if(BUILD_TESTS)
         FIND_PACKAGE_ARGS NAMES GTest)
     FetchContent_MakeAvailable(googletest)
 endif()
+
+# libav (FFmpeg libraries) for WebM / MP4 export
+if(WITH_LIBAV)
+    find_package(LibAV 58)
+    if(NOT LibAV_FOUND)
+        message(FATAL_ERROR
+            "libav (FFmpeg libraries) not found. Install libavcodec-dev libavformat-dev libswscale-dev "
+            "(Debian/Ubuntu) or libav*-free-devel (Fedora), set FFMPEG_ROOT to an FFmpeg SDK (Windows), "
+            "or configure with -DWITH_LIBAV=OFF (GIF / PNG export only).")
+    endif()
+    message(STATUS "libav ${LibAV_VERSION}: WebM / MP4 export enabled")
+endif()

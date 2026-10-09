@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "Common/Exceptions.hpp"
+#include "Engine/Design.hpp"
 #include "Engine/Layout.hpp"
 #include "Engine/Templates.hpp"
 #include "Import/DrawioImporter.hpp"
@@ -18,6 +19,10 @@
 
 namespace ad::mcp
 {
+
+std::vector<DocumentInfo> DocumentHost::Documents() { return {DocumentInfo{Doc().Get().meta.name, CurrentPath(), true, false}}; }
+
+bool DocumentHost::SelectDocument(size_t index) { return index == 0; }
 
 std::expected<std::vector<uint8_t>, std::string> DocumentHost::RenderPng(double /*time_ms*/, double /*scale*/)
 {
@@ -167,15 +172,42 @@ public:
              });
 
         _Add("list_library", "List library",
-             "Element types (for add_node 'type'), effects (for effect steps), animation templates (for apply_animation) and the "
-             "fixed catalogs (shapes, states, message variants...).",
-             Schema({{"kind", EnumProp({"elements", "effects", "animations", "catalogs", "all"}, "What to list (default all)")}}), true,
+             "Element types (for add_node 'type'), effects (for effect steps), animation templates (for apply_animation), design "
+             "systems (for set_scene designSystem) and the fixed catalogs (shapes, states, message variants...).",
+             Schema({{"kind",
+                      EnumProp({"elements", "effects", "animations", "designSystems", "catalogs", "all"}, "What to list (default all)")}}),
+             true,
              [this](const Json &a)
              {
                  return ToolResult::FromJson(_Library(a.value("kind", std::string("all"))));
              });
 
-        _Add("new_document", "New document", "Replace the current document with an empty one (or the bundled example).",
+        _Add("list_documents", "List documents", "Documents open in the editor (tabs) with their index; tools work on the active one.",
+             Schema(Json::object()), true,
+             [this](const Json & /*a*/)
+             {
+                 Json   arr = Json::array();
+                 size_t i   = 0;
+                 for (const auto &d : _host.Documents())
+                 {
+                     arr.push_back({{"index", i++}, {"name", d.name}, {"path", d.path}, {"active", d.active}, {"modified", d.modified}});
+                 }
+                 return ToolResult::FromJson(Json{{"documents", arr}});
+             });
+
+        _Add("select_document", "Select document", "Make the document with this index (see list_documents) the active one.",
+             Schema({{"index", Prop("integer", "Document index")}}, {"index"}), false,
+             [this](const Json &a)
+             {
+                 if (!a.contains("index") || !a["index"].is_number_integer() || a["index"].get<int64_t>() < 0 ||
+                     !_host.SelectDocument(static_cast<size_t>(a["index"].get<int64_t>())))
+                 {
+                     throw ToolError("no document with this index (see list_documents)");
+                 }
+                 return ToolResult::Text("Active document: " + _M().meta.name + "\n\n" + DocumentSummary(_M(), _host.Reg()));
+             });
+
+        _Add("new_document", "New document", "Create an empty document (or the bundled example). In the editor it opens in a new tab.",
              Schema({{"name", Prop("string", "Diagram name")}, {"example", Prop("boolean", "Load the bundled example instead")}}), false,
              [this](const Json &a)
              {
@@ -184,13 +216,14 @@ public:
                  {
                      m.meta.name = a["name"].get<std::string>();
                  }
+                 _host.BeginNewDocument();
                  _host.Doc().Reset(std::move(m));
                  _host.SetCurrentPath({});
                  _host.Replaced();
                  return ToolResult::Text("New document created");
              });
 
-        _Add("open_document", "Open file", "Open a diagram .json file from disk.",
+        _Add("open_document", "Open file", "Open a diagram .json file from disk (in the editor: in a new tab).",
              Schema({{"path", Prop("string", "File path")}}, {"path"}), false,
              [this](const Json &a)
              {
@@ -200,6 +233,7 @@ public:
                  {
                      throw ToolError(parsed.error());
                  }
+                 _host.BeginNewDocument();
                  _host.Doc().Reset(std::move(*parsed));
                  _host.SetCurrentPath(path);
                  _host.Replaced();
@@ -247,6 +281,7 @@ public:
                  {
                      throw ToolError(model.error());
                  }
+                 _host.BeginNewDocument();
                  _host.Doc().Reset(std::move(*model));
                  _host.SetCurrentPath({});
                  _host.Replaced();
@@ -259,8 +294,11 @@ public:
         _RegisterStepTools();
         _RegisterLibraryTools();
 
-        _Add("set_scene", "Scene settings", "Change document name, scene duration and canvas colors.",
+        _Add("set_scene", "Scene settings",
+             "Change document name, scene duration, canvas colors and the design system. A design system is applied first, "
+             "explicit colors in the same call win.",
              Schema({{"name", Prop("string", "Diagram name")},
+                     {"designSystem", Prop("string", "Design system id (see list_library), empty string -- detach")},
                      {"description", Prop("string", "Diagram description")},
                      {"durationMs", Prop("number", "Scene duration in ms (marks it as user-defined)")},
                      {"background", Prop("string", "Canvas / export background #rrggbb")},
@@ -270,8 +308,26 @@ public:
              false,
              [this](const Json &a)
              {
+                 const DesignSystem *ds = nullptr;
+                 if (a.contains("designSystem") && a["designSystem"].is_string() && !a["designSystem"].get<std::string>().empty())
+                 {
+                     ds = _host.Reg().FindDesignSystem(a["designSystem"].get<std::string>(), &_M().library);
+                     if (ds == nullptr)
+                     {
+                         throw ToolError("design system '" + a["designSystem"].get<std::string>() + "' not found (see list_library)");
+                     }
+                 }
+                 const DesignSystem ds_copy = ds != nullptr ? *ds : DesignSystem{}; // the registry entry may live in the document
                  _host.Doc().Checkpoint();
                  Model &m = _host.Doc().Mutable();
+                 if (ds != nullptr)
+                 {
+                     ApplyDesignSystem(m, ds_copy);
+                 }
+                 else if (a.contains("designSystem") && a["designSystem"].is_string())
+                 {
+                     ClearDesignSystem(m);
+                 }
                  if (a.contains("name") && a["name"].is_string())
                  {
                      m.meta.name = a["name"].get<std::string>();
@@ -340,21 +396,23 @@ public:
              });
 
         _Add("export_animation", "Export animation",
-             "Export the whole scenario to GIF, PNG frames, WebM or MP4 (video formats need ffmpeg in PATH).",
+             "Export the whole scenario to GIF, PNG frames, WebM (VP9) or MP4 (H.264), encoded in process with libav.",
              Schema({{"path", Prop("string", "Output file")},
                      {"format", EnumProp({"gif", "png", "webm", "mp4"}, "Default: by extension")},
                      {"fps", Prop("number", "Frames per second (default 15)")},
-                     {"scale", Prop("number", "Resolution scale (default 1)")}},
+                     {"scale", Prop("number", "Resolution scale (default 1)")},
+                     {"quality", Prop("integer", "WebM / MP4 quality 0 (smallest) .. 4 (best), default 2")}},
                     {"path"}),
              false,
              [this](const Json &a)
              {
                  ExportRequest req;
-                 req.path   = RequireString(a, "path");
-                 req.format = a.value("format", std::string{});
-                 req.fps    = std::clamp(a.value("fps", 15.0), 1.0, 60.0);
-                 req.scale  = std::clamp(a.value("scale", 1.0), 0.25, 8.0);
-                 auto res   = _host.Export(req);
+                 req.path    = RequireString(a, "path");
+                 req.format  = a.value("format", std::string{});
+                 req.fps     = std::clamp(a.value("fps", 15.0), 1.0, 60.0);
+                 req.scale   = std::clamp(a.value("scale", 1.0), 0.25, 8.0);
+                 req.quality = std::clamp(a.value("quality", 2), 0, 4);
+                 auto res    = _host.Export(req);
                  if (!res.has_value())
                  {
                      throw ToolError(res.error());
@@ -792,6 +850,25 @@ private:
             }
             out["animations"] = std::move(arr);
         }
+        if (kind == "designSystems" || kind == "all")
+        {
+            Json arr = Json::array();
+            for (const auto &d : reg.DesignSystems(doc))
+            {
+                Json tokens = Json::object();
+                for (const auto &[k, v] : d.def->colors)
+                {
+                    tokens[k] = v;
+                }
+                arr.push_back({{"id", d.def->id},
+                               {"label", d.def->label},
+                               {"description", d.def->description},
+                               {"tokens", tokens},
+                               {"source", d.source}});
+            }
+            out["designSystems"]      = std::move(arr);
+            out["activeDesignSystem"] = _M().design_system;
+        }
         if (kind == "catalogs" || kind == "all")
         {
             Json states = Json::array();
@@ -824,9 +901,9 @@ private:
     void _RegisterLibraryTools()
     {
         _Add("upsert_library_item", "Create library item",
-             "Create or replace a custom element type, effect or animation template in the document library. 'definition' uses the "
-             "plugin JSON format (see the animated-diagrams skill / docs/plugins.md).",
-             Schema({{"kind", EnumProp({"element", "effect", "animation"}, "Definition kind")},
+             "Create or replace a custom element type, effect, animation template or design system in the document library. "
+             "'definition' uses the plugin JSON format (see the animated-diagrams skill / docs/plugins.md).",
+             Schema({{"kind", EnumProp({"element", "effect", "animation", "design-system"}, "Definition kind")},
                      {"definition", Json{{"type", "object"}, {"description", "Definition JSON with an 'id'"}}}},
                     {"kind", "definition"}),
              false,
@@ -866,9 +943,19 @@ private:
                      id = t->id;
                      _host.Doc().UpsertAnimation(*t);
                  }
+                 else if (kind == "design-system")
+                 {
+                     auto d = json::DesignSystemFromJson(def, &warnings);
+                     if (!d.has_value())
+                     {
+                         throw ToolError("invalid design system definition");
+                     }
+                     id = d->id;
+                     _host.Doc().UpsertDesignSystem(*d);
+                 }
                  else
                  {
-                     throw ToolError("kind must be element, effect or animation");
+                     throw ToolError("kind must be element, effect, animation or design-system");
                  }
                  _host.Changed(true);
                  Json res{{"id", id}};
@@ -917,8 +1004,12 @@ std::string DocumentSummary(const Model &m, const Registry &reg)
     {
         out += std::format("- {} [{}] {:.2f}-{:.2f} s: {}\n", s.id, ToString(s.type), s.start / 1000, s.End() / 1000, StepTitle(m, s, reg));
     }
-    out += std::format("\nDocument library: {} elements, {} effects, {} animations\n", m.library.elements.size(), m.library.effects.size(),
-                       m.library.animations.size());
+    out += std::format("\nDocument library: {} elements, {} effects, {} animations, {} design systems\n", m.library.elements.size(),
+                       m.library.effects.size(), m.library.animations.size(), m.library.design_systems.size());
+    if (const DesignSystem *ds = reg.DesignOf(m); ds != nullptr)
+    {
+        out += std::format("Design system: {} ({})\n", ds->id, ds->label);
+    }
     return out;
 }
 
