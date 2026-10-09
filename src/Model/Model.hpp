@@ -79,7 +79,7 @@ struct View
 
 struct Meta
 {
-    std::string name = "Новая диаграмма";
+    std::string name = Tr("model", "New diagram");
     std::string description;
     int64_t     created_at                             = 0;
     friend bool operator==(const Meta &, const Meta &) = default;

@@ -24,7 +24,7 @@ namespace
 
 std::span<const uint8_t> Pixels(const QImage &img) { return {img.constBits(), static_cast<size_t>(img.sizeInBytes())}; }
 
-QString Cancelled() { return QObject::tr("Экспорт прерван"); }
+QString Cancelled() { return QObject::tr("Export cancelled"); }
 
 using Result = std::expected<ExportResult, QString>;
 
@@ -51,7 +51,7 @@ Result ExportGif(const Model &m, const ExportOptions &o, const Registry &reg, co
     if (!f.open(QIODevice::WriteOnly) || f.write(reinterpret_cast<const char *>(bytes.data()), static_cast<qint64>(bytes.size())) < 0 ||
         !f.commit())
     {
-        return std::unexpected(QObject::tr("Не удалось записать %1: %2").arg(o.output_path, f.errorString()));
+        return std::unexpected(QObject::tr("Could not write %1: %2").arg(o.output_path, f.errorString()));
     }
     return ExportResult{o.output_path, static_cast<int>(times.size()), static_cast<qint64>(bytes.size()), {}};
 }
@@ -73,7 +73,7 @@ Result ExportPng(const Model &m, const ExportOptions &o, const Registry &reg, co
         const QImage  img  = RenderExportFrame(m, times[i], g, o.background, reg);
         if (!img.save(path, "PNG"))
         {
-            return std::unexpected(QObject::tr("Не удалось записать %1").arg(path));
+            return std::unexpected(QObject::tr("Could not write %1").arg(path));
         }
         total += QFileInfo(path).size();
         if (progress)
@@ -97,7 +97,7 @@ Result ExportVideo(const Model &m, const ExportOptions &o, const Registry &reg, 
     const auto path = PathFromUtf8(Us(o.output_path));
     if (auto r = enc.Open(path, vo); !r.has_value())
     {
-        return std::unexpected(QObject::tr("Видео: %1").arg(Qs(r.error())));
+        return std::unexpected(QObject::tr("Video: %1").arg(Qs(r.error())));
     }
     for (size_t i = 0; i < times.size(); ++i)
     {
@@ -111,7 +111,7 @@ Result ExportVideo(const Model &m, const ExportOptions &o, const Registry &reg, 
         if (auto r = enc.AddFrame(Pixels(img)); !r.has_value())
         {
             enc.Abort();
-            return std::unexpected(QObject::tr("Видео: %1").arg(Qs(r.error())));
+            return std::unexpected(QObject::tr("Video: %1").arg(Qs(r.error())));
         }
         if (progress)
         {
@@ -120,7 +120,7 @@ Result ExportVideo(const Model &m, const ExportOptions &o, const Registry &reg, 
     }
     if (auto r = enc.Finish(); !r.has_value())
     {
-        return std::unexpected(QObject::tr("Видео: %1").arg(Qs(r.error())));
+        return std::unexpected(QObject::tr("Video: %1").arg(Qs(r.error())));
     }
     return ExportResult{o.output_path, static_cast<int>(times.size()), QFileInfo(o.output_path).size(), Qs(enc.EncoderName())};
 }
@@ -207,16 +207,16 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
 {
     if (o.output_path.isEmpty())
     {
-        return std::unexpected(QObject::tr("Не указан файл для сохранения"));
+        return std::unexpected(QObject::tr("No output file specified"));
     }
     if (o.fps <= 0)
     {
-        return std::unexpected(QObject::tr("Некорректная частота кадров"));
+        return std::unexpected(QObject::tr("Invalid frame rate"));
     }
     const QFileInfo out(o.output_path);
     if (!QDir().mkpath(out.absolutePath()))
     {
-        return std::unexpected(QObject::tr("Нет доступа к каталогу %1").arg(out.absolutePath()));
+        return std::unexpected(QObject::tr("Cannot access folder %1").arg(out.absolutePath()));
     }
     const ExportGeometry g     = PlanExport(m, o, reg);
     const auto           times = ExportFrameTimes(m.scenario.duration, o.fps);
@@ -230,7 +230,7 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
     case ExportFormat::Mp4:
         return ExportVideo(m, o, reg, g, times, stop, progress);
     }
-    return std::unexpected(QObject::tr("Неизвестный формат"));
+    return std::unexpected(QObject::tr("Unknown format"));
 }
 
 } // namespace ad::ui

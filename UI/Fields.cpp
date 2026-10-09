@@ -3,6 +3,7 @@
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
@@ -44,7 +45,7 @@ QColor PickerStart(const QString &value)
 std::optional<QColor> PickColor(QPushButton *b, const QString &value)
 {
     const QPointer<QPushButton> guard(b);
-    const QColor                picked = QColorDialog::getColor(PickerStart(value), b->window(), QObject::tr("Цвет"));
+    const QColor                picked = QColorDialog::getColor(PickerStart(value), b->window(), QObject::tr("Color"));
     if (guard == nullptr || !picked.isValid())
     {
         return std::nullopt;
@@ -56,11 +57,11 @@ void PaintColorButton(QPushButton *b, const QString &value, bool dimmed)
 {
     const auto c = ResolveColor(value);
     b->setText(value);
-    QString tip = dimmed ? QObject::tr("Наследуется (авто)") : QString();
+    QString tip = dimmed ? QObject::tr("Inherited (auto)") : QString();
     if (value.startsWith(QLatin1Char('$')))
     {
         tip += (tip.isEmpty() ? QString() : QStringLiteral("\n")) +
-               QObject::tr("Токен дизайн-системы: %1").arg(c.has_value() ? Qs(c->Hex()) : QObject::tr("не определён"));
+               QObject::tr("Design system token: %1").arg(c.has_value() ? Qs(c->Hex()) : QObject::tr("not defined"));
     }
     b->setToolTip(tip);
     b->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
@@ -106,18 +107,18 @@ Options EasingOptions()
 Options EffectPropertyOptions()
 {
     static const std::pair<EffectProperty, const char *> kLabels[] = {
-        {EffectProperty::Opacity, QT_TRANSLATE_NOOP("fields", "Прозрачность (×)")},
-        {EffectProperty::Scale, QT_TRANSLATE_NOOP("fields", "Масштаб (×)")},
-        {EffectProperty::Rotate, QT_TRANSLATE_NOOP("fields", "Поворот (°)")},
-        {EffectProperty::OffsetX, QT_TRANSLATE_NOOP("fields", "Сдвиг X (px)")},
-        {EffectProperty::OffsetY, QT_TRANSLATE_NOOP("fields", "Сдвиг Y (px)")},
-        {EffectProperty::Glow, QT_TRANSLATE_NOOP("fields", "Свечение (0..1)")},
-        {EffectProperty::Tint, QT_TRANSLATE_NOOP("fields", "Тонирование (0..1)")},
+        {EffectProperty::Opacity, QT_TRANSLATE_NOOP("fields", "Opacity (×)")},
+        {EffectProperty::Scale, QT_TRANSLATE_NOOP("fields", "Scale (×)")},
+        {EffectProperty::Rotate, QT_TRANSLATE_NOOP("fields", "Rotation (°)")},
+        {EffectProperty::OffsetX, QT_TRANSLATE_NOOP("fields", "Offset X (px)")},
+        {EffectProperty::OffsetY, QT_TRANSLATE_NOOP("fields", "Offset Y (px)")},
+        {EffectProperty::Glow, QT_TRANSLATE_NOOP("fields", "Glow (0..1)")},
+        {EffectProperty::Tint, QT_TRANSLATE_NOOP("fields", "Tint (0..1)")},
     };
     Options o;
     for (const auto &[p, label] : kLabels)
     {
-        o.emplace_back(Qs(ToString(p)), QString::fromUtf8(label));
+        o.emplace_back(Qs(ToString(p)), QCoreApplication::translate("fields", label));
     }
     return o;
 }
@@ -214,7 +215,7 @@ QWidget *OptSpin(std::optional<double> value, double min, double max, double ste
     s->setRange(unset, max);
     s->setDecimals(decimals);
     s->setSingleStep(step);
-    s->setSpecialValueText(fallback.isEmpty() ? QObject::tr("авто") : QObject::tr("авто (%1)").arg(fallback));
+    s->setSpecialValueText(fallback.isEmpty() ? QObject::tr("auto") : QObject::tr("auto (%1)").arg(fallback));
     s->setValue(value.value_or(unset));
     s->setFocusPolicy(Qt::StrongFocus);
     s->setKeyboardTracking(false);
@@ -250,7 +251,7 @@ QWidget *OptCombo(const Options &options, const std::optional<std::string> &curr
 {
     auto *c = new QComboBox;
     MakeShrinkable(c);
-    c->addItem(fallback.isEmpty() ? QObject::tr("авто") : QObject::tr("авто (%1)").arg(fallback), QVariant());
+    c->addItem(fallback.isEmpty() ? QObject::tr("auto") : QObject::tr("auto (%1)").arg(fallback), QVariant());
     for (const auto &[value, label] : options)
     {
         c->addItem(label, value);
@@ -298,7 +299,7 @@ QWidget *OptColor(const std::optional<std::string> &value, const QString &fallba
     PaintColorButton(b, hex.isEmpty() ? QStringLiteral("#000000") : hex, !value.has_value());
     auto *reset = new QPushButton(QStringLiteral("✕"));
     reset->setFixedWidth(26);
-    reset->setToolTip(QObject::tr("Сбросить (наследовать)"));
+    reset->setToolTip(QObject::tr("Reset (inherit)"));
     reset->setEnabled(value.has_value());
     l->addWidget(b, 1);
     l->addWidget(reset);
@@ -352,10 +353,10 @@ QWidget *Check(const QString &label, bool value, std::function<void(bool)> on_ch
 QWidget *OptCheck(const QString &label, std::optional<bool> value, bool fallback, std::function<void(std::optional<bool>)> on_change)
 {
     auto *c = new QCheckBox(value.has_value() ? label
-                                              : QObject::tr("%1 (авто: %2)").arg(label, fallback ? QObject::tr("да") : QObject::tr("нет")));
+                                              : QObject::tr("%1 (auto: %2)").arg(label, fallback ? QObject::tr("yes") : QObject::tr("no")));
     c->setTristate(true);
     c->setCheckState(!value.has_value() ? Qt::PartiallyChecked : (*value ? Qt::Checked : Qt::Unchecked));
-    c->setToolTip(QObject::tr("Промежуточное состояние — наследовать значение"));
+    c->setToolTip(QObject::tr("Indeterminate state — inherit the value"));
     // clicked (not stateChanged): the latter is deprecated in Qt 6.9, checkStateChanged needs 6.7
     QObject::connect(c, &QCheckBox::clicked, c,
                      [c, f = std::move(on_change)]
@@ -385,7 +386,7 @@ QDialogButtonBox *OkCancelButtons(QDialog *dlg)
 {
     auto *box = new QDialogButtonBox;
     auto *ok  = box->addButton(QObject::tr("OK"), QDialogButtonBox::AcceptRole);
-    box->addButton(QObject::tr("Отмена"), QDialogButtonBox::RejectRole);
+    box->addButton(QObject::tr("Cancel"), QDialogButtonBox::RejectRole);
     ok->setDefault(true);
     QObject::connect(box, &QDialogButtonBox::accepted, dlg, &QDialog::accept);
     QObject::connect(box, &QDialogButtonBox::rejected, dlg, &QDialog::reject);
@@ -403,7 +404,7 @@ void AddNodeStyleFields(QVBoxLayout *box, const NodeStyle &current, const NodeSt
         return QString::number(v.value_or(def));
     };
 
-    box->addWidget(Labeled(QObject::tr("Форма"), OptCombo(FromCatalog(Shapes()), current.shape, str(base.shape, "rounded"),
+    box->addWidget(Labeled(QObject::tr("Shape"), OptCombo(FromCatalog(Shapes()), current.shape, str(base.shape, "rounded"),
                                                           [edit](std::optional<std::string> v)
                                                           {
                                                               edit({},
@@ -414,7 +415,7 @@ void AddNodeStyleFields(QVBoxLayout *box, const NodeStyle &current, const NodeSt
                                                           })));
     if (current.shape.value_or(base.shape.value_or("")) == "custom")
     {
-        box->addWidget(Labeled(QObject::tr("Контур (SVG path в квадрате 0..1)"),
+        box->addWidget(Labeled(QObject::tr("Outline (SVG path in the 0..1 square)"),
                                LineEdit(
                                    str(current.custom_path),
                                    [edit](const QString &v)
@@ -427,46 +428,45 @@ void AddNodeStyleFields(QVBoxLayout *box, const NodeStyle &current, const NodeSt
                                    },
                                    str(base.custom_path, "M0.5 0 L1 0.5 L0.5 1 L0 0.5 Z"))));
     }
-    box->addWidget(
-        Row(Labeled(QObject::tr("Заливка"), OptColor(current.fill, base.fill.has_value() ? Qs(*base.fill) : Qs(NodeState("ok").fill.Hex()),
-                                                     [edit](std::optional<std::string> v)
+    box->addWidget(Row(
+        Labeled(QObject::tr("Fill"), OptColor(current.fill, base.fill.has_value() ? Qs(*base.fill) : Qs(NodeState("ok").fill.Hex()),
+                                              [edit](std::optional<std::string> v)
+                                              {
+                                                  edit({},
+                                                       [&](NodeStyle &s)
+                                                       {
+                                                           s.fill = std::move(v);
+                                                       });
+                                              })),
+        Labeled(QObject::tr("Stroke"), OptColor(current.stroke, base.stroke.has_value() ? Qs(*base.stroke) : Qs(NodeState("ok").ring.Hex()),
+                                                [edit](std::optional<std::string> v)
+                                                {
+                                                    edit({},
+                                                         [&](NodeStyle &s)
+                                                         {
+                                                             s.stroke = std::move(v);
+                                                         });
+                                                }))));
+    box->addWidget(Row(
+        Labeled(QObject::tr("Stroke width"), OptSpin(current.stroke_width, 0, 20, 0.5, 1, num(base.stroke_width, 2),
+                                                     [edit](std::optional<double> v)
                                                      {
-                                                         edit({},
+                                                         edit("style:stroke_width",
                                                               [&](NodeStyle &s)
                                                               {
-                                                                  s.fill = std::move(v);
+                                                                  s.stroke_width = v;
                                                               });
                                                      })),
-            Labeled(QObject::tr("Обводка"),
-                    OptColor(current.stroke, base.stroke.has_value() ? Qs(*base.stroke) : Qs(NodeState("ok").ring.Hex()),
-                             [edit](std::optional<std::string> v)
-                             {
-                                 edit({},
-                                      [&](NodeStyle &s)
-                                      {
-                                          s.stroke = std::move(v);
-                                      });
-                             }))));
-    box->addWidget(
-        Row(Labeled(QObject::tr("Толщина обводки"), OptSpin(current.stroke_width, 0, 20, 0.5, 1, num(base.stroke_width, 2),
-                                                            [edit](std::optional<double> v)
-                                                            {
-                                                                edit("style:stroke_width",
-                                                                     [&](NodeStyle &s)
-                                                                     {
-                                                                         s.stroke_width = v;
-                                                                     });
-                                                            })),
-            Labeled(QObject::tr("Линия"), OptCombo(FromCatalog(StrokeStyles()), current.stroke_style, str(base.stroke_style, "solid"),
-                                                   [edit](std::optional<std::string> v)
-                                                   {
-                                                       edit({},
-                                                            [&](NodeStyle &s)
-                                                            {
-                                                                s.stroke_style = std::move(v);
-                                                            });
-                                                   }))));
-    box->addWidget(Row(Labeled(QObject::tr("Скругление"),
+        Labeled(QObject::tr("Stroke style"), OptCombo(FromCatalog(StrokeStyles()), current.stroke_style, str(base.stroke_style, "solid"),
+                                                      [edit](std::optional<std::string> v)
+                                                      {
+                                                          edit({},
+                                                               [&](NodeStyle &s)
+                                                               {
+                                                                   s.stroke_style = std::move(v);
+                                                               });
+                                                      }))));
+    box->addWidget(Row(Labeled(QObject::tr("Corner radius"),
                                OptSpin(current.corner_radius, 0, 100, 1, 0,
                                        num(base.corner_radius, DefaultCornerRadius(current.shape.value_or(base.shape.value_or("rounded")))),
                                        [edit](std::optional<double> v)
@@ -477,34 +477,34 @@ void AddNodeStyleFields(QVBoxLayout *box, const NodeStyle &current, const NodeSt
                                                     s.corner_radius = v;
                                                 });
                                        })),
-                       Labeled(QObject::tr("Непрозрачность"), OptSpin(current.opacity, 0, 1, 0.05, 2, num(base.opacity, 1),
-                                                                      [edit](std::optional<double> v)
-                                                                      {
-                                                                          edit("style:opacity",
-                                                                               [&](NodeStyle &s)
-                                                                               {
-                                                                                   s.opacity = v;
-                                                                               });
-                                                                      }))));
-    box->addWidget(Row(Labeled(QObject::tr("Цвет текста"), OptColor(current.text_color, str(base.text_color, "#f2f6ff"),
-                                                                    [edit](std::optional<std::string> v)
-                                                                    {
-                                                                        edit({},
-                                                                             [&](NodeStyle &s)
-                                                                             {
-                                                                                 s.text_color = std::move(v);
-                                                                             });
-                                                                    })),
-                       Labeled(QObject::tr("Размер шрифта"), OptSpin(current.font_size, 6, 72, 1, 0, num(base.font_size, 15),
-                                                                     [edit](std::optional<double> v)
-                                                                     {
-                                                                         edit("style:font_size",
-                                                                              [&](NodeStyle &s)
-                                                                              {
-                                                                                  s.font_size = v;
-                                                                              });
-                                                                     }))));
-    box->addWidget(Row(OptCheck(QObject::tr("Тень"), current.shadow, base.shadow.value_or(true),
+                       Labeled(QObject::tr("Opacity"), OptSpin(current.opacity, 0, 1, 0.05, 2, num(base.opacity, 1),
+                                                               [edit](std::optional<double> v)
+                                                               {
+                                                                   edit("style:opacity",
+                                                                        [&](NodeStyle &s)
+                                                                        {
+                                                                            s.opacity = v;
+                                                                        });
+                                                               }))));
+    box->addWidget(Row(Labeled(QObject::tr("Text color"), OptColor(current.text_color, str(base.text_color, "#f2f6ff"),
+                                                                   [edit](std::optional<std::string> v)
+                                                                   {
+                                                                       edit({},
+                                                                            [&](NodeStyle &s)
+                                                                            {
+                                                                                s.text_color = std::move(v);
+                                                                            });
+                                                                   })),
+                       Labeled(QObject::tr("Font size"), OptSpin(current.font_size, 6, 72, 1, 0, num(base.font_size, 15),
+                                                                 [edit](std::optional<double> v)
+                                                                 {
+                                                                     edit("style:font_size",
+                                                                          [&](NodeStyle &s)
+                                                                          {
+                                                                              s.font_size = v;
+                                                                          });
+                                                                 }))));
+    box->addWidget(Row(OptCheck(QObject::tr("Shadow"), current.shadow, base.shadow.value_or(true),
                                 [edit](std::optional<bool> v)
                                 {
                                     edit({},
@@ -513,7 +513,7 @@ void AddNodeStyleFields(QVBoxLayout *box, const NodeStyle &current, const NodeSt
                                              s.shadow = v;
                                          });
                                 }),
-                       OptCheck(QObject::tr("Иконка"), current.show_icon, base.show_icon.value_or(true),
+                       OptCheck(QObject::tr("Icon"), current.show_icon, base.show_icon.value_or(true),
                                 [edit](std::optional<bool> v)
                                 {
                                     edit({},

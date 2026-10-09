@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 
 /// @file Easing.hpp
@@ -30,7 +31,7 @@ struct EasingInfo
 {
     Easing           easing;
     std::string_view id;
-    std::string_view label;
+    std::string      label; // in the UI language
 };
 
 /// Map t in [0, 1] through the curve (t is clamped). Overshooting curves may leave [0, 1].

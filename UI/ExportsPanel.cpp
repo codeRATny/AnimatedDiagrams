@@ -25,15 +25,15 @@ QString StateText(const ExportJobInfo &j)
     switch (j.state)
     {
     case S::Queued:
-        return QObject::tr("В очереди");
+        return QObject::tr("Queued");
     case S::Running:
-        return j.total > 0 ? QObject::tr("Кадр %1 / %2").arg(j.done).arg(j.total) : QObject::tr("Подготовка…");
+        return j.total > 0 ? QObject::tr("Frame %1 / %2").arg(j.done).arg(j.total) : QObject::tr("Preparing…");
     case S::Done:
-        return QObject::tr("Готово · %1").arg(j.message);
+        return QObject::tr("Done · %1").arg(j.message);
     case S::Failed:
-        return QObject::tr("Ошибка: %1").arg(j.message);
+        return QObject::tr("Error: %1").arg(j.message);
     case S::Cancelled:
-        return QObject::tr("Отменено");
+        return QObject::tr("Cancelled");
     }
     return {};
 }
@@ -51,7 +51,7 @@ ExportsPanel::ExportsPanel(ExportManager &exports, QWidget *parent) : QWidget(pa
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
 
-    _clear = new QPushButton(tr("Очистить завершённые"));
+    _clear = new QPushButton(tr("Clear finished"));
     connect(_clear, &QPushButton::clicked, &_exports, &ExportManager::ClearFinished);
 
     auto *layout = new QVBoxLayout(this);
@@ -107,7 +107,7 @@ void ExportsPanel::_Rebuild()
         row->addWidget(status, 1);
         if (!j.Finished())
         {
-            auto     *cancel = new QPushButton(tr("Отменить"));
+            auto     *cancel = new QPushButton(tr("Cancel"));
             const int id     = j.id;
             connect(cancel, &QPushButton::clicked, this,
                     [this, id]
@@ -118,7 +118,7 @@ void ExportsPanel::_Rebuild()
         }
         else if (j.state == ExportJobInfo::State::Done)
         {
-            auto         *open   = new QPushButton(tr("Открыть папку"));
+            auto         *open   = new QPushButton(tr("Open folder"));
             const QString folder = QFileInfo(j.path).absolutePath();
             connect(open, &QPushButton::clicked, this,
                     [folder]
@@ -133,7 +133,7 @@ void ExportsPanel::_Rebuild()
     }
     if (jobs.empty())
     {
-        auto *empty = new QLabel(tr("Нет фоновых задач. Экспорт (Ctrl+E) выполняется здесь, редактирование при этом не блокируется."));
+        auto *empty = new QLabel(tr("No background jobs. Exports (Ctrl+E) run here without blocking editing."));
         empty->setObjectName(QStringLiteral("hint"));
         empty->setWordWrap(true);
         _list->addWidget(empty);
@@ -155,7 +155,7 @@ void ExportsPanel::_OnProgress(int id, int done, int total)
     }
     it->bar->setRange(0, std::max(1, total));
     it->bar->setValue(done);
-    it->status->setText(tr("Кадр %1 / %2").arg(done).arg(total));
+    it->status->setText(tr("Frame %1 / %2").arg(done).arg(total));
 }
 
 } // namespace ad::ui

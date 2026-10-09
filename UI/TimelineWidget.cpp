@@ -23,7 +23,7 @@ TimelineWidget::TimelineWidget(Controller &ctl, QWidget *parent) : QAbstractScro
     setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     viewport()->setMouseTracking(true);
-    setToolTip(tr("Ctrl + колесо — масштаб таймлайна"));
+    setToolTip(tr("Ctrl + wheel — zoom the timeline"));
     setMinimumHeight(120);
 
     connect(&_ctl, &Controller::ModelChanged, this,
@@ -182,7 +182,7 @@ void TimelineWidget::paintEvent(QPaintEvent * /*e*/)
         p.setPen(ToQColor(Ui().border, 0.45));
         p.drawLine(QPointF(x, 0), QPointF(x, kRuler));
         p.setPen(ToQColor(Ui().muted));
-        p.drawText(QPointF(x + 4, 15), Qs(FormatTick(sec, step)) + tr("с"));
+        p.drawText(QPointF(x + 4, 15), tr("%1s").arg(Qs(FormatTick(sec, step))));
     }
 
     // end of the scene

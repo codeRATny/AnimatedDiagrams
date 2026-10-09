@@ -5,14 +5,14 @@
   "name": "Data platform",
   "version": "1.0.0",
   "author": "Animated Diagrams",
-  "description": "Демо-плагин: PostgreSQL, ClickHouse, Kafka, Redis, ETL; эффекты записи и репликации; сценарии CDC, отказа мастера и ETL; дизайн-система ClickHouse. Элементы используют токены ($surface…) и подстраиваются под выбранную дизайн-систему.",
+  "description": "Demo plugin: PostgreSQL, ClickHouse, Kafka, Redis, ETL; write and replication effects; CDC, primary failover and ETL scenarios; the ClickHouse design system. Elements use tokens ($surface…) and follow the selected design system.",
   "elements": [
     {
       "id": "postgres",
       "label": "PostgreSQL",
       "icon": "PG",
-      "category": "Платформа данных",
-      "description": "OLTP-база PostgreSQL",
+      "category": "Data platform",
+      "description": "PostgreSQL OLTP database",
       "accent": "#336791",
       "width": 150.0,
       "height": 76.0,
@@ -24,10 +24,10 @@
     },
     {
       "id": "pg-replica",
-      "label": "Реплика PG",
+      "label": "PG replica",
       "icon": "PG",
-      "category": "Платформа данных",
-      "description": "Реплика PostgreSQL (hot standby)",
+      "category": "Data platform",
+      "description": "PostgreSQL replica (hot standby)",
       "accent": "#336791",
       "width": 150.0,
       "height": 76.0,
@@ -42,8 +42,8 @@
       "id": "clickhouse",
       "label": "ClickHouse",
       "icon": "CH",
-      "category": "Платформа данных",
-      "description": "Аналитическая СУБД ClickHouse",
+      "category": "Data platform",
+      "description": "ClickHouse analytical DBMS",
       "accent": "#faff69",
       "width": 160.0,
       "height": 76.0,
@@ -57,8 +57,8 @@
       "id": "kafka",
       "label": "Kafka",
       "icon": "≋",
-      "category": "Платформа данных",
-      "description": "Топик Kafka / брокер событий",
+      "category": "Data platform",
+      "description": "Kafka topic / event broker",
       "accent": "#e4572e",
       "width": 170.0,
       "height": 62.0,
@@ -72,8 +72,8 @@
       "id": "redis",
       "label": "Redis",
       "icon": "R",
-      "category": "Платформа данных",
-      "description": "Кэш / очередь Redis",
+      "category": "Data platform",
+      "description": "Redis cache / queue",
       "accent": "#dc382d",
       "width": 140.0,
       "height": 66.0,
@@ -85,10 +85,10 @@
     },
     {
       "id": "object-store",
-      "label": "Объектное хранилище",
+      "label": "Object storage",
       "icon": "▤",
-      "category": "Платформа данных",
-      "description": "S3-совместимое хранилище",
+      "category": "Data platform",
+      "description": "S3-compatible storage",
       "accent": "#34d399",
       "width": 170.0,
       "height": 70.0,
@@ -100,10 +100,10 @@
     },
     {
       "id": "etl-job",
-      "label": "ETL-задача",
+      "label": "ETL job",
       "icon": "⚙",
-      "category": "Платформа данных",
-      "description": "Пакетная обработка / Airflow DAG",
+      "category": "Data platform",
+      "description": "Batch processing / Airflow DAG",
       "accent": "$warning",
       "width": 150.0,
       "height": 60.0,
@@ -115,10 +115,10 @@
     },
     {
       "id": "bi-dashboard",
-      "label": "BI-дашборд",
+      "label": "BI dashboard",
       "icon": "▥",
-      "category": "Платформа данных",
-      "description": "Отчёт / дашборд",
+      "category": "Data platform",
+      "description": "Report / dashboard",
       "accent": "$info",
       "width": 160.0,
       "height": 70.0,
@@ -132,9 +132,9 @@
   "effects": [
     {
       "id": "write-burst",
-      "label": "Запись",
-      "category": "Платформа данных",
-      "description": "Серия записей: узел пульсирует и подкрашивается",
+      "label": "Write",
+      "category": "Data platform",
+      "description": "A series of writes: the node pulses and gets tinted",
       "color": "$success",
       "repeat": 3,
       "tracks": [
@@ -180,9 +180,9 @@
     },
     {
       "id": "replicate",
-      "label": "Репликация",
-      "category": "Платформа данных",
-      "description": "Волна свечения — данные догоняют мастер",
+      "label": "Replication",
+      "category": "Data platform",
+      "description": "A glow wave — data catches up with the primary",
       "color": "$info",
       "repeat": 2,
       "tracks": [
@@ -228,9 +228,9 @@
     },
     {
       "id": "replication-lag",
-      "label": "Отставание",
-      "category": "Платформа данных",
-      "description": "Мерцание: реплика отстаёт",
+      "label": "Lag",
+      "category": "Data platform",
+      "description": "Flicker: the replica lags behind",
       "color": "$warning",
       "repeat": 4,
       "tracks": [
@@ -274,9 +274,9 @@
     },
     {
       "id": "merge",
-      "label": "Слияние партов",
-      "category": "Платформа данных",
-      "description": "Фоновое слияние частей таблицы (ClickHouse merges)",
+      "label": "Part merge",
+      "category": "Data platform",
+      "description": "Background merge of table parts (ClickHouse merges)",
       "color": "$accent",
       "repeat": 1,
       "tracks": [
@@ -348,12 +348,12 @@
     {
       "id": "cdc-pipeline",
       "label": "CDC: OLTP → Kafka → ClickHouse",
-      "category": "Платформа данных",
-      "description": "Запись в PostgreSQL попадает в Kafka через CDC и пачками загружается в ClickHouse",
+      "category": "Data platform",
+      "description": "A write to PostgreSQL reaches Kafka through CDC and is loaded into ClickHouse in batches",
       "roles": [
         {
           "id": "app",
-          "label": "Приложение"
+          "label": "Application"
         },
         {
           "id": "db",
@@ -404,7 +404,7 @@
           "start": 2200.0,
           "duration": 700.0,
           "nodeId": "broker",
-          "text": "партиционирование"
+          "text": "partitioning"
         },
         {
           "id": "t5",
@@ -433,27 +433,27 @@
           "duration": 1600.0,
           "nodeId": "olap",
           "state": "success",
-          "label": "в витрине"
+          "label": "in the mart"
         }
       ]
     },
     {
       "id": "replica-failover",
-      "label": "Отказ мастера и переключение",
-      "category": "Платформа данных",
-      "description": "Мастер недоступен — по таймауту реплика становится новым мастером",
+      "label": "Primary failure and failover",
+      "category": "Data platform",
+      "description": "The primary is down — on timeout the replica becomes the new primary",
       "roles": [
         {
           "id": "app",
-          "label": "Приложение"
+          "label": "Application"
         },
         {
           "id": "primary",
-          "label": "Мастер"
+          "label": "Primary"
         },
         {
           "id": "replica",
-          "label": "Реплика"
+          "label": "Replica"
         }
       ],
       "steps": [
@@ -474,7 +474,7 @@
           "duration": 5200.0,
           "nodeId": "primary",
           "state": "down",
-          "label": "недоступен"
+          "label": "down"
         },
         {
           "id": "t3",
@@ -501,7 +501,7 @@
           "duration": 2200.0,
           "nodeId": "replica",
           "state": "active",
-          "label": "новый мастер"
+          "label": "new primary"
         },
         {
           "id": "t6",
@@ -527,13 +527,13 @@
     },
     {
       "id": "batch-etl",
-      "label": "Пакетный ETL",
-      "category": "Платформа данных",
-      "description": "Извлечение, трансформация и загрузка в хранилище, обновление отчёта",
+      "label": "Batch ETL",
+      "category": "Data platform",
+      "description": "Extract, transform and load into the warehouse, refresh the report",
       "roles": [
         {
           "id": "source",
-          "label": "Источник"
+          "label": "Source"
         },
         {
           "id": "etl",
@@ -541,7 +541,7 @@
         },
         {
           "id": "warehouse",
-          "label": "Хранилище"
+          "label": "Storage"
         },
         {
           "id": "bi",
@@ -622,8 +622,8 @@
     {
       "id": "clickhouse",
       "label": "ClickHouse",
-      "category": "Платформа данных",
-      "description": "Графитовый фон, жёлтые акценты, ортогональные связи",
+      "category": "Data platform",
+      "description": "Graphite background, yellow accents, orthogonal edges",
       "background": "#151515",
       "edgeColor": "#7a7a6a",
       "textColor": "#ffffff",
@@ -697,5 +697,46 @@
         }
       }
     }
-  ]
+  ],
+  "translations": {
+    "ru": {
+      "A glow wave — data catches up with the primary": "Волна свечения — данные догоняют мастер",
+      "A series of writes: the node pulses and gets tinted": "Серия записей: узел пульсирует и подкрашивается",
+      "A write to PostgreSQL reaches Kafka through CDC and is loaded into ClickHouse in batches": "Запись в PostgreSQL попадает в Kafka через CDC и пачками загружается в ClickHouse",
+      "Application": "Приложение",
+      "BI dashboard": "BI-дашборд",
+      "Background merge of table parts (ClickHouse merges)": "Фоновое слияние частей таблицы (ClickHouse merges)",
+      "Batch ETL": "Пакетный ETL",
+      "Batch processing / Airflow DAG": "Пакетная обработка / Airflow DAG",
+      "ClickHouse analytical DBMS": "Аналитическая СУБД ClickHouse",
+      "Data platform": "Платформа данных",
+      "Demo plugin: PostgreSQL, ClickHouse, Kafka, Redis, ETL; write and replication effects; CDC, primary failover and ETL scenarios; the ClickHouse design system. Elements use tokens ($surface…) and follow the selected design system.": "Демо-плагин: PostgreSQL, ClickHouse, Kafka, Redis, ETL; эффекты записи и репликации; сценарии CDC, отказа мастера и ETL; дизайн-система ClickHouse. Элементы используют токены ($surface…) и подстраиваются под выбранную дизайн-систему.",
+      "ETL job": "ETL-задача",
+      "Extract, transform and load into the warehouse, refresh the report": "Извлечение, трансформация и загрузка в хранилище, обновление отчёта",
+      "Flicker: the replica lags behind": "Мерцание: реплика отстаёт",
+      "Graphite background, yellow accents, orthogonal edges": "Графитовый фон, жёлтые акценты, ортогональные связи",
+      "Kafka topic / event broker": "Топик Kafka / брокер событий",
+      "Lag": "Отставание",
+      "Object storage": "Объектное хранилище",
+      "PG replica": "Реплика PG",
+      "Part merge": "Слияние партов",
+      "PostgreSQL OLTP database": "OLTP-база PostgreSQL",
+      "PostgreSQL replica (hot standby)": "Реплика PostgreSQL (hot standby)",
+      "Primary": "Мастер",
+      "Primary failure and failover": "Отказ мастера и переключение",
+      "Redis cache / queue": "Кэш / очередь Redis",
+      "Replica": "Реплика",
+      "Replication": "Репликация",
+      "Report / dashboard": "Отчёт / дашборд",
+      "S3-compatible storage": "S3-совместимое хранилище",
+      "Source": "Источник",
+      "Storage": "Хранилище",
+      "The primary is down — on timeout the replica becomes the new primary": "Мастер недоступен — по таймауту реплика становится новым мастером",
+      "Write": "Запись",
+      "down": "недоступен",
+      "in the mart": "в витрине",
+      "new primary": "новый мастер",
+      "partitioning": "партиционирование"
+    }
+  }
 }

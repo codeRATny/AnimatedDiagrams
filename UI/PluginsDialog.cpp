@@ -27,18 +27,18 @@ constexpr int kIdRole = Qt::UserRole;
 
 QString Contents(const LibrarySet &s)
 {
-    return QObject::tr("элементов: %1 · эффектов: %2 · анимаций: %3").arg(s.elements.size()).arg(s.effects.size()).arg(s.animations.size());
+    return QObject::tr("elements: %1 · effects: %2 · animations: %3").arg(s.elements.size()).arg(s.effects.size()).arg(s.animations.size());
 }
 
 } // namespace
 
 PluginsDialog::PluginsDialog(AppContext &ctx, QWidget *parent) : QDialog(parent), _ctx(ctx)
 {
-    setWindowTitle(tr("Плагины"));
+    setWindowTitle(tr("Plugins"));
     resize(760, 520);
 
     _tree = new QTreeWidget;
-    _tree->setHeaderLabels({tr("Плагин"), tr("Версия"), tr("Содержимое"), tr("Расположение")});
+    _tree->setHeaderLabels({tr("Plugin"), tr("Version"), tr("Contents"), tr("Location")});
     _tree->setRootIsDecorated(false);
     _tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     _tree->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
@@ -61,11 +61,11 @@ PluginsDialog::PluginsDialog(AppContext &ctx, QWidget *parent) : QDialog(parent)
     _errors->setObjectName(QStringLiteral("errorText"));
     _errors->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-    auto *install_button = new QPushButton(tr("Установить из файла…"));
-    _uninstall_button    = new QPushButton(tr("Удалить"));
+    auto *install_button = new QPushButton(tr("Install from file…"));
+    _uninstall_button    = new QPushButton(tr("Uninstall"));
     _uninstall_button->setObjectName(QStringLiteral("dangerButton"));
-    auto *folder_button = new QPushButton(tr("Открыть папку"));
-    auto *reload_button = new QPushButton(tr("Перечитать"));
+    auto *folder_button = new QPushButton(tr("Open folder"));
+    auto *reload_button = new QPushButton(tr("Reload"));
     connect(install_button, &QPushButton::clicked, this, &PluginsDialog::_Install);
     connect(_uninstall_button, &QPushButton::clicked, this, &PluginsDialog::_Uninstall);
     connect(folder_button, &QPushButton::clicked, this,
@@ -81,14 +81,14 @@ PluginsDialog::PluginsDialog(AppContext &ctx, QWidget *parent) : QDialog(parent)
             });
 
     auto *buttons = new QDialogButtonBox;
-    buttons->addButton(new QPushButton(tr("Закрыть")), QDialogButtonBox::RejectRole);
+    buttons->addButton(new QPushButton(tr("Close")), QDialogButtonBox::RejectRole);
     buttons->addButton(install_button, QDialogButtonBox::ActionRole);
     buttons->addButton(_uninstall_button, QDialogButtonBox::ActionRole);
     buttons->addButton(folder_button, QDialogButtonBox::ActionRole);
     buttons->addButton(reload_button, QDialogButtonBox::ActionRole);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
 
-    auto *hint = new QLabel(tr("Плагины — наборы элементов, эффектов и анимаций в JSON. Пользовательская папка: %1")
+    auto *hint = new QLabel(tr("Plugins are JSON sets of elements, effects and animations. User folder: %1")
                                 .arg(QDir::toNativeSeparators(AppContext::UserPluginDir())));
     hint->setObjectName(QStringLiteral("hint"));
     hint->setWordWrap(true);
@@ -116,7 +116,7 @@ void PluginsDialog::_Refresh()
         item->setText(0, Qs(rec.plugin.info.name));
         item->setText(1, Qs(rec.plugin.info.version));
         item->setText(2, Contents(rec.plugin.library));
-        item->setText(3, rec.writable ? tr("пользовательский") : tr("поставляется с программой"));
+        item->setText(3, rec.writable ? tr("user") : tr("bundled with the app"));
         item->setToolTip(3, Qs(PathToUtf8(rec.path)));
         item->setData(0, kIdRole, Qs(rec.plugin.info.id));
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
@@ -133,7 +133,7 @@ void PluginsDialog::_Refresh()
     {
         errors << QStringLiteral("%1: %2").arg(QDir::toNativeSeparators(Qs(PathToUtf8(e.path))), Qs(e.message));
     }
-    _errors->setText(errors.isEmpty() ? QString() : tr("Не удалось загрузить:\n%1").arg(errors.join(QLatin1Char('\n'))));
+    _errors->setText(errors.isEmpty() ? QString() : tr("Failed to load:\n%1").arg(errors.join(QLatin1Char('\n'))));
     _errors->setVisible(!errors.isEmpty());
     _UpdateButtons();
 }
@@ -145,13 +145,13 @@ void PluginsDialog::_UpdateButtons()
     _uninstall_button->setEnabled(rec != nullptr && rec->writable);
     if (rec == nullptr)
     {
-        _details->setText(tr("Выберите плагин, чтобы увидеть подробности."));
+        _details->setText(tr("Select a plugin to see its details."));
         return;
     }
     QString text = QStringLiteral("<b>%1</b> (%2)").arg(Qs(rec->plugin.info.name).toHtmlEscaped(), Qs(rec->plugin.info.id).toHtmlEscaped());
     if (!rec->plugin.info.author.empty())
     {
-        text += tr(" · автор: %1").arg(Qs(rec->plugin.info.author).toHtmlEscaped());
+        text += tr(" · author: %1").arg(Qs(rec->plugin.info.author).toHtmlEscaped());
     }
     if (!rec->plugin.info.description.empty())
     {
@@ -167,7 +167,7 @@ void PluginsDialog::_UpdateButtons()
 
 void PluginsDialog::_Install()
 {
-    const QString path = QFileDialog::getOpenFileName(this, tr("Установить плагин"), QDir::homePath(), tr("Плагин (*.json)"));
+    const QString path = QFileDialog::getOpenFileName(this, tr("Install plugin"), QDir::homePath(), tr("Plugin (*.json)"));
     if (path.isEmpty())
     {
         return;
@@ -175,7 +175,7 @@ void PluginsDialog::_Install()
     const auto result = _ctx.Plugins().Install(PathFromUtf8(Us(path)));
     if (!result.has_value())
     {
-        QMessageBox::warning(this, tr("Установка плагина"), Qs(result.error()));
+        QMessageBox::warning(this, tr("Plugin installation"), Qs(result.error()));
         return;
     }
     _ctx.ReloadPlugins();
@@ -189,13 +189,13 @@ void PluginsDialog::_Uninstall()
         return;
     }
     const std::string id = Us(item->data(0, kIdRole).toString());
-    if (QMessageBox::question(this, tr("Удалить плагин"), tr("Удалить плагин «%1»?").arg(item->text(0))) != QMessageBox::Yes)
+    if (QMessageBox::question(this, tr("Uninstall plugin"), tr("Uninstall plugin “%1”?").arg(item->text(0))) != QMessageBox::Yes)
     {
         return;
     }
     if (!_ctx.Plugins().Uninstall(id))
     {
-        QMessageBox::warning(this, tr("Удалить плагин"), tr("Не удалось удалить плагин."));
+        QMessageBox::warning(this, tr("Uninstall plugin"), tr("Could not uninstall the plugin."));
         return;
     }
     _ctx.ReloadPlugins();

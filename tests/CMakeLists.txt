@@ -13,6 +13,7 @@ add_executable(ad_core_tests
     EngineTest.cpp
     ExportPlanTest.cpp
     FileTest.cpp
+    I18nTest.cpp
     GeometryTest.cpp
     GifEncoderTest.cpp
     HitTestTest.cpp
@@ -62,3 +63,8 @@ if(TARGET animated_diagrams)
             -P ${CMAKE_CURRENT_SOURCE_DIR}/mcp_smoke.cmake)
     set_tests_properties(AppMcpStdioSmoke PROPERTIES TIMEOUT 120)
 endif()
+
+# every interface string of the Russian translation is translated
+add_test(NAME TranslationsComplete.ru
+    COMMAND ${CMAKE_COMMAND} -DTS_FILE=${PROJECT_SOURCE_DIR}/i18n/animated-diagrams_ru.ts
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/translations_check.cmake)

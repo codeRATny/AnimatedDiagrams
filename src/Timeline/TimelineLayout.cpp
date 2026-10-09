@@ -181,7 +181,7 @@ double SnapTime(double ms, double grid) { return std::max(0.0, std::round(ms / g
 std::string FormatTime(double ms)
 {
     const double s = ms / 1000;
-    return std::format("{:.{}f}с", s, s < 10 ? 2 : 1);
+    return std::format("{:.{}f}{}", s, s < 10 ? 2 : 1, TimeUnit("s").short_label); // unit in the UI language
 }
 
 } // namespace ad

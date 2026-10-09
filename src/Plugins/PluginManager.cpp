@@ -5,6 +5,7 @@
 
 #include "Common/Exceptions.hpp"
 #include "Utils/File.hpp"
+#include "Utils/I18n.hpp"
 
 namespace ad
 {
@@ -41,6 +42,7 @@ void PluginManager::_LoadFile(const fs::path &path, bool writable)
         _errors.push_back({path, "duplicate plugin id '" + parsed->info.id + "' (already loaded)"});
         return;
     }
+    LocalizePlugin(*parsed, UiLanguage()); // texts in the UI language when the plugin has them
     rec.plugin   = std::move(*parsed);
     rec.path     = path;
     rec.writable = writable;

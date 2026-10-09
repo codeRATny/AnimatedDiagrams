@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Utils/I18n.hpp"
+
 namespace ad
 {
 
@@ -399,7 +401,7 @@ std::optional<Step> Document::MakeDefaultStep(StepType type, double at) const
         s.duration = 3000;
         break;
     case StepType::Note:
-        s.text     = "Заметка";
+        s.text     = Tr("document", "Note");
         s.x        = 60;
         s.y        = 30;
         s.duration = 2500;
@@ -411,7 +413,7 @@ std::optional<Step> Document::MakeDefaultStep(StepType type, double at) const
         break;
     case StepType::Action:
         s.node_id  = nodes[0].id;
-        s.text     = "Обработка";
+        s.text     = Tr("document", "Processing");
         s.color    = "#38bdf8";
         s.duration = 1800;
         break;
@@ -421,7 +423,7 @@ std::optional<Step> Document::MakeDefaultStep(StepType type, double at) const
             return std::nullopt;
         }
         s.edge_id  = _model.edges[0].id;
-        s.text     = "Соединение";
+        s.text     = Tr("document", "Connection");
         s.color    = "#38bdf8";
         s.duration = 2000;
         break;
@@ -476,13 +478,13 @@ void Document::NormalizeStep(Step &s) const
         s.node_id = pick();
         if (s.text.empty())
         {
-            s.text = "Действие";
+            s.text = Tr("document", "Action");
         }
         break;
     case StepType::Link:
         if (s.text.empty())
         {
-            s.text = "Соединение";
+            s.text = Tr("document", "Connection");
         }
         if (s.color.empty())
         {
@@ -496,7 +498,7 @@ void Document::NormalizeStep(Step &s) const
     case StepType::Note:
         if (s.text.empty())
         {
-            s.text = "Заметка";
+            s.text = Tr("document", "Note");
         }
         if (s.x == 0 && s.y == 0)
         {

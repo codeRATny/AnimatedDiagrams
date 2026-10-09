@@ -56,16 +56,16 @@ void WindowButton::SetKind(Kind kind)
     switch (kind)
     {
     case Kind::Minimize:
-        setToolTip(tr("Свернуть"));
+        setToolTip(tr("Minimize"));
         break;
     case Kind::Maximize:
-        setToolTip(tr("Развернуть"));
+        setToolTip(tr("Maximize"));
         break;
     case Kind::Restore:
-        setToolTip(tr("Восстановить"));
+        setToolTip(tr("Restore"));
         break;
     case Kind::Close:
-        setToolTip(tr("Закрыть"));
+        setToolTip(tr("Close"));
         break;
     }
     update();

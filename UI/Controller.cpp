@@ -270,18 +270,15 @@ bool Controller::ImportDrawio(const QString &path, int page, bool keep_colors, Q
         }
         return false;
     }
-    if (model->meta.name.empty() || model->meta.name == "Импорт draw.io")
+    if (model->meta.name.empty() || model->meta.name == DrawioDefaultName())
     {
         model->meta.name = Us(QFileInfo(path).completeBaseName());
     }
     ReplaceModel(std::move(*model), {}, true);
     if (report != nullptr)
     {
-        *report = tr("Импортировано: узлов %1, связей %2, заметок %3; пропущено %4")
-                      .arg(rep.nodes)
-                      .arg(rep.edges)
-                      .arg(rep.notes)
-                      .arg(rep.skipped);
+        *report =
+            tr("Imported — nodes: %1, edges: %2, notes: %3; skipped: %4").arg(rep.nodes).arg(rep.edges).arg(rep.notes).arg(rep.skipped);
     }
     return true;
 }

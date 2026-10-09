@@ -6,6 +6,7 @@
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDockWidget>
@@ -19,6 +20,7 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QProcess>
 #include <QProgressBar>
 #include <QRegularExpression>
 #include <QSettings>
@@ -29,6 +31,7 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
+#include <QUrl>
 #include <QWindow>
 
 #include <algorithm>
@@ -44,6 +47,7 @@
 #include "Fields.hpp"
 #include "Import/DrawioImporter.hpp"
 #include "Inspector.hpp"
+#include "Language.hpp"
 #include "LibraryDialog.hpp"
 #include "Model/Sample.hpp"
 #include "PaletteWidget.hpp"
@@ -97,7 +101,7 @@ MainWindow::MainWindow(AppContext &ctx, QWidget *parent) : QMainWindow(parent), 
     _doc_tabs->setElideMode(Qt::ElideRight);
     auto *plus = new QToolButton;
     plus->setText(QStringLiteral("＋"));
-    plus->setToolTip(tr("Новая вкладка (Ctrl+N)"));
+    plus->setToolTip(tr("New tab (Ctrl+N)"));
     plus->setAutoRaise(true);
     connect(plus, &QToolButton::clicked, this, &MainWindow::_NewDiagram);
     _doc_tabs->setCornerWidget(plus, Qt::TopRightCorner);
@@ -179,16 +183,16 @@ void MainWindow::_BuildDocks()
                 _ShowLibrary(id);
             });
     _palette->SetCurrentType(_pending_type);
-    _palette_dock = dock(tr("Элементы"), QStringLiteral("paletteDock"), _palette, Qt::LeftDockWidgetArea);
+    _palette_dock = dock(tr("Elements"), QStringLiteral("paletteDock"), _palette, Qt::LeftDockWidgetArea);
 
     _inspector_stack = new QStackedWidget;
     _inspector_stack->setMinimumWidth(300);
-    _inspector_dock = dock(tr("Свойства"), QStringLiteral("inspectorDock"), _inspector_stack, Qt::RightDockWidgetArea);
+    _inspector_dock = dock(tr("Properties"), QStringLiteral("inspectorDock"), _inspector_stack, Qt::RightDockWidgetArea);
 
     _timeline_stack = new QStackedWidget;
-    _timeline_dock  = dock(tr("Таймлайн"), QStringLiteral("timelineDock"), _timeline_stack, Qt::BottomDockWidgetArea);
+    _timeline_dock  = dock(tr("Timeline"), QStringLiteral("timelineDock"), _timeline_stack, Qt::BottomDockWidgetArea);
 
-    _exports_dock = dock(tr("Экспорт"), QStringLiteral("exportsDock"), new ExportsPanel(_ctx.Exports()), Qt::RightDockWidgetArea);
+    _exports_dock = dock(tr("Exports"), QStringLiteral("exportsDock"), new ExportsPanel(_ctx.Exports()), Qt::RightDockWidgetArea);
     tabifyDockWidget(_inspector_dock, _exports_dock);
     _inspector_dock->raise();
 
@@ -198,15 +202,15 @@ void MainWindow::_BuildDocks()
 
 void MainWindow::_BuildToolBar()
 {
-    _tools_bar = addToolBar(tr("Инструменты"));
+    _tools_bar = addToolBar(tr("Tools"));
     _tools_bar->setObjectName(QStringLiteral("toolsBar"));
     _tools_bar->setToolButtonStyle(Qt::ToolButtonTextOnly);
 
     auto                                                 *group = new QActionGroup(this);
     const std::array<std::pair<QString, QKeySequence>, 3> tools{{
-        {tr("▘ Выбор"), QKeySequence(Qt::Key_V)},
-        {tr("＋ Узел"), QKeySequence(Qt::Key_N)},
-        {tr("↗ Связь"), QKeySequence(Qt::Key_E)},
+        {tr("▘ Select"), QKeySequence(Qt::Key_V)},
+        {tr("＋ Node"), QKeySequence(Qt::Key_N)},
+        {tr("↗ Edge"), QKeySequence(Qt::Key_E)},
     }};
     for (size_t i = 0; i < tools.size(); ++i)
     {
@@ -228,7 +232,7 @@ void MainWindow::_BuildToolBar()
     }
     _tool_acts[0]->setChecked(true);
     _tools_bar->addSeparator();
-    _tools_bar->addAction(tr("Вписать"),
+    _tools_bar->addAction(tr("Fit"),
                           [this]
                           {
                               if (Tab *t = _Current(); t != nullptr)
@@ -236,12 +240,12 @@ void MainWindow::_BuildToolBar()
                                   t->canvas->FitView();
                               }
                           });
-    _tools_bar->addAction(tr("Библиотека"),
+    _tools_bar->addAction(tr("Library"),
                           [this]
                           {
                               _ShowLibrary();
                           });
-    _tools_bar->addAction(tr("Экспорт"),
+    _tools_bar->addAction(tr("Export"),
                           [this]
                           {
                               _ExportMedia();
@@ -256,7 +260,7 @@ void MainWindow::_BuildStatusBar()
     _jobs_bar->setTextVisible(false);
     _jobs_button = new QToolButton;
     _jobs_button->setAutoRaise(true);
-    _jobs_button->setToolTip(tr("Фоновые экспорты"));
+    _jobs_button->setToolTip(tr("Background exports"));
     connect(_jobs_button, &QToolButton::clicked, this,
             [this]
             {
@@ -284,10 +288,10 @@ void MainWindow::_BuildStatusBar()
                 switch (j->state)
                 {
                 case ExportJobInfo::State::Done:
-                    statusBar()->showMessage(tr("Экспорт готов: %1 (%2)").arg(file, j->message), 8000);
+                    statusBar()->showMessage(tr("Export finished: %1 (%2)").arg(file, j->message), 8000);
                     break;
                 case ExportJobInfo::State::Failed:
-                    statusBar()->showMessage(tr("Экспорт %1 не удался: %2").arg(file, j->message), 10000);
+                    statusBar()->showMessage(tr("Export of %1 failed: %2").arg(file, j->message), 10000);
                     _exports_dock->show();
                     _exports_dock->raise();
                     break;
@@ -312,7 +316,7 @@ void MainWindow::_UpdateExportsIndicator()
             total += std::max(1, j.total);
         }
     }
-    _jobs_button->setText(pending > 0 ? tr("⤓ Экспорт: %1").arg(pending) : tr("⤓ Экспорт"));
+    _jobs_button->setText(pending > 0 ? tr("⤓ Export: %1").arg(pending) : tr("⤓ Export"));
     _jobs_button->setVisible(!jobs.empty());
     _jobs_bar->setVisible(pending > 0);
     _jobs_bar->setRange(0, static_cast<int>(std::max<int64_t>(1, total)));
@@ -374,85 +378,85 @@ void MainWindow::_BuildMenus()
         };
     };
 
-    QMenu *file = _menu_bar->addMenu(tr("&Файл"));
-    act(file, tr("Новая диаграмма"), QKeySequence::New,
+    QMenu *file = _menu_bar->addMenu(tr("&File"));
+    act(file, tr("New Diagram"), QKeySequence::New,
         [this]
         {
             _NewDiagram();
         });
-    act(file, tr("Открыть…"), QKeySequence::Open,
+    act(file, tr("Open…"), QKeySequence::Open,
         [this]
         {
             _OpenDiagram();
         });
-    act(file, tr("Импорт из draw.io…"), QKeySequence(Qt::CTRL | Qt::Key_I),
+    act(file, tr("Import from draw.io…"), QKeySequence(Qt::CTRL | Qt::Key_I),
         [this]
         {
             _ImportDrawio();
         });
-    act(file, tr("Сохранить"), QKeySequence::Save,
+    act(file, tr("Save"), QKeySequence::Save,
         [this]
         {
             _Save(_Ctl());
         });
-    act(file, tr("Сохранить как…"), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S),
+    act(file, tr("Save As…"), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S),
         [this]
         {
             _SaveAs(_Ctl());
         });
-    act(file, tr("Закрыть вкладку"), QKeySequence(Qt::CTRL | Qt::Key_W),
+    act(file, tr("Close Tab"), QKeySequence(Qt::CTRL | Qt::Key_W),
         [this]
         {
             _CloseTab(_doc_tabs->currentIndex());
         });
     file->addSeparator();
-    act(file, tr("Открыть пример"), {},
+    act(file, tr("Open Example"), {},
         [this]
         {
             Tab *t = _TargetTab();
             t->ctl->LoadSample();
             t->canvas->FitView();
         });
-    act(file, tr("Переименовать…"), {},
+    act(file, tr("Rename…"), {},
         [this]
         {
             _RenameDiagram();
         });
     file->addSeparator();
-    act(file, tr("Экспорт GIF / видео…"), QKeySequence(Qt::CTRL | Qt::Key_E),
+    act(file, tr("Export GIF / Video…"), QKeySequence(Qt::CTRL | Qt::Key_E),
         [this]
         {
             _ExportMedia();
         });
     file->addSeparator();
-    act(file, tr("Выход"), QKeySequence(Qt::CTRL | Qt::Key_Q),
+    act(file, tr("Quit"), QKeySequence(Qt::CTRL | Qt::Key_Q),
         [this]
         {
             close();
         });
 
-    QMenu *edit = _menu_bar->addMenu(tr("&Правка"));
-    _undo_act   = act(edit, tr("Отменить"), QKeySequence::Undo,
+    QMenu *edit = _menu_bar->addMenu(tr("&Edit"));
+    _undo_act   = act(edit, tr("Undo"), QKeySequence::Undo,
                       with_tab(
                         [](Tab &t)
                         {
                             t.ctl->Undo();
                         }));
-    _redo_act   = act(edit, tr("Повторить"), QKeySequence::Redo,
+    _redo_act   = act(edit, tr("Redo"), QKeySequence::Redo,
                       with_tab(
                         [](Tab &t)
                         {
                             t.ctl->Redo();
                         }));
     edit->addSeparator();
-    QAction *del = act(edit, tr("Удалить выделенное"), QKeySequence::Delete,
+    QAction *del = act(edit, tr("Delete Selection"), QKeySequence::Delete,
                        with_tab(
                            [](Tab &t)
                            {
                                t.ctl->DeleteSelection();
                            }));
     del->setShortcuts({QKeySequence::Delete, QKeySequence(Qt::Key_Backspace)});
-    act(edit, tr("Дублировать шаг"), QKeySequence(Qt::CTRL | Qt::Key_D),
+    act(edit, tr("Duplicate Step"), QKeySequence(Qt::CTRL | Qt::Key_D),
         with_tab(
             [](Tab &t)
             {
@@ -467,7 +471,7 @@ void MainWindow::_BuildMenus()
                     t.ctl->Select(Selection::Kind::Step, id);
                 }
             }));
-    act(edit, tr("Снять выделение"), QKeySequence(Qt::Key_Escape),
+    act(edit, tr("Clear Selection"), QKeySequence(Qt::Key_Escape),
         with_tab(
             [](Tab &t)
             {
@@ -475,65 +479,71 @@ void MainWindow::_BuildMenus()
                 t.ctl->ClearSelection();
             }));
 
-    QMenu *view = _menu_bar->addMenu(tr("&Вид"));
-    act(view, tr("Вписать в экран"), QKeySequence(Qt::CTRL | Qt::Key_0),
+    QMenu *view = _menu_bar->addMenu(tr("&View"));
+    act(view, tr("Fit to View"), QKeySequence(Qt::CTRL | Qt::Key_0),
         with_tab(
             [](Tab &t)
             {
                 t.canvas->FitView();
             }));
-    act(view, tr("Сбросить масштаб"), QKeySequence(Qt::CTRL | Qt::Key_1),
+    act(view, tr("Reset Zoom"), QKeySequence(Qt::CTRL | Qt::Key_1),
         with_tab(
             [](Tab &t)
             {
                 t.canvas->ResetView();
             }));
-    act(view, tr("Увеличить"), QKeySequence::ZoomIn,
+    act(view, tr("Zoom In"), QKeySequence::ZoomIn,
         with_tab(
             [](Tab &t)
             {
                 t.canvas->ZoomBy(1.2);
             }));
-    act(view, tr("Уменьшить"), QKeySequence::ZoomOut,
+    act(view, tr("Zoom Out"), QKeySequence::ZoomOut,
         with_tab(
             [](Tab &t)
             {
                 t.canvas->ZoomBy(1 / 1.2);
             }));
     view->addSeparator();
-    QMenu *panels = view->addMenu(tr("Панели"));
+    QMenu *panels = view->addMenu(tr("Panels"));
     for (QDockWidget *d : {_palette_dock, _inspector_dock, _timeline_dock, _exports_dock})
     {
         panels->addAction(d->toggleViewAction());
     }
     panels->addAction(_tools_bar->toggleViewAction());
-    QAction *frame = view->addAction(tr("Системная рамка окна"));
+    QAction *frame = view->addAction(tr("System Window Frame"));
     frame->setCheckable(true);
     frame->setChecked(QSettings().value(kSystemFrameKey, false).toBool());
-    frame->setToolTip(tr("Заголовок окна от системы вместо заголовка в стиле приложения"));
+    frame->setToolTip(tr("Use the system title bar instead of the app-styled one"));
     connect(frame, &QAction::toggled, this,
             [this](bool system)
             {
                 QSettings().setValue(kSystemFrameKey, system);
                 _SetCustomFrame(!system);
             });
-    QMenu *theme = view->addMenu(tr("Тема интерфейса"));
-    theme->setToolTip(tr("Дизайн-система, в цветах которой показан редактор"));
+    QMenu *theme = view->addMenu(tr("Interface Theme"));
+    theme->setToolTip(tr("Design system whose colors are used for the editor"));
     connect(theme, &QMenu::aboutToShow, this,
             [this, theme]
             {
                 _FillThemeMenu(theme);
             });
-    _lock_act = view->addAction(tr("Закрепить панели"));
+    QMenu *language = view->addMenu(tr("Language"));
+    connect(language, &QMenu::aboutToShow, this,
+            [this, language]
+            {
+                _FillLanguageMenu(language);
+            });
+    _lock_act = view->addAction(tr("Lock Panels"));
     _lock_act->setCheckable(true);
     connect(_lock_act, &QAction::toggled, this, &MainWindow::_SetLocked);
-    act(view, tr("Сбросить расположение панелей"), {},
+    act(view, tr("Reset Panel Layout"), {},
         [this]
         {
             _ResetLayout();
         });
     view->addSeparator();
-    act(view, tr("Следующая вкладка"), QKeySequence(Qt::CTRL | Qt::Key_PageDown),
+    act(view, tr("Next Tab"), QKeySequence(Qt::CTRL | Qt::Key_PageDown),
         [this]
         {
             if (_doc_tabs->count() > 1)
@@ -541,7 +551,7 @@ void MainWindow::_BuildMenus()
                 _doc_tabs->setCurrentIndex((_doc_tabs->currentIndex() + 1) % _doc_tabs->count());
             }
         });
-    act(view, tr("Предыдущая вкладка"), QKeySequence(Qt::CTRL | Qt::Key_PageUp),
+    act(view, tr("Previous Tab"), QKeySequence(Qt::CTRL | Qt::Key_PageUp),
         [this]
         {
             if (_doc_tabs->count() > 1)
@@ -549,66 +559,66 @@ void MainWindow::_BuildMenus()
                 _doc_tabs->setCurrentIndex((_doc_tabs->currentIndex() + _doc_tabs->count() - 1) % _doc_tabs->count());
             }
         });
-    act(view, tr("Полный экран"), QKeySequence(Qt::Key_F11),
+    act(view, tr("Full Screen"), QKeySequence(Qt::Key_F11),
         [this]
         {
             isFullScreen() ? showNormal() : showFullScreen();
         });
 
-    QMenu *play = _menu_bar->addMenu(tr("&Воспроизведение"));
-    act(play, tr("Играть / Пауза"), QKeySequence(Qt::Key_Space),
+    QMenu *play = _menu_bar->addMenu(tr("&Playback"));
+    act(play, tr("Play / Pause"), QKeySequence(Qt::Key_Space),
         with_tab(
             [](Tab &t)
             {
                 t.ctl->TogglePlay();
             }));
-    act(play, tr("Стоп"), {},
+    act(play, tr("Stop"), {},
         with_tab(
             [](Tab &t)
             {
                 t.ctl->Stop();
             }));
-    act(play, tr("В начало"), QKeySequence(Qt::Key_Home),
+    act(play, tr("Go to Start"), QKeySequence(Qt::Key_Home),
         with_tab(
             [](Tab &t)
             {
                 t.ctl->Seek(0);
             }));
-    act(play, tr("В конец"), QKeySequence(Qt::Key_End),
+    act(play, tr("Go to End"), QKeySequence(Qt::Key_End),
         with_tab(
             [](Tab &t)
             {
                 t.ctl->Seek(t.ctl->Duration());
             }));
 
-    QMenu *lib = _menu_bar->addMenu(tr("&Библиотека"));
-    act(lib, tr("Элементы, эффекты, анимации, дизайн-системы…"), QKeySequence(Qt::CTRL | Qt::Key_L),
+    QMenu *lib = _menu_bar->addMenu(tr("&Library"));
+    act(lib, tr("Elements, Effects, Animations, Design Systems…"), QKeySequence(Qt::CTRL | Qt::Key_L),
         [this]
         {
             _ShowLibrary();
         });
-    act(lib, tr("Применить анимацию…"), QKeySequence(Qt::CTRL | Qt::Key_T),
+    act(lib, tr("Apply Animation…"), QKeySequence(Qt::CTRL | Qt::Key_T),
         [this]
         {
             _ApplyAnimation();
         });
     lib->addSeparator();
-    act(lib, tr("Плагины…"), {},
+    act(lib, tr("Plugins…"), {},
         [this]
         {
             _ShowPlugins();
         });
 
-    QMenu *tools = _menu_bar->addMenu(tr("&Инструменты"));
-    _mcp_act     = tools->addAction(tr("MCP-сервер для агентов"));
+    QMenu *tools = _menu_bar->addMenu(tr("&Tools"));
+    _mcp_act     = tools->addAction(tr("MCP Server for Agents"));
     _mcp_act->setCheckable(true);
     connect(_mcp_act, &QAction::toggled, this, &MainWindow::_ToggleMcp);
-    act(tools, tr("Порт MCP-сервера…"), {},
+    act(tools, tr("MCP Server Port…"), {},
         [this]
         {
             _ChangeMcpPort();
         });
-    QAction *autostart = tools->addAction(tr("Запускать MCP-сервер при старте"));
+    QAction *autostart = tools->addAction(tr("Start MCP Server on Launch"));
     autostart->setCheckable(true);
     autostart->setChecked(QSettings().value(kMcpAutostart, false).toBool());
     connect(autostart, &QAction::toggled, this,
@@ -616,28 +626,28 @@ void MainWindow::_BuildMenus()
             {
                 QSettings().setValue(kMcpAutostart, on);
             });
-    act(tools, tr("Скопировать адрес MCP"), {},
+    act(tools, tr("Copy MCP Address"), {},
         [this]
         {
             if (_ctx.IsMcpRunning())
             {
                 QApplication::clipboard()->setText(_ctx.McpUrl());
-                statusBar()->showMessage(tr("Скопировано: %1").arg(_ctx.McpUrl()), 3000);
+                statusBar()->showMessage(tr("Copied: %1").arg(_ctx.McpUrl()), 3000);
             }
         });
-    act(tools, tr("Как подключить агента…"), {},
+    act(tools, tr("How to Connect an Agent…"), {},
         [this]
         {
             _ShowMcpHelp();
         });
 
-    QMenu *help = _menu_bar->addMenu(tr("&Справка"));
-    act(help, tr("Отчёты о сбоях…"), {},
+    QMenu *help = _menu_bar->addMenu(tr("&Help"));
+    act(help, tr("Crash Reports…"), {},
         []
         {
             OpenCrashReportDir();
         });
-    act(help, tr("О программе"), {},
+    act(help, tr("About"), {},
         [this]
         {
             _About();
@@ -802,7 +812,7 @@ void MainWindow::_UpdateTabText(Controller *ctl)
         name = name.left(30) + QStringLiteral("…");
     }
     _doc_tabs->setTabText(index, (ctl->IsModified() ? QStringLiteral("● ") : QString()) + name);
-    _doc_tabs->setTabToolTip(index, ctl->FilePath().isEmpty() ? tr("Не сохранён") : QDir::toNativeSeparators(ctl->FilePath()));
+    _doc_tabs->setTabToolTip(index, ctl->FilePath().isEmpty() ? tr("Not saved") : QDir::toNativeSeparators(ctl->FilePath()));
 }
 
 void MainWindow::_OnCurrentTabChanged(int index)
@@ -848,6 +858,61 @@ void MainWindow::_UpdateUiTheme()
     Theme::Instance().Apply(ds);
 }
 
+void MainWindow::_FillLanguageMenu(QMenu *menu)
+{
+    menu->clear();
+    const QString current = LanguageSetting();
+    auto         *group   = new QActionGroup(menu);
+    auto          add     = [&](const QString &label, const QString &code)
+    {
+        QAction *a = menu->addAction(label);
+        a->setCheckable(true);
+        a->setChecked(code == current);
+        group->addAction(a);
+        connect(a, &QAction::triggered, this,
+                [this, code]
+                {
+                    _ChangeLanguage(code);
+                });
+    };
+    add(tr("System (%1)").arg(LanguageName(SystemLanguage())), {});
+    menu->addSeparator();
+    for (const LanguageInfo &l : AvailableLanguages())
+    {
+        add(l.native_name, l.code);
+    }
+    menu->addSeparator();
+    QAction *folder = menu->addAction(tr("Translations Folder…"));
+    folder->setToolTip(tr("Additional translations: animated-diagrams_<code>.qm"));
+    connect(folder, &QAction::triggered, this,
+            []
+            {
+                QDir().mkpath(UserTranslationDir());
+                QDesktopServices::openUrl(QUrl::fromLocalFile(UserTranslationDir()));
+            });
+}
+
+void MainWindow::_ChangeLanguage(const QString &code)
+{
+    const QString before = ResolveLanguage();
+    SetLanguageSetting(code);
+    if (ResolveLanguage() == before)
+    {
+        return;
+    }
+    // texts are created with the language installed at startup: restart (the session is kept)
+    const auto answer = QMessageBox::question(this, tr("Language"), tr("The language changes after a restart. Restart now?"),
+                                              QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (answer != QMessageBox::Yes)
+    {
+        return;
+    }
+    if (close())
+    {
+        QProcess::startDetached(QCoreApplication::applicationFilePath(), {});
+    }
+}
+
 void MainWindow::_FillThemeMenu(QMenu *menu)
 {
     menu->clear();
@@ -866,7 +931,7 @@ void MainWindow::_FillThemeMenu(QMenu *menu)
                     _UpdateUiTheme();
                 });
     };
-    add(tr("Как у документа"), {});
+    add(tr("Same as Document"), {});
     menu->addSeparator();
     Controller *ctl = _Ctl();
     for (const auto &e : _ctx.Reg().DesignSystems(ctl != nullptr ? &ctl->GetModel().library : nullptr))
@@ -884,9 +949,8 @@ bool MainWindow::_ConfirmClose(Controller *ctl)
         return true;
     }
     Activate(ctl);
-    const auto r =
-        QMessageBox::question(this, tr("Несохранённые изменения"), tr("Сохранить изменения в «%1»?").arg(Qs(ctl->GetModel().meta.name)),
-                              QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
+    const auto r = QMessageBox::question(this, tr("Unsaved Changes"), tr("Save changes to “%1”?").arg(Qs(ctl->GetModel().meta.name)),
+                                         QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
     if (r == QMessageBox::Save)
     {
         return _TabOf(ctl) != nullptr && _Save(ctl);
@@ -1048,7 +1112,7 @@ void MainWindow::_UpdateMcpState()
         const QSignalBlocker block(_mcp_act);
         _mcp_act->setChecked(running);
     }
-    _mcp_label->setText(running ? tr("MCP: %1").arg(_ctx.McpUrl()) : tr("MCP: выкл"));
+    _mcp_label->setText(running ? tr("MCP: %1").arg(_ctx.McpUrl()) : tr("MCP: off"));
 }
 
 // ---------------------------------------------------------------------------
@@ -1180,7 +1244,8 @@ void MainWindow::closeEvent(QCloseEvent *e)
     if (_ctx.Exports().Pending() > 0)
     {
         const auto r =
-            QMessageBox::question(this, tr("Идёт экспорт"), tr("Фоновых экспортов: %1. Прервать их и выйти?").arg(_ctx.Exports().Pending()),
+            QMessageBox::question(this, tr("Export in Progress"),
+                                  tr("%n background export(s) still running. Cancel and quit?", nullptr, _ctx.Exports().Pending()),
                                   QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (r != QMessageBox::Yes)
         {
@@ -1229,12 +1294,12 @@ bool MainWindow::OpenPath(const QString &path)
     QString err;
     if (!t->ctl->OpenFile(path, &err))
     {
-        QMessageBox::warning(this, tr("Ошибка открытия"), tr("Не удалось открыть %1:\n%2").arg(path, err));
+        QMessageBox::warning(this, tr("Open Error"), tr("Could not open %1:\n%2").arg(path, err));
         return false;
     }
     QSettings().setValue(kLastDirKey, QFileInfo(path).absolutePath());
     t->canvas->FitView();
-    statusBar()->showMessage(tr("Открыто: %1").arg(QDir::toNativeSeparators(path)), 4000);
+    statusBar()->showMessage(tr("Opened: %1").arg(QDir::toNativeSeparators(path)), 4000);
     return true;
 }
 
@@ -1242,7 +1307,7 @@ void MainWindow::_OpenDiagram()
 {
     const QString     dir = QSettings().value(kLastDirKey, QDir::homePath()).toString();
     const QStringList paths =
-        QFileDialog::getOpenFileNames(this, tr("Открыть диаграммы"), dir, tr("Диаграммы (*.json);;draw.io (*.drawio *.xml)"));
+        QFileDialog::getOpenFileNames(this, tr("Open Diagrams"), dir, tr("Diagrams (*.json);;draw.io (*.drawio *.xml)"));
     for (const QString &p : paths)
     {
         OpenPath(p);
@@ -1252,7 +1317,7 @@ void MainWindow::_OpenDiagram()
 void MainWindow::_ImportDrawio()
 {
     const QString dir  = QSettings().value(kLastDirKey, QDir::homePath()).toString();
-    const QString path = QFileDialog::getOpenFileName(this, tr("Импорт из draw.io"), dir, tr("draw.io (*.drawio *.xml);;Все файлы (*)"));
+    const QString path = QFileDialog::getOpenFileName(this, tr("Import from draw.io"), dir, tr("draw.io (*.drawio *.xml);;All Files (*)"));
     if (!path.isEmpty())
     {
         ImportDrawioPath(path);
@@ -1268,28 +1333,28 @@ bool MainWindow::ImportDrawioPath(const QString &path)
     }
     catch (const std::exception &ex)
     {
-        QMessageBox::warning(this, tr("Импорт draw.io"), QString::fromUtf8(ex.what()));
+        QMessageBox::warning(this, tr("draw.io Import"), QString::fromUtf8(ex.what()));
         return false;
     }
 
     QDialog dlg(this);
-    dlg.setWindowTitle(tr("Импорт draw.io"));
+    dlg.setWindowTitle(tr("draw.io Import"));
     auto *page_box = new QComboBox;
     for (size_t i = 0; i < pages.size(); ++i)
     {
-        page_box->addItem(pages[i].empty() ? tr("Страница %1").arg(i + 1) : Qs(pages[i]));
+        page_box->addItem(pages[i].empty() ? tr("Page %1").arg(i + 1) : Qs(pages[i]));
     }
-    auto *keep_colors = new QCheckBox(tr("Сохранить цвета из draw.io"));
+    auto *keep_colors = new QCheckBox(tr("Keep draw.io colors"));
     keep_colors->setChecked(true);
     auto *form = new QFormLayout(&dlg);
     form->addRow(new QLabel(QDir::toNativeSeparators(path)));
     if (pages.size() > 1)
     {
-        form->addRow(tr("Страница"), page_box);
+        form->addRow(tr("Page"), page_box);
     }
     form->addRow(keep_colors);
-    auto *note = new QLabel(tr("Фигуры станут узлами (тип подбирается по форме), соединители — связями, "
-                               "свободный текст — заметками. Документ откроется в новой вкладке."));
+    auto *note = new QLabel(tr("Shapes become nodes (the type is chosen by shape), connectors become edges, "
+                               "and free text becomes notes. The document opens in a new tab."));
     note->setObjectName(QStringLiteral("hint"));
     note->setWordWrap(true);
     form->addRow(note);
@@ -1304,7 +1369,7 @@ bool MainWindow::ImportDrawioPath(const QString &path)
     QString report;
     if (!t->ctl->ImportDrawio(path, std::max(0, page_box->currentIndex()), keep_colors->isChecked(), &err, &report))
     {
-        QMessageBox::warning(this, tr("Импорт draw.io"), tr("Не удалось импортировать %1:\n%2").arg(path, err));
+        QMessageBox::warning(this, tr("draw.io Import"), tr("Could not import %1:\n%2").arg(path, err));
         return false;
     }
     QSettings().setValue(kLastDirKey, QFileInfo(path).absolutePath());
@@ -1327,10 +1392,10 @@ bool MainWindow::_Save(Controller *ctl)
     QString err;
     if (!ctl->SaveFile(ctl->FilePath(), &err))
     {
-        QMessageBox::warning(this, tr("Ошибка сохранения"), err);
+        QMessageBox::warning(this, tr("Save Error"), err);
         return false;
     }
-    statusBar()->showMessage(tr("Сохранено: %1").arg(QDir::toNativeSeparators(ctl->FilePath())), 4000);
+    statusBar()->showMessage(tr("Saved: %1").arg(QDir::toNativeSeparators(ctl->FilePath())), 4000);
     return true;
 }
 
@@ -1343,8 +1408,8 @@ bool MainWindow::_SaveAs(Controller *ctl)
     static const QRegularExpression kBad(QStringLiteral(R"([\\/:*?"<>|\s]+)"));
     const QString                   dir  = QSettings().value(kLastDirKey, QDir::homePath()).toString();
     const QString                   name = Qs(ctl->GetModel().meta.name).replace(kBad, QStringLiteral("_"));
-    QString path = QFileDialog::getSaveFileName(this, tr("Сохранить диаграмму"), dir + QLatin1Char('/') + name + QStringLiteral(".json"),
-                                                tr("Диаграммы (*.json)"));
+    QString path = QFileDialog::getSaveFileName(this, tr("Save Diagram"), dir + QLatin1Char('/') + name + QStringLiteral(".json"),
+                                                tr("Diagrams (*.json)"));
     if (path.isEmpty())
     {
         return false;
@@ -1357,10 +1422,10 @@ bool MainWindow::_SaveAs(Controller *ctl)
     QString err;
     if (!ctl->SaveFile(path, &err))
     {
-        QMessageBox::warning(this, tr("Ошибка сохранения"), err);
+        QMessageBox::warning(this, tr("Save Error"), err);
         return false;
     }
-    statusBar()->showMessage(tr("Сохранено: %1").arg(QDir::toNativeSeparators(path)), 4000);
+    statusBar()->showMessage(tr("Saved: %1").arg(QDir::toNativeSeparators(path)), 4000);
     return true;
 }
 
@@ -1373,7 +1438,7 @@ void MainWindow::_RenameDiagram()
     }
     bool          ok = false;
     const QString name =
-        QInputDialog::getText(this, tr("Переименовать"), tr("Название диаграммы:"), QLineEdit::Normal, Qs(ctl->GetModel().meta.name), &ok);
+        QInputDialog::getText(this, tr("Rename"), tr("Diagram name:"), QLineEdit::Normal, Qs(ctl->GetModel().meta.name), &ok);
     if (ok)
     {
         ctl->Rename(name);
@@ -1391,7 +1456,7 @@ void MainWindow::_ExportMedia()
     ExportDialog dlg(*t->ctl, t->canvas->VisibleWorldRect(), this);
     if (dlg.exec() == QDialog::Accepted && dlg.JobId() != 0)
     {
-        statusBar()->showMessage(tr("Экспорт запущен в фоне — можно продолжать работу"), 5000);
+        statusBar()->showMessage(tr("Export started in the background — you can keep working"), 5000);
         _exports_dock->show();
         _exports_dock->raise();
     }
@@ -1435,7 +1500,7 @@ void MainWindow::_ApplyAnimation(const QString &template_id)
     Controller *ctl = _Ctl();
     if (ctl == nullptr || ctl->GetModel().nodes.empty())
     {
-        statusBar()->showMessage(tr("Сначала добавьте узлы на диаграмму"), 4000);
+        statusBar()->showMessage(tr("Add some nodes to the diagram first"), 4000);
         return;
     }
     ctl->Pause();
@@ -1459,7 +1524,7 @@ void MainWindow::StartMcpOnLaunch(int forced_port)
     QString    err;
     if (!_ctx.StartMcp(port, &err))
     {
-        statusBar()->showMessage(tr("MCP-сервер не запущен: %1").arg(err), 8000);
+        statusBar()->showMessage(tr("MCP server not started: %1").arg(err), 8000);
     }
 }
 
@@ -1474,16 +1539,16 @@ void MainWindow::_ToggleMcp(bool on)
     QString    err;
     if (!_ctx.StartMcp(port, &err))
     {
-        QMessageBox::warning(this, tr("MCP-сервер"), tr("Не удалось открыть порт %1:\n%2").arg(port).arg(err));
+        QMessageBox::warning(this, tr("MCP Server"), tr("Could not open port %1:\n%2").arg(port).arg(err));
         return;
     }
-    statusBar()->showMessage(tr("MCP-сервер запущен: %1").arg(_ctx.McpUrl()), 5000);
+    statusBar()->showMessage(tr("MCP server started: %1").arg(_ctx.McpUrl()), 5000);
 }
 
 void MainWindow::_ChangeMcpPort()
 {
     bool      ok   = false;
-    const int port = QInputDialog::getInt(this, tr("Порт MCP-сервера"), tr("Порт (сервер слушает только 127.0.0.1):"),
+    const int port = QInputDialog::getInt(this, tr("MCP Server Port"), tr("Port (the server listens on 127.0.0.1 only):"),
                                           QSettings().value(kMcpPortKey, kDefaultMcpPort).toInt(), 1024, 65535, 1, &ok);
     if (!ok)
     {
@@ -1502,27 +1567,27 @@ void MainWindow::_ShowMcpHelp()
     const int     port = QSettings().value(kMcpPortKey, kDefaultMcpPort).toInt();
     const QString url  = QStringLiteral("http://127.0.0.1:%1/mcp").arg(port);
     QMessageBox   box(this);
-    box.setWindowTitle(tr("Подключение агента"));
+    box.setWindowTitle(tr("Connecting an Agent"));
     box.setTextFormat(Qt::RichText);
     box.setTextInteractionFlags(Qt::TextSelectableByMouse);
-    box.setText(tr("<b>Вариант 1 — к открытому окну (HTTP)</b><br>"
-                   "Включите «Инструменты → MCP-сервер» и добавьте сервер в агент:<br>"
+    box.setText(tr("<b>Option 1 — to the open window (HTTP)</b><br>"
+                   "Enable “Tools → MCP Server for Agents” and add the server to your agent:<br>"
                    "<code>claude mcp add --transport http animated-diagrams %1</code><br><br>"
-                   "<b>Вариант 2 — без окна (stdio)</b><br>"
-                   "Агент сам запускает программу в режиме сервера:<br>"
+                   "<b>Option 2 — without a window (stdio)</b><br>"
+                   "The agent launches the program in server mode itself:<br>"
                    "<code>claude mcp add animated-diagrams -- animated-diagrams --mcp</code><br><br>"
-                   "Инструменты работают с активной вкладкой (list_documents / select_document — переключение), "
-                   "новые документы открываются во вкладках, изменения отменяются Ctrl+Z.")
+                   "Tools operate on the active tab (use list_documents / select_document to switch), "
+                   "new documents open in tabs, and changes can be undone with Ctrl+Z.")
                     .arg(url));
     box.exec();
 }
 
 void MainWindow::_About()
 {
-    QMessageBox::about(this, tr("О программе"),
-                       tr("<b>Animated Diagrams %1</b><br>Редактор анимированных диаграмм и flow-сценариев: "
-                          "сообщения, таймеры, состояния, эффекты, шаблоны анимаций, плагины и дизайн-системы; импорт draw.io; "
-                          "встроенный MCP-сервер; фоновый экспорт в GIF / WebM / MP4 (libav).<br><br>"
+    QMessageBox::about(this, tr("About"),
+                       tr("<b>Animated Diagrams %1</b><br>An editor for animated diagrams and flow scenarios: "
+                          "messages, timers, states, effects, animation templates, plugins and design systems; draw.io import; "
+                          "built-in MCP server; background export to GIF / WebM / MP4 (libav).<br><br>"
                           "Qt %2 · C++23")
                            .arg(QApplication::applicationVersion(), QString::fromLatin1(qVersion())));
 }

@@ -39,7 +39,7 @@ TEST(RegistryTest, LookupOrderDocumentPluginBuiltin)
     const LibrarySet doc = SetWithElement("service", "from document");
     EXPECT_EQ(reg.FindElement("service", &doc)->label, "from document");
     reg.RemoveSource("p1");
-    EXPECT_EQ(reg.FindElement("service")->label, "Сервис");
+    EXPECT_EQ(reg.FindElement("service")->label, "Service");
     reg.RemoveSource(kBuiltinSource); // ignored
     EXPECT_NE(reg.FindElement("service"), nullptr);
 }

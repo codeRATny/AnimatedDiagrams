@@ -40,7 +40,7 @@ TEST(TemplatesTest, MakeTemplateRoundTrip)
     EXPECT_EQ(tpl.id, "my");
     EXPECT_EQ(tpl.steps.front().start, 0); // shifted
     ASSERT_EQ(tpl.roles.size(), 2U);
-    EXPECT_EQ(tpl.roles[0].label, "Сервис A");
+    EXPECT_EQ(tpl.roles[0].label, "Service A");
 
     Document    d(SampleModel());
     const auto  inserted = ApplyTemplate(d, tpl, {{"role1", "svcC"}, {"role2", "svcA"}}, 15000);

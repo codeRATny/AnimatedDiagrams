@@ -49,13 +49,13 @@ QString SourceName(const std::string &source)
 {
     if (source == kBuiltinSource)
     {
-        return QObject::tr("встроенный");
+        return QObject::tr("built-in");
     }
     if (source == kDocumentSource)
     {
-        return QObject::tr("документ");
+        return QObject::tr("document");
     }
-    return QObject::tr("плагин %1").arg(Qs(source));
+    return QObject::tr("plugin %1").arg(Qs(source));
 }
 
 template <class T>
@@ -124,11 +124,11 @@ QPushButton *SmallButton(const QString &text, const QString &tip, std::function<
 
 LibraryDialog::LibraryDialog(AppContext &ctx, Controller *ctl, QWidget *parent) : QDialog(parent), _ctx(ctx), _ctl(ctl)
 {
-    setWindowTitle(tr("Библиотека"));
+    setWindowTitle(tr("Library"));
     resize(1200, 720);
 
     _tabs                  = new QTabWidget;
-    const QString titles[] = {tr("Элементы"), tr("Эффекты"), tr("Анимации"), tr("Дизайн")};
+    const QString titles[] = {tr("Elements"), tr("Effects"), tr("Animations"), tr("Design")};
     for (int i = 0; i < kTabCount; ++i)
     {
         _lists[i] = new QListWidget;
@@ -139,17 +139,17 @@ LibraryDialog::LibraryDialog(AppContext &ctx, Controller *ctl, QWidget *parent) 
     _tabs->tabBar()->setExpanding(false);
     _tabs->setStyleSheet(QStringLiteral("QTabBar::tab { padding: 6px 9px; }"));
     _tabs->tabBar()->setUsesScrollButtons(true);
-    _tabs->setTabToolTip(3, tr("Дизайн-системы: цвета, шрифт и стили для всего документа"));
+    _tabs->setTabToolTip(3, tr("Design systems: colors, font and styles for the whole document"));
     connect(_tabs, &QTabWidget::currentChanged, this,
             [this]
             {
                 _OnSelectionChanged();
             });
 
-    _new_button   = new QPushButton(tr("＋ Создать"));
-    _dup_button   = new QPushButton(tr("⧉ Дублировать"));
-    _del_button   = new QPushButton(tr("Удалить"));
-    _apply_button = new QPushButton(tr("▶ Применить к диаграмме…"));
+    _new_button   = new QPushButton(tr("＋ New"));
+    _dup_button   = new QPushButton(tr("⧉ Duplicate"));
+    _del_button   = new QPushButton(tr("Delete"));
+    _apply_button = new QPushButton(tr("▶ Apply to diagram…"));
     _del_button->setObjectName(QStringLiteral("dangerButton"));
     connect(_new_button, &QPushButton::clicked, this, &LibraryDialog::_New);
     connect(_dup_button, &QPushButton::clicked, this, &LibraryDialog::_Duplicate);
@@ -200,7 +200,7 @@ LibraryDialog::LibraryDialog(AppContext &ctx, Controller *ctl, QWidget *parent) 
     _preview         = new PreviewWidget;
     auto *right      = new QWidget;
     auto *right_l    = new QVBoxLayout(right);
-    auto *prev_title = new QLabel(tr("ПРЕДПРОСМОТР"));
+    auto *prev_title = new QLabel(tr("PREVIEW"));
     prev_title->setObjectName(QStringLiteral("panelTitle"));
     right_l->setContentsMargins(0, 0, 0, 0);
     right_l->addWidget(prev_title);
@@ -215,10 +215,10 @@ LibraryDialog::LibraryDialog(AppContext &ctx, Controller *ctl, QWidget *parent) 
     split->setStretchFactor(2, 3);
     split->setSizes({360, 450, 390});
 
-    auto *export_button = new QPushButton(tr("Экспорт в плагин…"));
+    auto *export_button = new QPushButton(tr("Export to plugin…"));
     connect(export_button, &QPushButton::clicked, this, &LibraryDialog::_ExportPlugin);
     auto *buttons = new QDialogButtonBox;
-    buttons->addButton(new QPushButton(tr("Закрыть")), QDialogButtonBox::RejectRole);
+    buttons->addButton(new QPushButton(tr("Close")), QDialogButtonBox::RejectRole);
     buttons->addButton(export_button, QDialogButtonBox::ActionRole);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
 
@@ -258,9 +258,9 @@ void LibraryDialog::SetController(Controller *ctl)
     connect(_ctl, &Controller::DocumentStateChanged, this,
             [this]
             {
-                setWindowTitle(tr("Библиотека — %1").arg(Qs(_ctl->GetModel().meta.name)));
+                setWindowTitle(tr("Library — %1").arg(Qs(_ctl->GetModel().meta.name)));
             });
-    setWindowTitle(tr("Библиотека — %1").arg(Qs(_ctl->GetModel().meta.name)));
+    setWindowTitle(tr("Library — %1").arg(Qs(_ctl->GetModel().meta.name)));
     _current = {};
     _RefreshLists();
 }
@@ -374,7 +374,7 @@ void LibraryDialog::_UpdateButtons()
     _dup_button->setEnabled(!_current.id.empty());
     _del_button->setEnabled(_Editable());
     _apply_button->setVisible(_CurrentTab() == Tab::Animations || _CurrentTab() == Tab::Designs);
-    _apply_button->setText(_CurrentTab() == Tab::Designs ? tr("✓ Применить к документу") : tr("▶ Применить к диаграмме…"));
+    _apply_button->setText(_CurrentTab() == Tab::Designs ? tr("✓ Apply to document") : tr("▶ Apply to diagram…"));
     _apply_button->setEnabled(!_current.id.empty() && (_CurrentTab() == Tab::Designs || !_ctl->GetModel().nodes.empty()));
 }
 
@@ -449,18 +449,18 @@ void LibraryDialog::_RebuildEditor()
     }
     if (!found)
     {
-        box->addWidget(Hint(tr("Выберите определение слева или создайте новое.")));
+        box->addWidget(Hint(tr("Select a definition on the left or create a new one.")));
         _origin->clear();
     }
     else if (_Editable())
     {
-        _origin->setText(tr("Источник: документ — изменения сохраняются вместе с диаграммой и отменяются через Ctrl+Z."));
+        _origin->setText(tr("Source: document — changes are saved with the diagram and can be undone with Ctrl+Z."));
     }
     else
     {
         form->setEnabled(false);
-        _origin->setText(tr("Источник: %1 — только чтение. Нажмите «Дублировать», чтобы создать редактируемую копию в документе.")
-                             .arg(SourceName(_current.source)));
+        _origin->setText(
+            tr("Source: %1 — read-only. Click “Duplicate” to create an editable copy in the document.").arg(SourceName(_current.source)));
     }
 
     QWidget *old = _editor->takeWidget();
@@ -624,10 +624,10 @@ void LibraryDialog::_EditDesign(const std::string &key, const std::function<void
 
 void LibraryDialog::_BuildElementEditor(QVBoxLayout *box, const ElementType &e)
 {
-    auto *title = new QLabel(tr("Элемент «%1»").arg(Qs(e.label)));
+    auto *title = new QLabel(tr("Element “%1”").arg(Qs(e.label)));
     title->setObjectName(QStringLiteral("inspectorTitle"));
     box->addWidget(title);
-    box->addWidget(Hint(tr("Идентификатор: %1").arg(Qs(e.id))));
+    box->addWidget(Hint(tr("ID: %1").arg(Qs(e.id))));
 
     auto text = [this](const std::string &key, std::string ElementType::*field)
     {
@@ -640,11 +640,11 @@ void LibraryDialog::_BuildElementEditor(QVBoxLayout *box, const ElementType &e)
                          });
         };
     };
-    box->addWidget(Labeled(tr("Название"), LineEdit(Qs(e.label), text("label", &ElementType::label))));
-    box->addWidget(Row(Labeled(tr("Иконка (символ)"), LineEdit(Qs(e.icon), text("icon", &ElementType::icon), QStringLiteral("⚙"))),
-                       Labeled(tr("Категория"), LineEdit(Qs(e.category), text("category", &ElementType::category)))));
-    box->addWidget(Labeled(tr("Описание"), LineEdit(Qs(e.description), text("description", &ElementType::description))));
-    box->addWidget(Row(Labeled(tr("Акцент"), ColorButton(Qs(e.accent),
+    box->addWidget(Labeled(tr("Name"), LineEdit(Qs(e.label), text("label", &ElementType::label))));
+    box->addWidget(Row(Labeled(tr("Icon (character)"), LineEdit(Qs(e.icon), text("icon", &ElementType::icon), QStringLiteral("⚙"))),
+                       Labeled(tr("Category"), LineEdit(Qs(e.category), text("category", &ElementType::category)))));
+    box->addWidget(Labeled(tr("Description"), LineEdit(Qs(e.description), text("description", &ElementType::description))));
+    box->addWidget(Row(Labeled(tr("Accent"), ColorButton(Qs(e.accent),
                                                          [this](const QString &v)
                                                          {
                                                              _EditElement(
@@ -655,16 +655,16 @@ void LibraryDialog::_BuildElementEditor(QVBoxLayout *box, const ElementType &e)
                                                                  },
                                                                  true);
                                                          })),
-                       Row(Labeled(tr("Ширина"), Spin(e.width, 20, 2000, 10, 0,
-                                                      [this](double v)
-                                                      {
-                                                          _EditElement("width",
-                                                                       [&](ElementType &t)
-                                                                       {
-                                                                           t.width = v;
-                                                                       });
-                                                      })),
-                           Labeled(tr("Высота"), Spin(e.height, 20, 2000, 10, 0,
+                       Row(Labeled(tr("Width"), Spin(e.width, 20, 2000, 10, 0,
+                                                     [this](double v)
+                                                     {
+                                                         _EditElement("width",
+                                                                      [&](ElementType &t)
+                                                                      {
+                                                                          t.width = v;
+                                                                      });
+                                                     })),
+                           Labeled(tr("Height"), Spin(e.height, 20, 2000, 10, 0,
                                                       [this](double v)
                                                       {
                                                           _EditElement("height",
@@ -673,7 +673,7 @@ void LibraryDialog::_BuildElementEditor(QVBoxLayout *box, const ElementType &e)
                                                                            t.height = v;
                                                                        });
                                                       })))));
-    box->addWidget(Section(tr("Стиль по умолчанию")));
+    box->addWidget(Section(tr("Default style")));
     AddNodeStyleFields(box, e.style, {},
                        [this](const std::string &merge_key, const std::function<void(NodeStyle &)> &fn)
                        {
@@ -685,8 +685,8 @@ void LibraryDialog::_BuildElementEditor(QVBoxLayout *box, const ElementType &e)
                                },
                                merge_key.empty());
                        });
-    box->addWidget(Hint(tr("Стиль узла на холсте может переопределить любое из этих полей. "
-                           "Форма «custom» использует SVG-контур в квадрате 0..1 (например «M0 0 L1 0 L0.5 1 Z»).")));
+    box->addWidget(Hint(tr("A node's style on the canvas can override any of these fields. "
+                           "The “custom” shape uses an SVG path in the 0..1 square (e.g. “M0 0 L1 0 L0.5 1 Z”).")));
 }
 
 // ---------------------------------------------------------------------------
@@ -695,10 +695,10 @@ void LibraryDialog::_BuildElementEditor(QVBoxLayout *box, const ElementType &e)
 
 void LibraryDialog::_BuildEffectEditor(QVBoxLayout *box, const EffectDef &e)
 {
-    auto *title = new QLabel(tr("Эффект «%1»").arg(Qs(e.label)));
+    auto *title = new QLabel(tr("Effect “%1”").arg(Qs(e.label)));
     title->setObjectName(QStringLiteral("inspectorTitle"));
     box->addWidget(title);
-    box->addWidget(Hint(tr("Идентификатор: %1").arg(Qs(e.id))));
+    box->addWidget(Hint(tr("ID: %1").arg(Qs(e.id))));
 
     auto text = [this](const std::string &key, std::string EffectDef::*field)
     {
@@ -711,33 +711,33 @@ void LibraryDialog::_BuildEffectEditor(QVBoxLayout *box, const EffectDef &e)
                         });
         };
     };
-    box->addWidget(Labeled(tr("Название"), LineEdit(Qs(e.label), text("label", &EffectDef::label))));
-    box->addWidget(Row(Labeled(tr("Категория"), LineEdit(Qs(e.category), text("category", &EffectDef::category))),
-                       Labeled(tr("Цвет"), ColorButton(Qs(e.color),
-                                                       [this](const QString &v)
-                                                       {
-                                                           _EditEffect(
-                                                               {},
-                                                               [&](EffectDef &t)
-                                                               {
-                                                                   t.color = Us(v);
-                                                               },
-                                                               true);
-                                                       }))));
-    box->addWidget(Labeled(tr("Описание"), LineEdit(Qs(e.description), text("description", &EffectDef::description))));
-    box->addWidget(Labeled(tr("Повторов за длительность шага"), Spin(e.repeat, 1, 100, 1, 0,
-                                                                     [this](double v)
-                                                                     {
-                                                                         _EditEffect("repeat",
-                                                                                     [&](EffectDef &t)
-                                                                                     {
-                                                                                         t.repeat = static_cast<int>(v);
-                                                                                     });
-                                                                     })));
+    box->addWidget(Labeled(tr("Name"), LineEdit(Qs(e.label), text("label", &EffectDef::label))));
+    box->addWidget(Row(Labeled(tr("Category"), LineEdit(Qs(e.category), text("category", &EffectDef::category))),
+                       Labeled(tr("Color"), ColorButton(Qs(e.color),
+                                                        [this](const QString &v)
+                                                        {
+                                                            _EditEffect(
+                                                                {},
+                                                                [&](EffectDef &t)
+                                                                {
+                                                                    t.color = Us(v);
+                                                                },
+                                                                true);
+                                                        }))));
+    box->addWidget(Labeled(tr("Description"), LineEdit(Qs(e.description), text("description", &EffectDef::description))));
+    box->addWidget(Labeled(tr("Repeats per step duration"), Spin(e.repeat, 1, 100, 1, 0,
+                                                                 [this](double v)
+                                                                 {
+                                                                     _EditEffect("repeat",
+                                                                                 [&](EffectDef &t)
+                                                                                 {
+                                                                                     t.repeat = static_cast<int>(v);
+                                                                                 });
+                                                                 })));
 
-    box->addWidget(Section(tr("Дорожки ключевых кадров")));
-    box->addWidget(Hint(tr("Каждая дорожка анимирует одно свойство узла. t — доля одного повтора (0..1), "
-                           "кривая задаёт переход от предыдущего ключа к этому.")));
+    box->addWidget(Section(tr("Keyframe tracks")));
+    box->addWidget(Hint(tr("Each track animates one node property. t is the fraction of one repeat (0..1); "
+                           "the curve defines the transition from the previous key to this one.")));
     for (size_t ti = 0; ti < e.tracks.size(); ++ti)
     {
         const EffectTrack  &track = e.tracks[ti];
@@ -759,7 +759,7 @@ void LibraryDialog::_BuildEffectEditor(QVBoxLayout *box, const EffectDef &e)
                                      }),
                                1},
                               {SmallButton(
-                                   QStringLiteral("✕"), tr("Удалить дорожку"),
+                                   QStringLiteral("✕"), tr("Delete track"),
                                    [this, ti]
                                    {
                                        _EditEffect(
@@ -833,7 +833,7 @@ void LibraryDialog::_BuildEffectEditor(QVBoxLayout *box, const EffectDef &e)
                                                          });
                                          }),
                                    3},
-                                  {SmallButton(QStringLiteral("−"), tr("Удалить ключ"),
+                                  {SmallButton(QStringLiteral("−"), tr("Delete key"),
                                                [this, ti, ki]
                                                {
                                                    _EditEffect(
@@ -850,7 +850,7 @@ void LibraryDialog::_BuildEffectEditor(QVBoxLayout *box, const EffectDef &e)
                                                }),
                                    0}}));
         }
-        box->addWidget(Button(tr("＋ Ключ"),
+        box->addWidget(Button(tr("＋ Key"),
                               [this, ti]
                               {
                                   _EditEffect(
@@ -876,7 +876,7 @@ void LibraryDialog::_BuildEffectEditor(QVBoxLayout *box, const EffectDef &e)
                                       true);
                               }));
     }
-    box->addWidget(Button(tr("＋ Дорожка"),
+    box->addWidget(Button(tr("＋ Track"),
                           [this]
                           {
                               _EditEffect(
@@ -910,10 +910,10 @@ void LibraryDialog::_BuildEffectEditor(QVBoxLayout *box, const EffectDef &e)
 
 void LibraryDialog::_BuildAnimationEditor(QVBoxLayout *box, const AnimationTemplate &a)
 {
-    auto *title = new QLabel(tr("Анимация «%1»").arg(Qs(a.label)));
+    auto *title = new QLabel(tr("Animation “%1”").arg(Qs(a.label)));
     title->setObjectName(QStringLiteral("inspectorTitle"));
     box->addWidget(title);
-    box->addWidget(Hint(tr("Идентификатор: %1").arg(Qs(a.id))));
+    box->addWidget(Hint(tr("ID: %1").arg(Qs(a.id))));
 
     auto text = [this](const std::string &key, std::string AnimationTemplate::*field)
     {
@@ -926,12 +926,12 @@ void LibraryDialog::_BuildAnimationEditor(QVBoxLayout *box, const AnimationTempl
                            });
         };
     };
-    box->addWidget(Labeled(tr("Название"), LineEdit(Qs(a.label), text("label", &AnimationTemplate::label))));
-    box->addWidget(Labeled(tr("Категория"), LineEdit(Qs(a.category), text("category", &AnimationTemplate::category))));
-    box->addWidget(Labeled(tr("Описание"), LineEdit(Qs(a.description), text("description", &AnimationTemplate::description))));
+    box->addWidget(Labeled(tr("Name"), LineEdit(Qs(a.label), text("label", &AnimationTemplate::label))));
+    box->addWidget(Labeled(tr("Category"), LineEdit(Qs(a.category), text("category", &AnimationTemplate::category))));
+    box->addWidget(Labeled(tr("Description"), LineEdit(Qs(a.description), text("description", &AnimationTemplate::description))));
 
-    box->addWidget(Section(tr("Роли")));
-    box->addWidget(Hint(tr("Роли — места для узлов. При применении каждой роли назначается узел диаграммы.")));
+    box->addWidget(Section(tr("Roles")));
+    box->addWidget(Hint(tr("Roles are slots for nodes. When the animation is applied, each role is assigned a diagram node.")));
     for (size_t i = 0; i < a.roles.size(); ++i)
     {
         auto *id_label = new QLabel(Qs(a.roles[i].id));
@@ -952,7 +952,7 @@ void LibraryDialog::_BuildAnimationEditor(QVBoxLayout *box, const AnimationTempl
                                1}}));
     }
 
-    box->addWidget(Section(tr("Шаги (время от начала, мс)")));
+    box->addWidget(Section(tr("Steps (time from start, ms)")));
     for (size_t i = 0; i < a.steps.size(); ++i)
     {
         const Step &s = a.steps[i];
@@ -1011,7 +1011,7 @@ void LibraryDialog::_BuildAnimationEditor(QVBoxLayout *box, const AnimationTempl
                                     }),
                                2},
                               {SmallButton(
-                                   QStringLiteral("✕"), tr("Удалить шаг"),
+                                   QStringLiteral("✕"), tr("Delete step"),
                                    [this, i]
                                    {
                                        _EditAnimation(
@@ -1028,8 +1028,9 @@ void LibraryDialog::_BuildAnimationEditor(QVBoxLayout *box, const AnimationTempl
                                    true),
                                0}}));
     }
-    box->addWidget(Hint(tr("Новую анимацию проще всего создать из готового фрагмента сценария: кнопка «Создать» на этой вкладке "
-                           "берёт шаги из диапазона времени таймлайна.")));
+    box->addWidget(
+        Hint(tr("The easiest way to create a new animation is from an existing part of the scenario: the “New” button on this tab "
+                "takes the steps from a time range of the timeline.")));
 }
 
 // ---------------------------------------------------------------------------
@@ -1038,11 +1039,11 @@ void LibraryDialog::_BuildAnimationEditor(QVBoxLayout *box, const AnimationTempl
 
 void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
 {
-    auto *title = new QLabel(tr("Дизайн-система «%1»").arg(Qs(d.label)));
+    auto *title = new QLabel(tr("Design system “%1”").arg(Qs(d.label)));
     title->setObjectName(QStringLiteral("inspectorTitle"));
     box->addWidget(title);
     const bool active = _ctl->GetModel().design_system == d.id;
-    box->addWidget(Hint(tr("Идентификатор: %1%2").arg(Qs(d.id), active ? tr(" · используется документом") : QString())));
+    box->addWidget(Hint(tr("ID: %1%2").arg(Qs(d.id), active ? tr(" · used by the document") : QString())));
 
     auto text = [this](const std::string &key, std::string DesignSystem::*field)
     {
@@ -1068,18 +1069,18 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
                 true);
         };
     };
-    box->addWidget(Labeled(tr("Название"), LineEdit(Qs(d.label), text("label", &DesignSystem::label))));
-    box->addWidget(Row(Labeled(tr("Категория"), LineEdit(Qs(d.category), text("category", &DesignSystem::category))),
-                       Labeled(tr("Описание"), LineEdit(Qs(d.description), text("description", &DesignSystem::description)))));
+    box->addWidget(Labeled(tr("Name"), LineEdit(Qs(d.label), text("label", &DesignSystem::label))));
+    box->addWidget(Row(Labeled(tr("Category"), LineEdit(Qs(d.category), text("category", &DesignSystem::category))),
+                       Labeled(tr("Description"), LineEdit(Qs(d.description), text("description", &DesignSystem::description)))));
 
     // ---- canvas and typography ---------------------------------------------
-    box->addWidget(Section(tr("Холст и шрифт")));
-    box->addWidget(Row(Labeled(tr("Фон"), OptColor(d.background, QStringLiteral("#0a111f"), opt_color(&DesignSystem::background))),
-                       Labeled(tr("Связи"), OptColor(d.edge_color, QStringLiteral("#5f7196"), opt_color(&DesignSystem::edge_color)))));
+    box->addWidget(Section(tr("Canvas and font")));
+    box->addWidget(Row(Labeled(tr("Background"), OptColor(d.background, QStringLiteral("#0a111f"), opt_color(&DesignSystem::background))),
+                       Labeled(tr("Edges"), OptColor(d.edge_color, QStringLiteral("#5f7196"), opt_color(&DesignSystem::edge_color)))));
     box->addWidget(
-        Row(Labeled(tr("Текст"), OptColor(d.text_color, QStringLiteral("#f2f6ff"), opt_color(&DesignSystem::text_color))),
-            Labeled(tr("Подзаголовок"), OptColor(d.subtitle_color, QStringLiteral("#b7c6e4"), opt_color(&DesignSystem::subtitle_color)))));
-    box->addWidget(Row(OptCheck(tr("Сетка"), d.grid, true,
+        Row(Labeled(tr("Text"), OptColor(d.text_color, QStringLiteral("#f2f6ff"), opt_color(&DesignSystem::text_color))),
+            Labeled(tr("Subtitle"), OptColor(d.subtitle_color, QStringLiteral("#b7c6e4"), opt_color(&DesignSystem::subtitle_color)))));
+    box->addWidget(Row(OptCheck(tr("Grid"), d.grid, true,
                                 [this](std::optional<bool> v)
                                 {
                                     _EditDesign({},
@@ -1088,34 +1089,34 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
                                                     t.grid = v;
                                                 });
                                 }),
-                       Labeled(tr("Шаг сетки"), OptSpin(d.grid_size, 4, 200, 1, 0, QStringLiteral("26"),
-                                                        [this](std::optional<double> v)
-                                                        {
-                                                            _EditDesign("grid_size",
-                                                                        [&](DesignSystem &t)
-                                                                        {
-                                                                            t.grid_size = v;
-                                                                        });
-                                                        }))));
-    Options fonts{{QString(), tr("Шрифт приложения")}};
+                       Labeled(tr("Grid spacing"), OptSpin(d.grid_size, 4, 200, 1, 0, QStringLiteral("26"),
+                                                           [this](std::optional<double> v)
+                                                           {
+                                                               _EditDesign("grid_size",
+                                                                           [&](DesignSystem &t)
+                                                                           {
+                                                                               t.grid_size = v;
+                                                                           });
+                                                           }))));
+    Options fonts{{QString(), tr("Application font")}};
     for (const QString &family : QFontDatabase::families())
     {
         fonts.emplace_back(family, family);
     }
-    box->addWidget(Labeled(tr("Шрифт"), Combo(fonts, Qs(d.font_family),
-                                              [this](const QString &v)
-                                              {
-                                                  _EditDesign({},
-                                                              [&](DesignSystem &t)
-                                                              {
-                                                                  t.font_family = Us(v);
-                                                              });
-                                              })));
+    box->addWidget(Labeled(tr("Font"), Combo(fonts, Qs(d.font_family),
+                                             [this](const QString &v)
+                                             {
+                                                 _EditDesign({},
+                                                             [&](DesignSystem &t)
+                                                             {
+                                                                 t.font_family = Us(v);
+                                                             });
+                                             })));
 
     // ---- color tokens --------------------------------------------------------
-    box->addWidget(Section(tr("Цветовые токены")));
-    box->addWidget(Hint(tr("На токены можно ссылаться в любом цвете элементов и шагов: «$primary», «$surface»… "
-                           "Тогда при смене дизайн-системы цвет меняется вместе с ней.")));
+    box->addWidget(Section(tr("Color tokens")));
+    box->addWidget(Hint(tr("Any element or step color can reference a token: “$primary”, “$surface”… "
+                           "The color then changes along with the design system.")));
     std::vector<std::string> names;
     for (const auto &[k, v] : DefaultTokens())
     {
@@ -1155,11 +1156,11 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
                                   });
         box->addWidget(RowOf({{label, 0}, {color, 1}}));
     }
-    box->addWidget(Button(tr("＋ Свой токен…"),
+    box->addWidget(Button(tr("＋ Custom token…"),
                           [this]
                           {
                               bool              ok   = false;
-                              const QString     name = QInputDialog::getText(this, tr("Новый токен"), tr("Имя (латиница, без $):"),
+                              const QString     name = QInputDialog::getText(this, tr("New token"), tr("Name (Latin letters, no $):"),
                                                                              QLineEdit::Normal, QStringLiteral("brand"), &ok);
                               const std::string id   = Slugify(Us(name.trimmed()), "");
                               if (!ok || id.empty())
@@ -1176,7 +1177,7 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
                           }));
 
     // ---- node states and message variants -------------------------------------
-    box->addWidget(Section(tr("Состояния узлов (заливка / обводка)")));
+    box->addWidget(Section(tr("Node states (fill / stroke)")));
     for (const auto &st : NodeStates())
     {
         const std::string sid = std::string(st.id);
@@ -1205,7 +1206,7 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
         box->addWidget(RowOf(
             {{label, 0}, {OptColor(cur.fill, Qs(st.fill.Hex()), set(false)), 1}, {OptColor(cur.ring, Qs(st.ring.Hex()), set(true)), 1}}));
     }
-    box->addWidget(Section(tr("Варианты сообщений")));
+    box->addWidget(Section(tr("Message variants")));
     for (const auto &v : MsgVariants())
     {
         const std::string vid   = std::string(v.id);
@@ -1235,7 +1236,7 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
     }
 
     // ---- default styles ------------------------------------------------------
-    box->addWidget(Section(tr("Узлы по умолчанию")));
+    box->addWidget(Section(tr("Node defaults")));
     AddNodeStyleFields(box, d.node, {},
                        [this](const std::string &merge_key, const std::function<void(NodeStyle &)> &fn)
                        {
@@ -1247,7 +1248,7 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
                                },
                                merge_key.empty());
                        });
-    box->addWidget(Section(tr("Связи по умолчанию")));
+    box->addWidget(Section(tr("Edge defaults")));
     auto edge = [this](const std::function<void(EdgeStyle &)> &fn, const std::string &key = {})
     {
         _EditDesign(
@@ -1258,44 +1259,44 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
             },
             key.empty());
     };
-    box->addWidget(Row(Labeled(tr("Цвет"), OptColor(d.edge.color, tr("цвет связей"),
-                                                    [edge](std::optional<std::string> v)
-                                                    {
-                                                        edge(
-                                                            [&](EdgeStyle &e)
-                                                            {
-                                                                e.color = std::move(v);
-                                                            });
-                                                    })),
-                       Labeled(tr("Цвет подписи"), OptColor(d.edge.label_color, QStringLiteral("#9fb3d6"),
-                                                            [edge](std::optional<std::string> v)
-                                                            {
-                                                                edge(
-                                                                    [&](EdgeStyle &e)
-                                                                    {
-                                                                        e.label_color = std::move(v);
-                                                                    });
-                                                            }))));
-    box->addWidget(Row(Labeled(tr("Толщина"), OptSpin(d.edge.width, 0.5, 20, 0.5, 1, QStringLiteral("2.2"),
-                                                      [edge](std::optional<double> v)
-                                                      {
-                                                          edge(
-                                                              [&](EdgeStyle &e)
-                                                              {
-                                                                  e.width = v;
-                                                              },
-                                                              "edge:width");
-                                                      })),
-                       Labeled(tr("Линия"), OptCombo(FromCatalog(StrokeStyles()), d.edge.stroke_style, QStringLiteral("solid"),
+    box->addWidget(Row(Labeled(tr("Color"), OptColor(d.edge.color, tr("edge color"),
                                                      [edge](std::optional<std::string> v)
                                                      {
                                                          edge(
                                                              [&](EdgeStyle &e)
                                                              {
-                                                                 e.stroke_style = std::move(v);
+                                                                 e.color = std::move(v);
                                                              });
-                                                     }))));
-    box->addWidget(Row(Labeled(tr("Маршрут"), OptCombo(FromCatalog(Routings()), d.edge.routing, QStringLiteral("curved"),
+                                                     })),
+                       Labeled(tr("Label color"), OptColor(d.edge.label_color, QStringLiteral("#9fb3d6"),
+                                                           [edge](std::optional<std::string> v)
+                                                           {
+                                                               edge(
+                                                                   [&](EdgeStyle &e)
+                                                                   {
+                                                                       e.label_color = std::move(v);
+                                                                   });
+                                                           }))));
+    box->addWidget(Row(Labeled(tr("Thickness"), OptSpin(d.edge.width, 0.5, 20, 0.5, 1, QStringLiteral("2.2"),
+                                                        [edge](std::optional<double> v)
+                                                        {
+                                                            edge(
+                                                                [&](EdgeStyle &e)
+                                                                {
+                                                                    e.width = v;
+                                                                },
+                                                                "edge:width");
+                                                        })),
+                       Labeled(tr("Line"), OptCombo(FromCatalog(StrokeStyles()), d.edge.stroke_style, QStringLiteral("solid"),
+                                                    [edge](std::optional<std::string> v)
+                                                    {
+                                                        edge(
+                                                            [&](EdgeStyle &e)
+                                                            {
+                                                                e.stroke_style = std::move(v);
+                                                            });
+                                                    }))));
+    box->addWidget(Row(Labeled(tr("Routing"), OptCombo(FromCatalog(Routings()), d.edge.routing, QStringLiteral("curved"),
                                                        [edge](std::optional<std::string> v)
                                                        {
                                                            edge(
@@ -1304,18 +1305,18 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
                                                                    e.routing = std::move(v);
                                                                });
                                                        })),
-                       Labeled(tr("Стрелка"), OptCombo(FromCatalog(ArrowHeads()), d.edge.arrow_end, QStringLiteral("triangle"),
-                                                       [edge](std::optional<std::string> v)
-                                                       {
-                                                           edge(
-                                                               [&](EdgeStyle &e)
-                                                               {
-                                                                   e.arrow_end = std::move(v);
-                                                               });
-                                                       }))));
+                       Labeled(tr("Arrow"), OptCombo(FromCatalog(ArrowHeads()), d.edge.arrow_end, QStringLiteral("triangle"),
+                                                     [edge](std::optional<std::string> v)
+                                                     {
+                                                         edge(
+                                                             [&](EdgeStyle &e)
+                                                             {
+                                                                 e.arrow_end = std::move(v);
+                                                             });
+                                                     }))));
 
     // ---- per element type overrides ------------------------------------------------
-    box->addWidget(Section(tr("Переопределения типов элементов")));
+    box->addWidget(Section(tr("Element type overrides")));
     Options types;
     for (const auto &e : _ctl->Reg().Elements(&_ctl->GetModel().library))
     {
@@ -1330,12 +1331,12 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
     {
         _override_type = types.front().first;
     }
-    box->addWidget(Labeled(tr("Тип элемента (● — переопределён)"), Combo(types, _override_type,
-                                                                         [this](const QString &v)
-                                                                         {
-                                                                             _override_type = v;
-                                                                             _RequestEditorRebuild();
-                                                                         })));
+    box->addWidget(Labeled(tr("Element type (● = overridden)"), Combo(types, _override_type,
+                                                                      [this](const QString &v)
+                                                                      {
+                                                                          _override_type = v;
+                                                                          _RequestEditorRebuild();
+                                                                      })));
     const std::string     type_id       = Us(_override_type);
     const auto            ov_it         = d.elements.find(type_id);
     const ElementOverride ov            = ov_it != d.elements.end() ? ov_it->second : ElementOverride{};
@@ -1355,7 +1356,7 @@ void LibraryDialog::_BuildDesignEditor(QVBoxLayout *box, const DesignSystem &d)
             },
             key.empty());
     };
-    box->addWidget(Labeled(tr("Акцент"), OptColor(ov.accent, Qs(type.accent),
+    box->addWidget(Labeled(tr("Accent"), OptColor(ov.accent, Qs(type.accent),
                                                   [edit_override](std::optional<std::string> v)
                                                   {
                                                       edit_override({},
@@ -1389,8 +1390,8 @@ void LibraryDialog::_New()
         ElementType e = _ctl->Reg().Element(kDefaultType);
         id            = _UniqueId("element");
         e.id          = id;
-        e.label       = Us(tr("Новый элемент"));
-        e.category    = "Мои";
+        e.label       = Us(tr("New element"));
+        e.category    = Us(tr("Mine"));
         e.description.clear();
         _ctl->Doc().UpsertElement(e);
         break;
@@ -1400,8 +1401,8 @@ void LibraryDialog::_New()
         EffectDef e;
         id         = _UniqueId("effect");
         e.id       = id;
-        e.label    = Us(tr("Новый эффект"));
-        e.category = "Мои";
+        e.label    = Us(tr("New effect"));
+        e.category = Us(tr("Mine"));
         e.tracks.push_back({EffectProperty::Scale, {{0, 1, Easing::Linear}, {0.5, 1.15, Easing::EaseOut}, {1, 1, Easing::EaseIn}}});
         _ctl->Doc().UpsertEffect(e);
         break;
@@ -1415,8 +1416,7 @@ void LibraryDialog::_New()
         const auto &m    = _ctl->GetModel();
         const auto *base = _ctl->Reg().DesignOf(m);
         id               = _UniqueId("design");
-        DesignSystem d =
-            DesignFromScene(m, base != nullptr ? base : _ctl->Reg().FindDesignSystem("dark"), id, Us(tr("Новая дизайн-система")));
+        DesignSystem d = DesignFromScene(m, base != nullptr ? base : _ctl->Reg().FindDesignSystem("dark"), id, Us(tr("New design system")));
         d.description.clear();
         _ctl->Doc().UpsertDesignSystem(d);
         break;
@@ -1433,8 +1433,8 @@ void LibraryDialog::_NewAnimation()
     const auto &m = _ctl->GetModel();
     if (m.scenario.steps.empty())
     {
-        QMessageBox::information(this, tr("Новая анимация"),
-                                 tr("Анимация создаётся из шагов сценария. Добавьте шаги на таймлайн и выберите диапазон времени."));
+        QMessageBox::information(this, tr("New animation"),
+                                 tr("An animation is created from scenario steps. Add steps to the timeline and select a time range."));
         return;
     }
     double from = 0;
@@ -1445,8 +1445,8 @@ void LibraryDialog::_NewAnimation()
     }
 
     QDialog dlg(this);
-    dlg.setWindowTitle(tr("Новая анимация из сценария"));
-    auto *name    = new QLineEdit(tr("Моя анимация"));
+    dlg.setWindowTitle(tr("New animation from scenario"));
+    auto *name    = new QLineEdit(tr("My animation"));
     auto *from_sb = new QDoubleSpinBox;
     auto *to_sb   = new QDoubleSpinBox;
     for (auto *sb : {from_sb, to_sb})
@@ -1454,24 +1454,24 @@ void LibraryDialog::_NewAnimation()
         sb->setRange(0, 3'600'000);
         sb->setDecimals(0);
         sb->setSingleStep(100);
-        sb->setSuffix(tr(" мс"));
+        sb->setSuffix(tr(" ms"));
     }
     from_sb->setValue(from);
     to_sb->setValue(to);
     auto *count   = new QLabel;
     auto  recount = [&]
     {
-        count->setText(tr("Шагов в диапазоне: %1").arg(StepsInRange(m, from_sb->value(), to_sb->value()).size()));
+        count->setText(tr("Steps in range: %1").arg(StepsInRange(m, from_sb->value(), to_sb->value()).size()));
     };
     connect(from_sb, &QDoubleSpinBox::valueChanged, &dlg, recount);
     connect(to_sb, &QDoubleSpinBox::valueChanged, &dlg, recount);
     recount();
     auto *form = new QFormLayout(&dlg);
-    form->addRow(tr("Название"), name);
-    form->addRow(tr("Начало шагов от"), from_sb);
-    form->addRow(tr("до"), to_sb);
+    form->addRow(tr("Name"), name);
+    form->addRow(tr("Steps starting from"), from_sb);
+    form->addRow(tr("to"), to_sb);
     form->addRow(count);
-    form->addRow(new QLabel(tr("Узлы, участвующие в шагах, станут ролями шаблона.")));
+    form->addRow(new QLabel(tr("Nodes involved in these steps will become the template's roles.")));
     auto *buttons = fields::OkCancelButtons(&dlg);
     form->addRow(buttons);
     if (dlg.exec() != QDialog::Accepted)
@@ -1481,13 +1481,13 @@ void LibraryDialog::_NewAnimation()
     const auto ids = StepsInRange(m, from_sb->value(), to_sb->value());
     if (ids.empty())
     {
-        QMessageBox::warning(this, tr("Новая анимация"), tr("В выбранном диапазоне нет шагов."));
+        QMessageBox::warning(this, tr("New animation"), tr("There are no steps in the selected range."));
         return;
     }
-    const std::string label = Us(name->text().trimmed().isEmpty() ? tr("Моя анимация") : name->text().trimmed());
+    const std::string label = Us(name->text().trimmed().isEmpty() ? tr("My animation") : name->text().trimmed());
     const std::string id    = _UniqueId(Slugify(label, "animation"));
     AnimationTemplate tpl   = MakeTemplate(m, ids, id, label);
-    tpl.category            = "Мои";
+    tpl.category            = Us(tr("Mine"));
     _ctl->Doc().UpsertAnimation(tpl);
     _applying = true;
     _ctl->Changed(true);
@@ -1504,7 +1504,7 @@ void LibraryDialog::_Duplicate()
     const auto       &lib    = _ctl->GetModel().library;
     const auto       &reg    = _ctl->Reg();
     const std::string id     = _UniqueId(_current.id + "-copy");
-    const std::string suffix = Us(tr(" (копия)"));
+    const std::string suffix = Us(tr(" (copy)"));
     switch (_CurrentTab())
     {
     case Tab::Elements:
@@ -1540,7 +1540,7 @@ void LibraryDialog::_Duplicate()
             DesignSystem d = *src;
             d.id           = id;
             d.label += suffix;
-            d.category = "Мои";
+            d.category = Us(tr("Mine"));
             _ctl->Doc().UpsertDesignSystem(d);
         }
         break;
@@ -1557,9 +1557,9 @@ void LibraryDialog::_Delete()
     {
         return;
     }
-    const auto answer = QMessageBox::question(this, tr("Удалить"),
-                                              tr("Удалить «%1» из библиотеки документа?\n"
-                                                 "Узлы и шаги, которые его используют, перейдут на определение из плагина или встроенное.")
+    const auto answer = QMessageBox::question(this, tr("Delete"),
+                                              tr("Delete “%1” from the document library?\n"
+                                                 "Nodes and steps that use it will fall back to the plugin or built-in definition.")
                                                   .arg(Qs(_current.id)));
     if (answer != QMessageBox::Yes)
     {
@@ -1579,7 +1579,7 @@ void LibraryDialog::_ExportPlugin()
     const auto &reg = _ctl->Reg();
     LibrarySet  all;
     QDialog     dlg(this);
-    dlg.setWindowTitle(tr("Экспорт в плагин"));
+    dlg.setWindowTitle(tr("Export to plugin"));
     dlg.resize(560, 620);
     auto *items = new QListWidget;
     auto  add   = [&](const QString &kind, const auto &entries)
@@ -1594,10 +1594,10 @@ void LibraryDialog::_ExportPlugin()
             item->setCheckState(e.source == kDocumentSource ? Qt::Checked : Qt::Unchecked);
         }
     };
-    add(tr("Элемент"), reg.Elements(&lib));
-    add(tr("Эффект"), reg.Effects(&lib));
-    add(tr("Анимация"), reg.Animations(&lib));
-    add(tr("Дизайн-система"), reg.DesignSystems(&lib));
+    add(tr("Element"), reg.Elements(&lib));
+    add(tr("Effect"), reg.Effects(&lib));
+    add(tr("Animation"), reg.Animations(&lib));
+    add(tr("Design system"), reg.DesignSystems(&lib));
 
     const std::string slug        = Slugify(_ctl->GetModel().meta.name, "library");
     auto             *id_edit     = new QLineEdit(QStringLiteral("user.%1").arg(Qs(slug)));
@@ -1606,27 +1606,27 @@ void LibraryDialog::_ExportPlugin()
     auto             *author_edit = new QLineEdit;
     auto             *desc_edit   = new QLineEdit;
     auto             *form        = new QFormLayout;
-    form->addRow(tr("Идентификатор"), id_edit);
-    form->addRow(tr("Название"), name_edit);
-    form->addRow(tr("Версия"), ver_edit);
-    form->addRow(tr("Автор"), author_edit);
-    form->addRow(tr("Описание"), desc_edit);
+    form->addRow(tr("ID"), id_edit);
+    form->addRow(tr("Name"), name_edit);
+    form->addRow(tr("Version"), ver_edit);
+    form->addRow(tr("Author"), author_edit);
+    form->addRow(tr("Description"), desc_edit);
 
-    auto *save_btn    = new QPushButton(tr("Сохранить в файл…"));
-    auto *install_btn = new QPushButton(tr("Установить"));
+    auto *save_btn    = new QPushButton(tr("Save to file…"));
+    auto *install_btn = new QPushButton(tr("Install"));
     install_btn->setObjectName(QStringLiteral("primaryButton"));
     auto *buttons = new QDialogButtonBox;
-    buttons->addButton(tr("Отмена"), QDialogButtonBox::RejectRole);
+    buttons->addButton(tr("Cancel"), QDialogButtonBox::RejectRole);
     buttons->addButton(save_btn, QDialogButtonBox::ActionRole);
     buttons->addButton(install_btn, QDialogButtonBox::ActionRole);
     connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
 
     auto *layout = new QVBoxLayout(&dlg);
     layout->addLayout(form);
-    layout->addWidget(new QLabel(tr("Состав плагина:")));
+    layout->addWidget(new QLabel(tr("Plugin contents:")));
     layout->addWidget(items, 1);
-    layout->addWidget(Hint(tr("Плагин — JSON-файл с элементами, эффектами и анимациями. Его можно передать коллегам "
-                              "или установить через «Плагины → Установить из файла».")));
+    layout->addWidget(Hint(tr("A plugin is a JSON file with elements, effects and animations. You can share it with colleagues "
+                              "or install it via “Plugins → Install from file”.")));
     layout->addWidget(buttons);
 
     auto build = [&]() -> std::optional<Plugin>
@@ -1639,8 +1639,7 @@ void LibraryDialog::_ExportPlugin()
         info.description = Us(desc_edit->text().trimmed());
         if (!IsValidPluginId(info.id))
         {
-            QMessageBox::warning(&dlg, tr("Экспорт"),
-                                 tr("Идентификатор: строчные латинские буквы, цифры, «.», «_», «-» (например user.my-set)."));
+            QMessageBox::warning(&dlg, tr("Export"), tr("ID: lowercase Latin letters, digits, “.”, “_”, “-” (e.g. user.my-set)."));
             return std::nullopt;
         }
         std::vector<std::string> ids;
@@ -1653,7 +1652,7 @@ void LibraryDialog::_ExportPlugin()
         }
         if (ids.empty())
         {
-            QMessageBox::warning(&dlg, tr("Экспорт"), tr("Отметьте хотя бы одно определение."));
+            QMessageBox::warning(&dlg, tr("Export"), tr("Check at least one definition."));
             return std::nullopt;
         }
         if (info.name.empty())
@@ -1671,8 +1670,8 @@ void LibraryDialog::_ExportPlugin()
                 {
                     return;
                 }
-                const QString path = QFileDialog::getSaveFileName(&dlg, tr("Сохранить плагин"),
-                                                                  Qs(plugin->info.id) + QStringLiteral(".json"), tr("Плагин (*.json)"));
+                const QString path = QFileDialog::getSaveFileName(&dlg, tr("Save plugin"), Qs(plugin->info.id) + QStringLiteral(".json"),
+                                                                  tr("Plugin (*.json)"));
                 if (path.isEmpty())
                 {
                     return;
@@ -1684,7 +1683,7 @@ void LibraryDialog::_ExportPlugin()
                 }
                 catch (const std::exception &ex)
                 {
-                    QMessageBox::warning(&dlg, tr("Экспорт"), QString::fromUtf8(ex.what()));
+                    QMessageBox::warning(&dlg, tr("Export"), QString::fromUtf8(ex.what()));
                 }
             });
     connect(install_btn, &QPushButton::clicked, &dlg,
@@ -1698,11 +1697,11 @@ void LibraryDialog::_ExportPlugin()
                 const auto installed = _ctx.Plugins().Install(*plugin);
                 if (!installed.has_value())
                 {
-                    QMessageBox::warning(&dlg, tr("Установка"), Qs(installed.error()));
+                    QMessageBox::warning(&dlg, tr("Installation"), Qs(installed.error()));
                     return;
                 }
                 _ctx.ReloadPlugins();
-                QMessageBox::information(&dlg, tr("Установка"), tr("Плагин установлен:\n%1").arg(Qs(PathToUtf8(*installed))));
+                QMessageBox::information(&dlg, tr("Installation"), tr("Plugin installed:\n%1").arg(Qs(PathToUtf8(*installed))));
                 dlg.accept();
             });
     dlg.exec();

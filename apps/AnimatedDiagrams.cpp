@@ -10,16 +10,14 @@
 #include <QCommandLineParser>
 #include <QFile>
 #include <QFileInfo>
-#include <QLibraryInfo>
-#include <QLocale>
 #include <QTimer>
-#include <QTranslator>
 
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <expected>
 #include <iostream>
+#include <string_view>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -39,6 +37,7 @@
 #include "Exporter.hpp"
 #include "Import/DrawioImporter.hpp"
 #include "Io/JsonIo.hpp"
+#include "Language.hpp"
 #include "MainWindow.hpp"
 #include "Mcp/DocumentTools.hpp"
 #include "Mcp/McpServer.hpp"
@@ -106,7 +105,7 @@ std::expected<Model, std::string> LoadInput(const QString &path, int page)
         DrawioImportOptions opt;
         opt.page = page;
         auto m   = ImportDrawio(bytes, opt);
-        if (m.has_value() && (m->meta.name.empty() || m->meta.name == "Импорт draw.io"))
+        if (m.has_value() && (m->meta.name.empty() || m->meta.name == DrawioDefaultName()))
         {
             m->meta.name = Us(QFileInfo(path).completeBaseName());
         }
@@ -207,6 +206,25 @@ int RunMcpStdio(const QStringList &files, int page, const Registry &reg)
     return 0;
 }
 
+/// --lang <code> / --lang=<code>: read before the command line parser runs, since the
+/// translations must be installed before anything is created.
+QString LanguageArgument(int argc, char **argv)
+{
+    for (int i = 1; i < argc; ++i)
+    {
+        const std::string_view arg(argv[i]);
+        if (arg == "--lang" && i + 1 < argc)
+        {
+            return QString::fromLocal8Bit(argv[i + 1]);
+        }
+        if (arg.starts_with("--lang="))
+        {
+            return QString::fromLocal8Bit(arg.substr(7).data());
+        }
+    }
+    return {};
+}
+
 } // namespace
 
 int main(int argc, char **argv)
@@ -236,6 +254,8 @@ int main(int argc, char **argv)
     QApplication::setApplicationVersion(QStringLiteral(AD_VERSION_STRING));
     QApplication::setDesktopFileName(QStringLiteral("animated-diagrams"));
     InstallCrashReporting(); // reports go to <app data>/crashes (GUI and headless modes)
+    // before any window or library definition: labels are translated when created
+    InstallTranslations(LanguageArgument(argc, argv));
 
     QCommandLineParser cli;
     cli.setApplicationDescription(QStringLiteral("Animated diagram editor: request flows, timers, retries, effects"));
@@ -253,6 +273,8 @@ int main(int argc, char **argv)
          QStringLiteral("path")},
         {QStringLiteral("page"), QStringLiteral("draw.io page index (default 0)"), QStringLiteral("index"), QStringLiteral("0")},
         {QStringLiteral("mcp"), QStringLiteral("Run the MCP server over stdio (JSON-RPC lines) without a window")},
+        {QStringLiteral("lang"), QStringLiteral("Interface language: en, ru, ... (default: the saved choice or the system language)"),
+         QStringLiteral("code")},
         {QStringLiteral("mcp-port"), QStringLiteral("Start the HTTP MCP server on 127.0.0.1:<port> together with the GUI"),
          QStringLiteral("port")},
     });
@@ -306,14 +328,6 @@ int main(int argc, char **argv)
             std::cerr << "error: invalid --mcp-port\n";
             return 2;
         }
-    }
-
-    // the UI is Russian: standard Qt dialogs follow it when the Qt translations are installed
-    QTranslator qt_translator;
-    if (qt_translator.load(QLocale(QLocale::Russian), QStringLiteral("qtbase"), QStringLiteral("_"),
-                           QLibraryInfo::path(QLibraryInfo::TranslationsPath)))
-    {
-        QApplication::installTranslator(&qt_translator);
     }
 
     ApplyTheme();

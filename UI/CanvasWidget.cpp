@@ -68,14 +68,14 @@ void CanvasWidget::_UpdateHint()
     switch (_tool)
     {
     case Tool::Select:
-        _hint = tr("Выбор: клик — выделить, перетаскивание — двигать, пустое место — панорама. "
-                   "Двойной клик: узел — переименовать, связь — точка изгиба.");
+        _hint = tr("Select: click to select, drag to move, drag empty space to pan. "
+                   "Double-click a node to rename it, or an edge to add a waypoint.");
         break;
     case Tool::Node:
-        _hint = tr("Узел: кликните на холст, чтобы добавить элемент выбранного типа.");
+        _hint = tr("Node: click the canvas to add an element of the selected type.");
         break;
     case Tool::Edge:
-        _hint = tr("Связь: кликните первый узел (или точку соединения), затем второй.");
+        _hint = tr("Edge: click the first node (or a connection point), then the second.");
         break;
     }
 }
@@ -434,7 +434,7 @@ void CanvasWidget::mouseDoubleClickEvent(QMouseEvent *e)
         const Node       *n    = _ctl.GetModel().FindNode(id);
         bool              ok   = false;
         const QString     old  = n != nullptr ? Qs(n->label) : QString();
-        const QString     name = QInputDialog::getText(this, tr("Узел"), tr("Название узла:"), QLineEdit::Normal, old, &ok);
+        const QString     name = QInputDialog::getText(this, tr("Node"), tr("Node title:"), QLineEdit::Normal, old, &ok);
         // the node may be gone after the dialog (undo, an MCP agent)
         if (ok && _ctl.GetModel().FindNode(id) != nullptr)
         {

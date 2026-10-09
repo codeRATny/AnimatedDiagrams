@@ -110,6 +110,9 @@ private:
     void                    _UpdateFrameMargins();
     [[nodiscard]] Qt::Edges _EdgesAt(const QPoint &pos) const;
     void                    _FillThemeMenu(QMenu *menu);
+    void                    _FillLanguageMenu(QMenu *menu);
+    /// Store the language and offer a restart (texts are created in the startup language).
+    void _ChangeLanguage(const QString &code);
 
     void _NewDiagram();
     void _OpenDiagram();

@@ -8,6 +8,7 @@
 #include "Import/Inflate.hpp"
 #include "Import/XmlReader.hpp"
 #include "Io/JsonIo.hpp"
+#include "Utils/I18n.hpp"
 #include "Utils/Text.hpp"
 
 namespace ad
@@ -250,6 +251,8 @@ std::map<std::string, std::string> ParseDrawioStyle(std::string_view style)
     return out;
 }
 
+std::string DrawioDefaultName() { return Tr("document", "draw.io import"); }
+
 std::vector<std::string> DrawioPageNames(std::string_view file_content)
 {
     const XmlNode            root = ParseXml(file_content);
@@ -325,7 +328,7 @@ std::expected<Model, std::string> ImportDrawio(std::string_view file_content, co
         };
 
         Model m;
-        m.meta.name = page_name.empty() ? "Импорт draw.io" : page_name;
+        m.meta.name = page_name.empty() ? DrawioDefaultName() : page_name;
         std::set<std::string>              node_ids;
         std::map<std::string, std::string> edge_labels; // edge id -> text from child label cells
 

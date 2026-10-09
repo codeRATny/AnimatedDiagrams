@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 
 #include "Model/Color.hpp"
@@ -31,7 +32,7 @@ enum class StepType
 struct NodeStateInfo
 {
     std::string_view id;
-    std::string_view label;
+    std::string      label; // in the UI language
     Color            fill;
     Color            ring;
 };
@@ -39,7 +40,7 @@ struct NodeStateInfo
 struct MsgVariantInfo
 {
     std::string_view id;
-    std::string_view label;
+    std::string      label;
     Color            color;
     double           dash = 0; // 0 -- solid line, otherwise "dash gap"
     double           gap  = 0;
@@ -48,7 +49,7 @@ struct MsgVariantInfo
 struct LinkAnimInfo
 {
     std::string_view id;
-    std::string_view label;
+    std::string      label;
     bool             dashed = false;
     bool             flow   = false;
     bool             pulse  = false;
@@ -57,22 +58,22 @@ struct LinkAnimInfo
 struct TimeUnitInfo
 {
     std::string_view id;
-    std::string_view label;
-    std::string_view short_label;
+    std::string      label;
+    std::string      short_label;
 };
 
 struct StepTypeInfo
 {
     StepType         type;
     std::string_view id;
-    std::string_view label;
+    std::string      label;
 };
 
 /// Simple (id, label) option used for shapes, arrows, stroke styles, packets, routing.
 struct OptionInfo
 {
     std::string_view id;
-    std::string_view label;
+    std::string      label;
 };
 
 std::span<const NodeStateInfo>  NodeStates();
@@ -94,7 +95,7 @@ const TimeUnitInfo   &TimeUnit(std::string_view id);
 bool                  IsKnownOption(std::span<const OptionInfo> options, std::string_view id);
 
 std::string_view        ToString(StepType t);
-std::string_view        StepTypeLabel(StepType t);
+const std::string      &StepTypeLabel(StepType t);
 std::optional<StepType> StepTypeFromString(std::string_view s);
 
 } // namespace ad

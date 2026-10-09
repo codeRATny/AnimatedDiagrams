@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "Engine/Scene.hpp"
+#include "Utils/I18n.hpp"
 
 namespace ad
 {
@@ -38,7 +39,7 @@ DesignSystem DesignFromScene(const Model &m, const DesignSystem *base, std::stri
     DesignSystem ds = base != nullptr ? *base : DesignSystem{};
     ds.id           = std::move(id);
     ds.label        = std::move(label);
-    ds.category     = "Мои";
+    ds.category     = Tr("library", "Mine");
     ds.background   = m.scene.background;
     ds.edge_color   = m.scene.edge_color;
     ds.text_color   = m.scene.text_color;

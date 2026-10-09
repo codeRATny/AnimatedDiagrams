@@ -39,6 +39,9 @@ struct DrawioImportReport
 /// Names of the pages ("Page-1", ...). Throws ad::ParseError.
 std::vector<std::string> DrawioPageNames(std::string_view file_content);
 
+/// Name given to an imported document whose page has no name (callers may replace it with the file name).
+std::string DrawioDefaultName();
+
 /// Decode a draw.io style string "rounded=1;fillColor=#fff;ellipse;" into key/value pairs
 /// (bare tokens get the value "1"; the first bare token is also stored as "shape" if absent).
 std::map<std::string, std::string> ParseDrawioStyle(std::string_view style);

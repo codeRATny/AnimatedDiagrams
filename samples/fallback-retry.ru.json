@@ -1,7 +1,7 @@
 {
   "version": 3,
   "meta": {
-    "name": "Example: fallback with retries and a timeout",
+    "name": "Пример: fallback с ретраями и таймаутом",
     "createdAt": 0
   },
   "view": {
@@ -12,7 +12,7 @@
   "nodes": [
     {
       "id": "svcA",
-      "label": "Service A",
+      "label": "Сервис A",
       "kind": "service",
       "x": 80.0,
       "y": 120.0,
@@ -21,7 +21,7 @@
     },
     {
       "id": "svcB",
-      "label": "Service B",
+      "label": "Сервис B",
       "kind": "service",
       "x": 480.0,
       "y": 60.0,
@@ -30,7 +30,7 @@
     },
     {
       "id": "svcC",
-      "label": "Service C",
+      "label": "Сервис C",
       "kind": "service",
       "x": 480.0,
       "y": 260.0,
@@ -68,7 +68,7 @@
         "from": "svcA",
         "to": "svcB",
         "variant": "request",
-        "label": "request"
+        "label": "запрос"
       },
       {
         "id": "s2",
@@ -83,7 +83,7 @@
         "type": "note",
         "start": 1500.0,
         "duration": 5100.0,
-        "text": "Service B is down",
+        "text": "Сервис B недоступен",
         "x": 470.0,
         "y": 20.0
       },
@@ -125,7 +125,7 @@
         "from": "svcB",
         "to": "svcA",
         "variant": "error",
-        "label": "no response"
+        "label": "нет ответа"
       },
       {
         "id": "s6",
@@ -150,7 +150,7 @@
         "type": "note",
         "start": 6600.0,
         "duration": 2200.0,
-        "text": "5 s elapsed — switching to C",
+        "text": "5с истекли — переключение на C",
         "x": 60.0,
         "y": 210.0
       },
@@ -162,7 +162,7 @@
         "from": "svcA",
         "to": "svcC",
         "variant": "request",
-        "label": "request"
+        "label": "запрос"
       },
       {
         "id": "s9",

@@ -59,7 +59,7 @@ QWidget *Check(const QString &label, bool value, std::function<void(bool)> on_ch
 QWidget *OptCheck(const QString &label, std::optional<bool> value, bool fallback, std::function<void(std::optional<bool>)> on_change);
 QWidget *Button(const QString &text, std::function<void()> on_click, bool danger = false);
 
-/// "OK" / "Отмена" buttons wired to the dialog (independent of installed Qt translations).
+/// "OK" / "Cancel" buttons wired to the dialog (independent of installed Qt translations).
 QDialogButtonBox *OkCancelButtons(QDialog *dlg);
 
 /// Edit callback: apply `fn` to the style being edited; `merge_key` groups continuous edits.

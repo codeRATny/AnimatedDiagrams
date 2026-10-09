@@ -39,7 +39,7 @@ Color       StepColor(const Step &s);
 /// Snap to a grid (ms), not less than 0.
 double SnapTime(double ms, double grid = 50);
 
-/// "1.25с" -- seconds with two decimals below 10 s.
+/// "1.25s" -- seconds with two decimals below 10 s (unit in the UI language).
 std::string FormatTime(double ms);
 
 } // namespace ad

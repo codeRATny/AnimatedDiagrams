@@ -56,14 +56,14 @@ TEST(TimelineLayoutTest, Ticks)
 TEST(TimelineLayoutTest, TitlesColorsTime)
 {
     Model m = SampleModel();
-    EXPECT_EQ(StepTitle(m, *m.FindStep("s1")), "Сервис A → Сервис B · запрос");
-    EXPECT_EQ(StepTitle(m, *m.FindStep("s3")), "⏱ Сервис A · 5с");
-    EXPECT_EQ(StepTitle(m, *m.FindStep("s7")), "✷ Сервис A · Пульс");
+    EXPECT_EQ(StepTitle(m, *m.FindStep("s1")), "Service A → Service B · request");
+    EXPECT_EQ(StepTitle(m, *m.FindStep("s3")), "⏱ Service A · 5s");
+    EXPECT_EQ(StepTitle(m, *m.FindStep("s7")), "✷ Service A · Pulse");
     EXPECT_EQ(StepColor(*m.FindStep("s4")), Color::Rgb(0xfbbf24));
     EXPECT_DOUBLE_EQ(ContentEnd(m), 12000);
     m.scenario.steps.push_back(Bar("late", 15000, 1000));
     EXPECT_DOUBLE_EQ(ContentEnd(m), 16000);
     EXPECT_DOUBLE_EQ(SnapTime(1234), 1250);
-    EXPECT_EQ(FormatTime(1500), "1.50с");
-    EXPECT_EQ(FormatTime(12000), "12.0с");
+    EXPECT_EQ(FormatTime(1500), "1.50s");
+    EXPECT_EQ(FormatTime(12000), "12.0s");
 }

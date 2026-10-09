@@ -45,7 +45,7 @@ QString SourceSuffix(const std::string &source)
     }
     if (source == kDocumentSource)
     {
-        return QObject::tr("  [документ]");
+        return QObject::tr("  [document]");
     }
     return QStringLiteral("  [%1]").arg(Qs(source));
 }
@@ -185,12 +185,12 @@ Options Inspector::_EdgeOptions() const
 
 Options Inspector::_PortOptions(const std::string &node_id) const
 {
-    Options o{{QString(), tr("Авто")}};
+    Options o{{QString(), tr("Auto")}};
     if (const Node *n = _ctl.GetModel().FindNode(node_id); n != nullptr)
     {
         for (size_t i = 0; i < n->ports.size(); ++i)
         {
-            o.emplace_back(Qs(n->ports[i].id), tr("Точка %1").arg(i + 1));
+            o.emplace_back(Qs(n->ports[i].id), tr("Point %1").arg(i + 1));
         }
     }
     return o;
@@ -216,7 +216,7 @@ Options Inspector::_EffectOptions() const
     return o;
 }
 
-template <class Get>
+template <typename Get> // "typename": lupdate takes "class Get" for a class declaration
 void Inspector::_LabelControls(QVBoxLayout *box, const std::string &key, double def_offset, Get get)
 {
     const auto *obj = get(_ctl.GetModel());
@@ -224,42 +224,42 @@ void Inspector::_LabelControls(QVBoxLayout *box, const std::string &key, double 
     {
         return;
     }
-    box->addWidget(Row(Labeled(tr("Размер шрифта"), Spin(obj->label_size.value_or(12), 6, 72, 1, 0,
-                                                         [this, key, get](double v)
-                                                         {
-                                                             _ctl.Edit(key + ":label_size",
-                                                                       [&](Model &m)
+    box->addWidget(Row(Labeled(tr("Font size"), Spin(obj->label_size.value_or(12), 6, 72, 1, 0,
+                                                     [this, key, get](double v)
+                                                     {
+                                                         _ctl.Edit(key + ":label_size",
+                                                                   [&](Model &m)
+                                                                   {
+                                                                       if (auto *o = get(m); o != nullptr)
                                                                        {
-                                                                           if (auto *o = get(m); o != nullptr)
+                                                                           o->label_size = v;
+                                                                       }
+                                                                   });
+                                                     })),
+                       Labeled(tr("Offset"), Spin(obj->label_off.value_or(def_offset), -200, 200, 1, 0,
+                                                  [this, key, get](double v)
+                                                  {
+                                                      _ctl.Edit(key + ":label_off",
+                                                                [&](Model &m)
+                                                                {
+                                                                    if (auto *o = get(m); o != nullptr)
+                                                                    {
+                                                                        o->label_off = v;
+                                                                    }
+                                                                });
+                                                  }))));
+    box->addWidget(Labeled(tr("Position along edge"), Slider(obj->label_pos.value_or(0.5), 0, 1, 0.02,
+                                                             [this, key, get](double v)
+                                                             {
+                                                                 _ctl.Edit(key + ":label_pos",
+                                                                           [&](Model &m)
                                                                            {
-                                                                               o->label_size = v;
-                                                                           }
-                                                                       });
-                                                         })),
-                       Labeled(tr("Смещение"), Spin(obj->label_off.value_or(def_offset), -200, 200, 1, 0,
-                                                    [this, key, get](double v)
-                                                    {
-                                                        _ctl.Edit(key + ":label_off",
-                                                                  [&](Model &m)
-                                                                  {
-                                                                      if (auto *o = get(m); o != nullptr)
-                                                                      {
-                                                                          o->label_off = v;
-                                                                      }
-                                                                  });
-                                                    }))));
-    box->addWidget(Labeled(tr("Положение вдоль связи"), Slider(obj->label_pos.value_or(0.5), 0, 1, 0.02,
-                                                               [this, key, get](double v)
-                                                               {
-                                                                   _ctl.Edit(key + ":label_pos",
-                                                                             [&](Model &m)
-                                                                             {
-                                                                                 if (auto *o = get(m); o != nullptr)
-                                                                                 {
-                                                                                     o->label_pos = v;
-                                                                                 }
-                                                                             });
-                                                               })));
+                                                                               if (auto *o = get(m); o != nullptr)
+                                                                               {
+                                                                                   o->label_pos = v;
+                                                                               }
+                                                                           });
+                                                             })));
 }
 
 // ---------------------------------------------------------------------------
@@ -269,29 +269,29 @@ void Inspector::_LabelControls(QVBoxLayout *box, const std::string &key, double 
 void Inspector::_BuildScene(QVBoxLayout *box)
 {
     const auto &m = _ctl.GetModel();
-    _title->setText(tr("Сцена"));
+    _title->setText(tr("Scene"));
     auto edit_scene = [this](const std::string &key, const std::function<void(Model &)> &fn)
     {
         _ctl.Edit(key, fn, true);
     };
 
-    box->addWidget(Labeled(tr("Название"), LineEdit(Qs(m.meta.name),
-                                                    [this](const QString &v)
-                                                    {
-                                                        _ctl.Rename(v);
-                                                    })));
-    box->addWidget(Labeled(tr("Описание"), LineEdit(Qs(m.meta.description),
-                                                    [edit_scene](const QString &v)
-                                                    {
-                                                        edit_scene("meta:description",
-                                                                   [&](Model &mm)
-                                                                   {
-                                                                       mm.meta.description = Us(v);
-                                                                   });
-                                                    })));
+    box->addWidget(Labeled(tr("Name"), LineEdit(Qs(m.meta.name),
+                                                [this](const QString &v)
+                                                {
+                                                    _ctl.Rename(v);
+                                                })));
+    box->addWidget(Labeled(tr("Description"), LineEdit(Qs(m.meta.description),
+                                                       [edit_scene](const QString &v)
+                                                       {
+                                                           edit_scene("meta:description",
+                                                                      [&](Model &mm)
+                                                                      {
+                                                                          mm.meta.description = Us(v);
+                                                                      });
+                                                       })));
 
-    box->addWidget(Section(tr("Дизайн-система")));
-    Options designs{{QString(), tr("— не задана —")}};
+    box->addWidget(Section(tr("Design system")));
+    Options designs{{QString(), tr("— none —")}};
     for (const auto &d : _ctl.Reg().DesignSystems(&m.library))
     {
         designs.emplace_back(Qs(d.def->id), Qs(d.def->label));
@@ -316,18 +316,18 @@ void Inspector::_BuildScene(QVBoxLayout *box)
                                  },
                                  true);
                          }));
-    auto *edit_ds = Button(tr("Редактировать…"),
+    auto *edit_ds = Button(tr("Edit…"),
                            [this]
                            {
                                Q_EMIT LibraryRequested(Qs(_ctl.GetModel().design_system));
                            });
     edit_ds->setEnabled(!m.design_system.empty());
-    box->addWidget(Row(edit_ds, Button(tr("Сохранить вид как…"),
+    box->addWidget(Row(edit_ds, Button(tr("Save look as…"),
                                        [this]
                                        {
                                            bool          ok   = false;
-                                           const QString name = QInputDialog::getText(this, tr("Новая дизайн-система"), tr("Название:"),
-                                                                                      QLineEdit::Normal, tr("Моя тема"), &ok);
+                                           const QString name = QInputDialog::getText(this, tr("New design system"), tr("Name:"),
+                                                                                      QLineEdit::Normal, tr("My theme"), &ok);
                                            if (!ok || name.trimmed().isEmpty())
                                            {
                                                return;
@@ -344,38 +344,38 @@ void Inspector::_BuildScene(QVBoxLayout *box)
                                            _ctl.Changed(true);
                                            Q_EMIT LibraryRequested(Qs(id));
                                        })));
-    box->addWidget(Hint(tr("Дизайн-система задаёт цвета холста, состояний и сообщений, шрифт и стили по умолчанию. "
-                           "Цвета холста ниже копируются из неё и остаются редактируемыми.")));
+    box->addWidget(Hint(tr("The design system sets the canvas, state and message colors, the font and the default styles. "
+                           "The canvas colors below are copied from it and remain editable.")));
 
-    box->addWidget(Section(tr("Холст")));
-    box->addWidget(Row(Labeled(tr("Фон"), ColorButton(Qs(m.scene.background),
-                                                      [edit_scene](const QString &v)
-                                                      {
-                                                          edit_scene({},
-                                                                     [&](Model &mm)
-                                                                     {
-                                                                         mm.scene.background = Us(v);
-                                                                     });
-                                                      })),
-                       Labeled(tr("Цвет текста"), ColorButton(Qs(m.scene.text_color),
-                                                              [edit_scene](const QString &v)
-                                                              {
-                                                                  edit_scene({},
-                                                                             [&](Model &mm)
-                                                                             {
-                                                                                 mm.scene.text_color = Us(v);
-                                                                             });
-                                                              }))));
-    box->addWidget(Row(Labeled(tr("Цвет связей"), ColorButton(Qs(m.scene.edge_color),
-                                                              [edit_scene](const QString &v)
-                                                              {
-                                                                  edit_scene({},
-                                                                             [&](Model &mm)
-                                                                             {
-                                                                                 mm.scene.edge_color = Us(v);
-                                                                             });
-                                                              })),
-                       Labeled(tr("Шаг сетки"), Spin(m.scene.grid_size, 4, 200, 1, 0,
+    box->addWidget(Section(tr("Canvas")));
+    box->addWidget(Row(Labeled(tr("Background"), ColorButton(Qs(m.scene.background),
+                                                             [edit_scene](const QString &v)
+                                                             {
+                                                                 edit_scene({},
+                                                                            [&](Model &mm)
+                                                                            {
+                                                                                mm.scene.background = Us(v);
+                                                                            });
+                                                             })),
+                       Labeled(tr("Text color"), ColorButton(Qs(m.scene.text_color),
+                                                             [edit_scene](const QString &v)
+                                                             {
+                                                                 edit_scene({},
+                                                                            [&](Model &mm)
+                                                                            {
+                                                                                mm.scene.text_color = Us(v);
+                                                                            });
+                                                             }))));
+    box->addWidget(Row(Labeled(tr("Edge color"), ColorButton(Qs(m.scene.edge_color),
+                                                             [edit_scene](const QString &v)
+                                                             {
+                                                                 edit_scene({},
+                                                                            [&](Model &mm)
+                                                                            {
+                                                                                mm.scene.edge_color = Us(v);
+                                                                            });
+                                                             })),
+                       Labeled(tr("Grid size"), Spin(m.scene.grid_size, 4, 200, 1, 0,
                                                      [edit_scene](double v)
                                                      {
                                                          edit_scene("scene:grid_size",
@@ -384,7 +384,7 @@ void Inspector::_BuildScene(QVBoxLayout *box)
                                                                         mm.scene.grid_size = v;
                                                                     });
                                                      }))));
-    box->addWidget(Check(tr("Показывать сетку"), m.scene.grid,
+    box->addWidget(Check(tr("Show grid"), m.scene.grid,
                          [edit_scene](bool v)
                          {
                              edit_scene({},
@@ -394,14 +394,14 @@ void Inspector::_BuildScene(QVBoxLayout *box)
                                         });
                          }));
 
-    box->addWidget(Section(tr("Сценарий")));
-    box->addWidget(Labeled(tr("Длительность сцены, мс"), Spin(m.scenario.duration, 500, 3'600'000, 100, 0,
-                                                              [this](double v)
-                                                              {
-                                                                  _ctl.Doc().SetDuration(v);
-                                                                  _ctl.Changed(false);
-                                                              })));
-    box->addWidget(Check(tr("Подбирать длительность автоматически"), !m.scenario.user_duration,
+    box->addWidget(Section(tr("Scenario")));
+    box->addWidget(Labeled(tr("Scene duration, ms"), Spin(m.scenario.duration, 500, 3'600'000, 100, 0,
+                                                          [this](double v)
+                                                          {
+                                                              _ctl.Doc().SetDuration(v);
+                                                              _ctl.Changed(false);
+                                                          })));
+    box->addWidget(Check(tr("Adjust duration automatically"), !m.scenario.user_duration,
                          [edit_scene](bool v)
                          {
                              edit_scene({},
@@ -414,7 +414,7 @@ void Inspector::_BuildScene(QVBoxLayout *box)
                                             }
                                         });
                          }));
-    box->addWidget(Hint(tr("Ничего не выбрано. Выберите узел, связь или шаг сценария, чтобы редактировать их свойства.")));
+    box->addWidget(Hint(tr("Nothing selected. Select a node, edge or scenario step to edit its properties.")));
 }
 
 // ---------------------------------------------------------------------------
@@ -431,7 +431,7 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
         return;
     }
     const ElementType &type = _ctl.Reg().Element(n->type, &m.library);
-    _title->setText(tr("Узел: %1").arg(Qs(type.label)));
+    _title->setText(tr("Node: %1").arg(Qs(type.label)));
     const std::string key       = "node:" + id;
     auto              edit_node = [this, id](const std::string &k, const std::function<void(Node &)> &fn, bool structural = false)
     {
@@ -447,25 +447,25 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
             structural);
     };
 
-    box->addWidget(Labeled(tr("Название"), LineEdit(Qs(n->label),
+    box->addWidget(Labeled(tr("Title"), LineEdit(Qs(n->label),
+                                                 [=](const QString &v)
+                                                 {
+                                                     edit_node(key + ":label",
+                                                               [&](Node &x)
+                                                               {
+                                                                   x.label = Us(v);
+                                                               });
+                                                 })));
+    box->addWidget(Labeled(tr("Subtitle"), LineEdit(Qs(n->subtitle),
                                                     [=](const QString &v)
                                                     {
-                                                        edit_node(key + ":label",
+                                                        edit_node(key + ":subtitle",
                                                                   [&](Node &x)
                                                                   {
-                                                                      x.label = Us(v);
+                                                                      x.subtitle = Us(v);
                                                                   });
                                                     })));
-    box->addWidget(Labeled(tr("Подзаголовок"), LineEdit(Qs(n->subtitle),
-                                                        [=](const QString &v)
-                                                        {
-                                                            edit_node(key + ":subtitle",
-                                                                      [&](Node &x)
-                                                                      {
-                                                                          x.subtitle = Us(v);
-                                                                      });
-                                                        })));
-    box->addWidget(Labeled(tr("Тип элемента"), Combo(_ElementOptions(), Qs(n->type),
+    box->addWidget(Labeled(tr("Element type"), Combo(_ElementOptions(), Qs(n->type),
                                                      [this, edit_node](const QString &v)
                                                      {
                                                          const auto        &mm      = _ctl.GetModel();
@@ -487,7 +487,7 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
                                                              true);
                                                      })));
     box->addWidget(Row(
-        Labeled(tr("Акцент"), OptColor(n->accent.empty() ? std::nullopt : std::optional<std::string>(n->accent),
+        Labeled(tr("Accent"), OptColor(n->accent.empty() ? std::nullopt : std::optional<std::string>(n->accent),
                                        Qs(ResolveColorToken(type.accent, _ctl.Reg().DesignOf(m))),
                                        [=](std::optional<std::string> v)
                                        {
@@ -499,17 +499,17 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
                                                },
                                                true);
                                        })),
-        Row(Labeled(tr("Ширина"), Spin(n->w, 20, 4000, 10, 0,
-                                       [=](double v)
-                                       {
-                                           edit_node(key + ":w",
-                                                     [&](Node &x)
-                                                     {
-                                                         x.w = v;
-                                                     });
-                                       })),
+        Row(Labeled(tr("Width"), Spin(n->w, 20, 4000, 10, 0,
+                                      [=](double v)
+                                      {
+                                          edit_node(key + ":w",
+                                                    [&](Node &x)
+                                                    {
+                                                        x.w = v;
+                                                    });
+                                      })),
             Labeled(
-                tr("Высота"),
+                tr("Height"),
                 Spin(
                     n->h, 20,
                     4000, 10, 0,
@@ -522,7 +522,7 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
                                   });
                     })))));
 
-    box->addWidget(Section(tr("Стиль узла")));
+    box->addWidget(Section(tr("Node style")));
     AddNodeStyleFields(box, n->style, type.style,
                        [=](const std::string &merge_key, const std::function<void(NodeStyle &)> &fn)
                        {
@@ -532,7 +532,7 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
                                          fn(x.style);
                                      });
                        });
-    auto *reset = Button(tr("Сбросить стиль к типу"),
+    auto *reset = Button(tr("Reset style to type"),
                          [=]
                          {
                              edit_node(
@@ -544,14 +544,15 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
                                  true);
                          });
     reset->setEnabled(!n->style.Empty());
-    box->addWidget(Row(reset, Button(tr("Сохранить как тип…"),
+    box->addWidget(Row(reset, Button(tr("Save as type…"),
                                      [this, id]
                                      {
                                          _SaveNodeAsType(id);
                                      })));
-    box->addWidget(Hint(tr("Поля «авто» наследуются от типа элемента. «Сохранить как тип» создаёт элемент в библиотеке документа.")));
+    box->addWidget(
+        Hint(tr("“Auto” fields are inherited from the element type. “Save as type” creates an element in the document library.")));
 
-    box->addWidget(Section(tr("Точки соединения")));
+    box->addWidget(Section(tr("Connection points")));
     for (size_t i = 0; i < n->ports.size(); ++i)
     {
         const std::string port_id = n->ports[i].id;
@@ -567,19 +568,19 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
         auto *w = new QWidget;
         auto *l = new QHBoxLayout(w);
         l->setContentsMargins(0, 0, 0, 0);
-        l->addWidget(new QLabel(tr("Точка %1").arg(i + 1)), 1);
+        l->addWidget(new QLabel(tr("Point %1").arg(i + 1)), 1);
         l->addWidget(rm);
         box->addWidget(w);
     }
-    box->addWidget(Button(tr("＋ Добавить точку соединения"),
+    box->addWidget(Button(tr("＋ Add connection point"),
                           [this, id]
                           {
                               _ctl.Doc().AddPort(id);
                               _ctl.Changed(true);
                           }));
-    box->addWidget(Hint(tr("Точки можно перетаскивать. В режиме «Связь» кликните по точке, чтобы привязать к ней связь.")));
+    box->addWidget(Hint(tr("Points can be dragged. In “Edge” mode, click a point to attach an edge to it.")));
     box->addWidget(Button(
-        tr("Удалить узел"),
+        tr("Delete node"),
         [this]
         {
             _ctl.DeleteSelection();
@@ -602,7 +603,7 @@ void Inspector::_SaveNodeAsType(const std::string &node_id_ref)
         return;
     }
     bool          ok   = false;
-    const QString name = QInputDialog::getText(window(), tr("Новый тип элемента"), tr("Название типа:"), QLineEdit::Normal, label, &ok);
+    const QString name = QInputDialog::getText(window(), tr("New element type"), tr("Type name:"), QLineEdit::Normal, label, &ok);
     const auto   &m    = _ctl.GetModel();
     const Node   *n    = m.FindNode(node_id); // look up again after the dialog
     if (!ok || name.trimmed().isEmpty() || n == nullptr)
@@ -618,7 +619,7 @@ void Inspector::_SaveNodeAsType(const std::string &node_id_ref)
     }
     t.id       = id;
     t.label    = Us(name.trimmed());
-    t.category = "Мои";
+    t.category = Us(tr("Mine"));
     t.accent   = n->accent.empty() ? base.accent : n->accent;
     t.width    = n->w;
     t.height   = n->h;
@@ -648,7 +649,7 @@ void Inspector::_BuildEdge(QVBoxLayout *box, const std::string &id)
         _BuildScene(box);
         return;
     }
-    _title->setText(tr("Связь"));
+    _title->setText(tr("Edge"));
     const std::string key       = "edge:" + id;
     auto              edit_edge = [this, id](const std::string &k, const std::function<void(Edge &)> &fn, bool structural = false)
     {
@@ -670,81 +671,81 @@ void Inspector::_BuildEdge(QVBoxLayout *box, const std::string &id)
     };
     box->addWidget(Hint(nm(e->from) + QStringLiteral(" → ") + nm(e->to)));
 
-    box->addWidget(Labeled(tr("Подпись"), LineEdit(Qs(e->label),
-                                                   [=](const QString &v)
-                                                   {
-                                                       edit_edge(key + ":label",
-                                                                 [&](Edge &x)
-                                                                 {
-                                                                     x.label = Us(v);
-                                                                 });
-                                                   })));
+    box->addWidget(Labeled(tr("Label"), LineEdit(Qs(e->label),
+                                                 [=](const QString &v)
+                                                 {
+                                                     edit_edge(key + ":label",
+                                                               [&](Edge &x)
+                                                               {
+                                                                   x.label = Us(v);
+                                                               });
+                                                 })));
     _LabelControls(box, key, 10,
                    [id](auto &mm)
                    {
                        return mm.FindEdge(id);
                    });
 
-    box->addWidget(Section(tr("Стиль линии")));
-    box->addWidget(Row(Labeled(tr("Цвет"), OptColor(e->style.color, Qs(m.scene.edge_color),
-                                                    [=](std::optional<std::string> v)
-                                                    {
-                                                        edit_edge(
-                                                            {},
-                                                            [&](Edge &x)
-                                                            {
-                                                                x.style.color = std::move(v);
-                                                            },
-                                                            true);
-                                                    })),
-                       Labeled(tr("Цвет подписи"), OptColor(e->style.label_color, QStringLiteral("#c7d4ee"),
-                                                            [=](std::optional<std::string> v)
-                                                            {
-                                                                edit_edge(
-                                                                    {},
-                                                                    [&](Edge &x)
-                                                                    {
-                                                                        x.style.label_color = std::move(v);
-                                                                    },
-                                                                    true);
-                                                            }))));
-    box->addWidget(Row(Labeled(tr("Толщина"), OptSpin(e->style.width, 0.5, 20, 0.5, 1, QStringLiteral("2"),
-                                                      [=](std::optional<double> v)
-                                                      {
-                                                          edit_edge(key + ":width",
-                                                                    [&](Edge &x)
-                                                                    {
-                                                                        x.style.width = v;
-                                                                    });
-                                                      })),
-                       Labeled(tr("Линия"), OptCombo(FromCatalog(StrokeStyles()), e->style.stroke_style, QStringLiteral("solid"),
+    box->addWidget(Section(tr("Line style")));
+    box->addWidget(Row(Labeled(tr("Color"), OptColor(e->style.color, Qs(m.scene.edge_color),
                                                      [=](std::optional<std::string> v)
                                                      {
-                                                         edit_edge({},
+                                                         edit_edge(
+                                                             {},
+                                                             [&](Edge &x)
+                                                             {
+                                                                 x.style.color = std::move(v);
+                                                             },
+                                                             true);
+                                                     })),
+                       Labeled(tr("Label color"), OptColor(e->style.label_color, QStringLiteral("#c7d4ee"),
+                                                           [=](std::optional<std::string> v)
+                                                           {
+                                                               edit_edge(
+                                                                   {},
                                                                    [&](Edge &x)
                                                                    {
-                                                                       x.style.stroke_style = std::move(v);
-                                                                   });
-                                                     }))));
-    box->addWidget(Row(Labeled(tr("Стрелка в начале"), OptCombo(FromCatalog(ArrowHeads()), e->style.arrow_start, QStringLiteral("none"),
-                                                                [=](std::optional<std::string> v)
-                                                                {
-                                                                    edit_edge({},
-                                                                              [&](Edge &x)
-                                                                              {
-                                                                                  x.style.arrow_start = std::move(v);
-                                                                              });
-                                                                })),
-                       Labeled(tr("Стрелка в конце"), OptCombo(FromCatalog(ArrowHeads()), e->style.arrow_end, QStringLiteral("triangle"),
-                                                               [=](std::optional<std::string> v)
-                                                               {
-                                                                   edit_edge({},
-                                                                             [&](Edge &x)
-                                                                             {
-                                                                                 x.style.arrow_end = std::move(v);
-                                                                             });
-                                                               }))));
-    box->addWidget(Labeled(tr("Маршрут"), OptCombo(FromCatalog(Routings()), e->style.routing, QStringLiteral("curved"),
+                                                                       x.style.label_color = std::move(v);
+                                                                   },
+                                                                   true);
+                                                           }))));
+    box->addWidget(Row(Labeled(tr("Thickness"), OptSpin(e->style.width, 0.5, 20, 0.5, 1, QStringLiteral("2"),
+                                                        [=](std::optional<double> v)
+                                                        {
+                                                            edit_edge(key + ":width",
+                                                                      [&](Edge &x)
+                                                                      {
+                                                                          x.style.width = v;
+                                                                      });
+                                                        })),
+                       Labeled(tr("Line"), OptCombo(FromCatalog(StrokeStyles()), e->style.stroke_style, QStringLiteral("solid"),
+                                                    [=](std::optional<std::string> v)
+                                                    {
+                                                        edit_edge({},
+                                                                  [&](Edge &x)
+                                                                  {
+                                                                      x.style.stroke_style = std::move(v);
+                                                                  });
+                                                    }))));
+    box->addWidget(Row(Labeled(tr("Start arrow"), OptCombo(FromCatalog(ArrowHeads()), e->style.arrow_start, QStringLiteral("none"),
+                                                           [=](std::optional<std::string> v)
+                                                           {
+                                                               edit_edge({},
+                                                                         [&](Edge &x)
+                                                                         {
+                                                                             x.style.arrow_start = std::move(v);
+                                                                         });
+                                                           })),
+                       Labeled(tr("End arrow"), OptCombo(FromCatalog(ArrowHeads()), e->style.arrow_end, QStringLiteral("triangle"),
+                                                         [=](std::optional<std::string> v)
+                                                         {
+                                                             edit_edge({},
+                                                                       [&](Edge &x)
+                                                                       {
+                                                                           x.style.arrow_end = std::move(v);
+                                                                       });
+                                                         }))));
+    box->addWidget(Labeled(tr("Routing"), OptCombo(FromCatalog(Routings()), e->style.routing, QStringLiteral("curved"),
                                                    [=](std::optional<std::string> v)
                                                    {
                                                        edit_edge({},
@@ -754,8 +755,8 @@ void Inspector::_BuildEdge(QVBoxLayout *box, const std::string &id)
                                                                  });
                                                    })));
 
-    box->addWidget(Section(tr("Геометрия")));
-    box->addWidget(Row(Labeled(tr("Вход (от)"), Combo(_PortOptions(e->from), Qs(e->from_port),
+    box->addWidget(Section(tr("Geometry")));
+    box->addWidget(Row(Labeled(tr("From port"), Combo(_PortOptions(e->from), Qs(e->from_port),
                                                       [=](const QString &v)
                                                       {
                                                           edit_edge({},
@@ -764,15 +765,15 @@ void Inspector::_BuildEdge(QVBoxLayout *box, const std::string &id)
                                                                         x.from_port = Us(v);
                                                                     });
                                                       })),
-                       Labeled(tr("Выход (к)"), Combo(_PortOptions(e->to), Qs(e->to_port),
-                                                      [=](const QString &v)
-                                                      {
-                                                          edit_edge({},
-                                                                    [&](Edge &x)
-                                                                    {
-                                                                        x.to_port = Us(v);
-                                                                    });
-                                                      }))));
+                       Labeled(tr("To port"), Combo(_PortOptions(e->to), Qs(e->to_port),
+                                                    [=](const QString &v)
+                                                    {
+                                                        edit_edge({},
+                                                                  [&](Edge &x)
+                                                                  {
+                                                                      x.to_port = Us(v);
+                                                                  });
+                                                    }))));
 
     const bool has_wp = !e->waypoints.empty();
     QWidget   *curve  = Slider(e->curve, -0.5, 0.5, 0.05,
@@ -785,9 +786,9 @@ void Inspector::_BuildEdge(QVBoxLayout *box, const std::string &id)
                                           });
                             });
     curve->setEnabled(!has_wp && e->style.routing.value_or("curved") == "curved");
-    box->addWidget(Labeled(has_wp ? tr("Изгиб (задан точками)") : tr("Изгиб"), curve));
+    box->addWidget(Labeled(has_wp ? tr("Curvature (set by waypoints)") : tr("Curvature"), curve));
 
-    auto *clear = Button(tr("Очистить"),
+    auto *clear = Button(tr("Clear"),
                          [=]
                          {
                              edit_edge(
@@ -799,16 +800,16 @@ void Inspector::_BuildEdge(QVBoxLayout *box, const std::string &id)
                                  true);
                          });
     clear->setEnabled(has_wp);
-    box->addWidget(Row(new QLabel(tr("Точек изгиба: %1").arg(e->waypoints.size())), clear));
-    box->addWidget(Hint(tr("Двойной клик по связи — добавить точку изгиба; по точке — удалить. Точки перетаскиваются.")));
-    box->addWidget(Button(tr("⇄ Развернуть направление"),
+    box->addWidget(Row(new QLabel(tr("Waypoints: %1").arg(e->waypoints.size())), clear));
+    box->addWidget(Hint(tr("Double-click an edge to add a waypoint, double-click a waypoint to remove it. Waypoints can be dragged.")));
+    box->addWidget(Button(tr("⇄ Reverse direction"),
                           [this, id]
                           {
                               _ctl.Doc().ReverseEdge(id);
                               _ctl.Changed(true);
                           }));
     box->addWidget(Button(
-        tr("Удалить связь"),
+        tr("Delete edge"),
         [this]
         {
             _ctl.DeleteSelection();
@@ -829,7 +830,7 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
         _BuildScene(box);
         return;
     }
-    _title->setText(tr("Шаг: %1").arg(Qs(StepTypeLabel(s->type))));
+    _title->setText(tr("Step: %1").arg(Qs(StepTypeLabel(s->type))));
     const std::string key       = "step:" + id;
     auto              edit_step = [this, id](const std::string &k, const std::function<void(Step &)> &fn, bool structural = false)
     {
@@ -850,18 +851,18 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
     {
         types.emplace_back(Qs(t.id), Qs(t.label));
     }
-    box->addWidget(Labeled(tr("Тип шага"), Combo(types, Qs(ToString(s->type)),
-                                                 [this, edit_step](const QString &v)
-                                                 {
-                                                     edit_step(
-                                                         {},
-                                                         [&](Step &st)
-                                                         {
-                                                             st.type = StepTypeFromString(Us(v)).value_or(st.type);
-                                                             _ctl.Doc().NormalizeStep(st);
-                                                         },
-                                                         true);
-                                                 })));
+    box->addWidget(Labeled(tr("Step type"), Combo(types, Qs(ToString(s->type)),
+                                                  [this, edit_step](const QString &v)
+                                                  {
+                                                      edit_step(
+                                                          {},
+                                                          [&](Step &st)
+                                                          {
+                                                              st.type = StepTypeFromString(Us(v)).value_or(st.type);
+                                                              _ctl.Doc().NormalizeStep(st);
+                                                          },
+                                                          true);
+                                                  })));
 
     auto node_combo = [&](const QString &label)
     {
@@ -877,17 +878,17 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
     };
     auto color_field = [&](const QString &fallback)
     {
-        return Labeled(tr("Цвет"), OptColor(s->color.empty() ? std::nullopt : std::optional<std::string>(s->color), fallback,
-                                            [=](std::optional<std::string> v)
-                                            {
-                                                edit_step(
-                                                    {},
-                                                    [&](Step &st)
-                                                    {
-                                                        st.color = v.value_or("");
-                                                    },
-                                                    true);
-                                            }));
+        return Labeled(tr("Color"), OptColor(s->color.empty() ? std::nullopt : std::optional<std::string>(s->color), fallback,
+                                             [=](std::optional<std::string> v)
+                                             {
+                                                 edit_step(
+                                                     {},
+                                                     [&](Step &st)
+                                                     {
+                                                         st.color = v.value_or("");
+                                                     },
+                                                     true);
+                                             }));
     };
     auto text_field = [&](const QString &label, const std::string &field_key, std::string Step::*field, const QString &placeholder = {})
     {
@@ -908,27 +909,27 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
     {
     case StepType::Message:
     {
-        Options edges{{QString(), tr("— по узлам (без связи) —")}};
+        Options edges{{QString(), tr("— between nodes (no edge) —")}};
         for (auto &o : _EdgeOptions())
         {
             edges.push_back(std::move(o));
         }
-        box->addWidget(Labeled(tr("Связь"), Combo(edges, Qs(s->edge_id),
-                                                  [this, edit_step](const QString &v)
-                                                  {
-                                                      edit_step(
-                                                          {},
-                                                          [&](Step &st)
-                                                          {
-                                                              st.edge_id = Us(v);
-                                                              if (const Edge *e = _ctl.GetModel().FindEdge(st.edge_id); e != nullptr)
-                                                              {
-                                                                  st.from = e->from;
-                                                                  st.to   = e->to;
-                                                              }
-                                                          },
-                                                          true);
-                                                  })));
+        box->addWidget(Labeled(tr("Edge"), Combo(edges, Qs(s->edge_id),
+                                                 [this, edit_step](const QString &v)
+                                                 {
+                                                     edit_step(
+                                                         {},
+                                                         [&](Step &st)
+                                                         {
+                                                             st.edge_id = Us(v);
+                                                             if (const Edge *e = _ctl.GetModel().FindEdge(st.edge_id); e != nullptr)
+                                                             {
+                                                                 st.from = e->from;
+                                                                 st.to   = e->to;
+                                                             }
+                                                         },
+                                                         true);
+                                                 })));
         if (m.FindEdge(s->edge_id) != nullptr)
         {
             auto nm = [&](const std::string &nid)
@@ -936,7 +937,7 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
                 const Node *n = m.FindNode(nid);
                 return n != nullptr ? Qs(n->label) : QStringLiteral("?");
             };
-            box->addWidget(Button(tr("Направление: %1 → %2  ⇄").arg(nm(s->from), nm(s->to)),
+            box->addWidget(Button(tr("Direction: %1 → %2  ⇄").arg(nm(s->from), nm(s->to)),
                                   [=]
                                   {
                                       edit_step(
@@ -950,31 +951,31 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
         }
         else
         {
-            box->addWidget(Row(Labeled(tr("От"), Combo(_NodeOptions(), Qs(s->from),
+            box->addWidget(Row(Labeled(tr("From"), Combo(_NodeOptions(), Qs(s->from),
+                                                         [=](const QString &v)
+                                                         {
+                                                             edit_step({},
+                                                                       [&](Step &st)
+                                                                       {
+                                                                           st.from = Us(v);
+                                                                       });
+                                                         })),
+                               Labeled(tr("To"), Combo(_NodeOptions(), Qs(s->to),
                                                        [=](const QString &v)
                                                        {
                                                            edit_step({},
                                                                      [&](Step &st)
                                                                      {
-                                                                         st.from = Us(v);
+                                                                         st.to = Us(v);
                                                                      });
-                                                       })),
-                               Labeled(tr("К"), Combo(_NodeOptions(), Qs(s->to),
-                                                      [=](const QString &v)
-                                                      {
-                                                          edit_step({},
-                                                                    [&](Step &st)
-                                                                    {
-                                                                        st.to = Us(v);
-                                                                    });
-                                                      }))));
+                                                       }))));
         }
         Options variants;
         for (const auto &v : MsgVariants())
         {
             variants.emplace_back(Qs(v.id), Qs(v.label));
         }
-        box->addWidget(Row(Labeled(tr("Вариант"), Combo(variants, Qs(s->variant),
+        box->addWidget(Row(Labeled(tr("Variant"), Combo(variants, Qs(s->variant),
                                                         [=](const QString &v)
                                                         {
                                                             edit_step(
@@ -986,10 +987,10 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
                                                                 true);
                                                         })),
                            color_field(Qs(MsgVariant(s->variant).color.Hex()))));
-        text_field(tr("Подпись"), "label", &Step::label);
+        text_field(tr("Label"), "label", &Step::label);
 
-        box->addWidget(Section(tr("Пакет")));
-        box->addWidget(Row(Labeled(tr("Форма"), Combo(FromCatalog(PacketShapes()), Qs(s->packet),
+        box->addWidget(Section(tr("Packet")));
+        box->addWidget(Row(Labeled(tr("Shape"), Combo(FromCatalog(PacketShapes()), Qs(s->packet),
                                                       [=](const QString &v)
                                                       {
                                                           edit_step({},
@@ -998,34 +999,34 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
                                                                         st.packet = Us(v);
                                                                     });
                                                       })),
-                           Labeled(tr("Движение"), Combo(EasingOptions(), Qs(ToString(s->easing)),
-                                                         [=](const QString &v)
-                                                         {
-                                                             edit_step({},
-                                                                       [&](Step &st)
-                                                                       {
-                                                                           st.easing = EasingFromString(Us(v)).value_or(st.easing);
-                                                                       });
-                                                         }))));
-        box->addWidget(Row(Labeled(tr("Размер"), Spin(s->packet_size, 0.3, 5, 0.1, 1,
-                                                      [=](double v)
-                                                      {
-                                                          edit_step(key + ":packet_size",
-                                                                    [&](Step &st)
-                                                                    {
-                                                                        st.packet_size = v;
-                                                                    });
-                                                      })),
-                           Labeled(tr("Количество"), Spin(s->packet_count, 1, 20, 1, 0,
-                                                          [=](double v)
-                                                          {
-                                                              edit_step(key + ":packet_count",
-                                                                        [&](Step &st)
-                                                                        {
-                                                                            st.packet_count = static_cast<int>(v);
-                                                                        });
-                                                          }))));
-        box->addWidget(Check(tr("Подсвечивать пройденный путь"), s->trail,
+                           Labeled(tr("Easing"), Combo(EasingOptions(), Qs(ToString(s->easing)),
+                                                       [=](const QString &v)
+                                                       {
+                                                           edit_step({},
+                                                                     [&](Step &st)
+                                                                     {
+                                                                         st.easing = EasingFromString(Us(v)).value_or(st.easing);
+                                                                     });
+                                                       }))));
+        box->addWidget(Row(Labeled(tr("Size"), Spin(s->packet_size, 0.3, 5, 0.1, 1,
+                                                    [=](double v)
+                                                    {
+                                                        edit_step(key + ":packet_size",
+                                                                  [&](Step &st)
+                                                                  {
+                                                                      st.packet_size = v;
+                                                                  });
+                                                    })),
+                           Labeled(tr("Count"), Spin(s->packet_count, 1, 20, 1, 0,
+                                                     [=](double v)
+                                                     {
+                                                         edit_step(key + ":packet_count",
+                                                                   [&](Step &st)
+                                                                   {
+                                                                       st.packet_count = static_cast<int>(v);
+                                                                   });
+                                                     }))));
+        box->addWidget(Check(tr("Highlight traveled path"), s->trail,
                              [=](bool v)
                              {
                                  edit_step({},
@@ -1038,68 +1039,68 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
     }
     case StepType::Timer:
     {
-        node_combo(tr("Узел"));
+        node_combo(tr("Node"));
         Options units;
         for (const auto &u : TimeUnits())
         {
             units.emplace_back(Qs(u.id), Qs(u.label));
         }
-        box->addWidget(Row(Labeled(tr("Отсчёт от"), Spin(s->seconds, 0, 100000, 1, 0,
-                                                         [=](double v)
-                                                         {
-                                                             edit_step(key + ":seconds",
-                                                                       [&](Step &st)
-                                                                       {
-                                                                           st.seconds = v;
-                                                                       });
-                                                         })),
-                           Labeled(tr("Единица"), Combo(units, Qs(s->unit),
-                                                        [=](const QString &v)
-                                                        {
-                                                            edit_step({},
-                                                                      [&](Step &st)
-                                                                      {
-                                                                          st.unit = Us(v);
-                                                                      });
-                                                        }))));
-        text_field(tr("Подпись"), "label", &Step::label);
+        box->addWidget(Row(Labeled(tr("Count from"), Spin(s->seconds, 0, 100000, 1, 0,
+                                                          [=](double v)
+                                                          {
+                                                              edit_step(key + ":seconds",
+                                                                        [&](Step &st)
+                                                                        {
+                                                                            st.seconds = v;
+                                                                        });
+                                                          })),
+                           Labeled(tr("Unit"), Combo(units, Qs(s->unit),
+                                                     [=](const QString &v)
+                                                     {
+                                                         edit_step({},
+                                                                   [&](Step &st)
+                                                                   {
+                                                                       st.unit = Us(v);
+                                                                   });
+                                                     }))));
+        text_field(tr("Label"), "label", &Step::label);
         break;
     }
     case StepType::State:
     {
         const auto &preset = NodeState(s->state);
-        node_combo(tr("Узел"));
+        node_combo(tr("Node"));
         Options states;
         for (const auto &st : NodeStates())
         {
             states.emplace_back(Qs(st.id), Qs(st.label));
         }
-        box->addWidget(Labeled(tr("Состояние (пресет)"), Combo(states, Qs(s->state),
-                                                               [=](const QString &v)
-                                                               {
-                                                                   edit_step(
-                                                                       {},
-                                                                       [&](Step &st)
-                                                                       {
-                                                                           st.state = Us(v);
-                                                                       },
-                                                                       true);
-                                                               })));
-        text_field(tr("Подпись"), "label", &Step::label, Qs(preset.label));
-        box->addWidget(Row(color_field(Qs(preset.ring.Hex())), Labeled(tr("Размер шрифта"), Spin(s->label_size.value_or(11), 6, 48, 1, 0,
-                                                                                                 [=](double v)
-                                                                                                 {
-                                                                                                     edit_step(key + ":label_size",
-                                                                                                               [&](Step &st)
-                                                                                                               {
-                                                                                                                   st.label_size = v;
-                                                                                                               });
-                                                                                                 }))));
-        box->addWidget(Hint(tr("Подпись и цвет переопределяют пресет; пусто — берётся из пресета.")));
+        box->addWidget(Labeled(tr("State (preset)"), Combo(states, Qs(s->state),
+                                                           [=](const QString &v)
+                                                           {
+                                                               edit_step(
+                                                                   {},
+                                                                   [&](Step &st)
+                                                                   {
+                                                                       st.state = Us(v);
+                                                                   },
+                                                                   true);
+                                                           })));
+        text_field(tr("Label"), "label", &Step::label, Qs(preset.label));
+        box->addWidget(Row(color_field(Qs(preset.ring.Hex())), Labeled(tr("Font size"), Spin(s->label_size.value_or(11), 6, 48, 1, 0,
+                                                                                             [=](double v)
+                                                                                             {
+                                                                                                 edit_step(key + ":label_size",
+                                                                                                           [&](Step &st)
+                                                                                                           {
+                                                                                                               st.label_size = v;
+                                                                                                           });
+                                                                                             }))));
+        box->addWidget(Hint(tr("Label and color override the preset; leave empty to use the preset's.")));
         break;
     }
     case StepType::Note:
-        text_field(tr("Текст"), "text", &Step::text);
+        text_field(tr("Text"), "text", &Step::text);
         box->addWidget(Row(Labeled(QStringLiteral("X"), Spin(s->x, -100000, 100000, 10, 0,
                                                              [=](double v)
                                                              {
@@ -1122,9 +1123,9 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
         break;
     case StepType::Effect:
     {
-        node_combo(tr("Узел"));
+        node_combo(tr("Node"));
         const EffectDef *fx = _ctl.Reg().FindEffect(s->effect, &m.library);
-        box->addWidget(Labeled(tr("Эффект"), Combo(_EffectOptions(), Qs(s->effect),
+        box->addWidget(Labeled(tr("Effect"), Combo(_EffectOptions(), Qs(s->effect),
                                                    [=](const QString &v)
                                                    {
                                                        edit_step(
@@ -1140,16 +1141,16 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
             box->addWidget(Hint(Qs(fx->description)));
         }
         box->addWidget(color_field(fx != nullptr ? Qs(fx->color) : QStringLiteral("#22d3ee")));
-        box->addWidget(Row(Labeled(tr("Интенсивность"), Spin(s->intensity, 0, 5, 0.1, 2,
-                                                             [=](double v)
-                                                             {
-                                                                 edit_step(key + ":intensity",
-                                                                           [&](Step &st)
-                                                                           {
-                                                                               st.intensity = v;
-                                                                           });
-                                                             })),
-                           Labeled(tr("Повторы"), OptSpin(s->repeat > 0 ? std::optional<double>(s->repeat) : std::nullopt, 1, 100, 1, 0,
+        box->addWidget(Row(Labeled(tr("Intensity"), Spin(s->intensity, 0, 5, 0.1, 2,
+                                                         [=](double v)
+                                                         {
+                                                             edit_step(key + ":intensity",
+                                                                       [&](Step &st)
+                                                                       {
+                                                                           st.intensity = v;
+                                                                       });
+                                                         })),
+                           Labeled(tr("Repeats"), OptSpin(s->repeat > 0 ? std::optional<double>(s->repeat) : std::nullopt, 1, 100, 1, 0,
                                                           fx != nullptr ? QString::number(fx->repeat) : QString(),
                                                           [=](std::optional<double> v)
                                                           {
@@ -1160,7 +1161,7 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
                                                                         });
                                                           }))));
         const QString effect_id = Qs(s->effect);
-        box->addWidget(Button(tr("Редактировать эффект в библиотеке…"),
+        box->addWidget(Button(tr("Edit effect in library…"),
                               [this, effect_id]
                               {
                                   Q_EMIT LibraryRequested(effect_id);
@@ -1168,36 +1169,36 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
         break;
     }
     case StepType::Action:
-        node_combo(tr("Узел (сервис)"));
-        text_field(tr("Действие"), "text", &Step::text);
+        node_combo(tr("Node (service)"));
+        text_field(tr("Action"), "text", &Step::text);
         box->addWidget(color_field(QStringLiteral("#38bdf8")));
         break;
     case StepType::Link:
     {
-        box->addWidget(Labeled(tr("Связь"), Combo(_EdgeOptions(), Qs(s->edge_id),
-                                                  [=](const QString &v)
-                                                  {
-                                                      edit_step({},
-                                                                [&](Step &st)
-                                                                {
-                                                                    st.edge_id = Us(v);
-                                                                });
-                                                  })));
-        text_field(tr("Текст"), "text", &Step::text);
+        box->addWidget(Labeled(tr("Edge"), Combo(_EdgeOptions(), Qs(s->edge_id),
+                                                 [=](const QString &v)
+                                                 {
+                                                     edit_step({},
+                                                               [&](Step &st)
+                                                               {
+                                                                   st.edge_id = Us(v);
+                                                               });
+                                                 })));
+        text_field(tr("Text"), "text", &Step::text);
         Options anims;
         for (const auto &a : LinkAnims())
         {
             anims.emplace_back(Qs(a.id), Qs(a.label));
         }
-        box->addWidget(Row(color_field(QStringLiteral("#38bdf8")), Labeled(tr("Анимация"), Combo(anims, Qs(s->anim),
-                                                                                                 [=](const QString &v)
-                                                                                                 {
-                                                                                                     edit_step({},
-                                                                                                               [&](Step &st)
-                                                                                                               {
-                                                                                                                   st.anim = Us(v);
-                                                                                                               });
-                                                                                                 }))));
+        box->addWidget(Row(color_field(QStringLiteral("#38bdf8")), Labeled(tr("Animation"), Combo(anims, Qs(s->anim),
+                                                                                                  [=](const QString &v)
+                                                                                                  {
+                                                                                                      edit_step({},
+                                                                                                                [&](Step &st)
+                                                                                                                {
+                                                                                                                    st.anim = Us(v);
+                                                                                                                });
+                                                                                                  }))));
         _LabelControls(box, key, 22,
                        [id](auto &mm)
                        {
@@ -1207,34 +1208,34 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
     }
     }
 
-    box->addWidget(Section(tr("Время")));
-    box->addWidget(Row(Labeled(tr("Начало, мс"), Spin(s->start, 0, 3'600'000, 50, 0,
-                                                      [this, key, id](double v)
-                                                      {
-                                                          _ctl.Edit(key + ":start",
-                                                                    [&](Model &mm)
-                                                                    {
-                                                                        if (Step *st = mm.FindStep(id); st != nullptr)
-                                                                        {
-                                                                            st->start = v;
-                                                                        }
-                                                                        Retime(mm);
-                                                                    });
-                                                      })),
-                       Labeled(tr("Длит., мс"), Spin(s->duration, kMinStepDuration, 3'600'000, 50, 0,
+    box->addWidget(Section(tr("Timing")));
+    box->addWidget(Row(Labeled(tr("Start, ms"), Spin(s->start, 0, 3'600'000, 50, 0,
                                                      [this, key, id](double v)
                                                      {
-                                                         _ctl.Edit(key + ":duration",
+                                                         _ctl.Edit(key + ":start",
                                                                    [&](Model &mm)
                                                                    {
                                                                        if (Step *st = mm.FindStep(id); st != nullptr)
                                                                        {
-                                                                           st->duration = v;
+                                                                           st->start = v;
                                                                        }
                                                                        Retime(mm);
                                                                    });
-                                                     }))));
-    box->addWidget(Button(tr("⧉ Дублировать шаг"),
+                                                     })),
+                       Labeled(tr("Duration, ms"), Spin(s->duration, kMinStepDuration, 3'600'000, 50, 0,
+                                                        [this, key, id](double v)
+                                                        {
+                                                            _ctl.Edit(key + ":duration",
+                                                                      [&](Model &mm)
+                                                                      {
+                                                                          if (Step *st = mm.FindStep(id); st != nullptr)
+                                                                          {
+                                                                              st->duration = v;
+                                                                          }
+                                                                          Retime(mm);
+                                                                      });
+                                                        }))));
+    box->addWidget(Button(tr("⧉ Duplicate step"),
                           [this, id]
                           {
                               if (const Step *copy = _ctl.Doc().DuplicateStep(id); copy != nullptr)
@@ -1245,7 +1246,7 @@ void Inspector::_BuildStep(QVBoxLayout *box, const std::string &id)
                               }
                           }));
     box->addWidget(Button(
-        tr("Удалить шаг"),
+        tr("Delete step"),
         [this]
         {
             _ctl.DeleteSelection();

@@ -3,6 +3,7 @@
 
 #include <expected>
 #include <filesystem>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -18,7 +19,8 @@
 ///   "format": "animated-diagrams-plugin", "formatVersion": 1,
 ///   "id": "com.example.network", "name": "Network pack", "version": "1.0.0",
 ///   "author": "...", "description": "...",
-///   "elements": [...], "effects": [...], "animations": [...]
+///   "elements": [...], "effects": [...], "animations": [...], "designSystems": [...],
+///   "translations": {"ru": {"Message broker": "Брокер сообщений", ...}}
 /// }
 /// @endcode
 /// Plugins are data only (no native code), so they are portable and safe to share.
@@ -40,11 +42,15 @@ struct PluginInfo
     friend bool operator==(const PluginInfo &, const PluginInfo &) = default;
 };
 
+/// language code -> (source text -> translation)
+using PluginTranslations = std::map<std::string, std::map<std::string, std::string>>;
+
 struct Plugin
 {
-    PluginInfo  info;
-    LibrarySet  library;
-    friend bool operator==(const Plugin &, const Plugin &) = default;
+    PluginInfo         info;
+    LibrarySet         library;
+    PluginTranslations translations;
+    friend bool        operator==(const Plugin &, const Plugin &) = default;
 };
 
 bool IsValidPluginId(std::string_view id);
@@ -54,6 +60,11 @@ bool IsValidPluginId(std::string_view id);
 std::expected<Plugin, std::string> ParsePlugin(std::string_view json_text, std::vector<std::string> *warnings = nullptr);
 
 std::string SerializePlugin(const Plugin &plugin, int indent = 2);
+
+/// Replace user-visible texts (plugin name / description, labels, categories, descriptions,
+/// role labels, step labels and texts) with their translations for `language`, when the
+/// plugin has them; untranslated texts are kept.
+void LocalizePlugin(Plugin &plugin, std::string_view language);
 
 /// Select definitions by id from `source` into a new plugin (unknown ids are ignored).
 Plugin MakePlugin(const PluginInfo &info, const LibrarySet &source, const std::vector<std::string> &ids);

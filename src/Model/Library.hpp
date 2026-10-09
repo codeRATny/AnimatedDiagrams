@@ -10,6 +10,7 @@
 
 #include "Model/Easing.hpp"
 #include "Model/Step.hpp"
+#include "Utils/I18n.hpp"
 
 /// @file Library.hpp
 /// @brief User-extensible definitions: element types, effects and animation templates.
@@ -63,7 +64,7 @@ struct ElementType
     std::string id;
     std::string label;
     std::string icon;
-    std::string category = "Общие";
+    std::string category = Tr("library", "General");
     std::string description;
     std::string accent = "#4f8cff"; // accent stripe / palette color
     double      width  = 140;
@@ -108,7 +109,7 @@ struct EffectDef
 {
     std::string              id;
     std::string              label;
-    std::string              category = "Общие";
+    std::string              category = Tr("library", "General");
     std::string              description;
     std::string              color  = "#22d3ee"; // glow / tint color (a step may override)
     int                      repeat = 1;         // repetitions within the step duration
@@ -130,7 +131,7 @@ struct AnimationTemplate
 {
     std::string                id;
     std::string                label;
-    std::string                category = "Общие";
+    std::string                category = Tr("library", "General");
     std::string                description;
     std::vector<AnimationRole> roles;
     std::vector<Step>          steps;
@@ -160,7 +161,7 @@ struct DesignSystem
 {
     std::string id;
     std::string label;
-    std::string category = "Общие";
+    std::string category = Tr("library", "General");
     std::string description;
 
     // canvas (copied into the scene settings when the design system is applied)

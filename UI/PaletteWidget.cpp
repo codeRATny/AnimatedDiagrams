@@ -73,7 +73,7 @@ PaletteWidget::PaletteWidget(AppContext &ctx, QWidget *parent) : QWidget(parent)
     }
 
     _search = new QLineEdit;
-    _search->setPlaceholderText(tr("Поиск элемента…"));
+    _search->setPlaceholderText(tr("Search elements…"));
     _search->setClearButtonEnabled(true);
     connect(_search, &QLineEdit::textChanged, this, &PaletteWidget::_Rebuild);
 
@@ -176,7 +176,7 @@ QTreeWidgetItem *PaletteWidget::_AddElement(QTreeWidgetItem *parent, const Eleme
     item->setToolTip(0, tip);
     const bool fav = _ctx.IsFavorite(id);
     item->setText(1, fav ? kStarOn : kStarOff);
-    item->setToolTip(1, fav ? tr("Убрать из избранного") : tr("В избранное"));
+    item->setToolTip(1, fav ? tr("Remove from Favorites") : tr("Add to Favorites"));
     item->setTextAlignment(1, Qt::AlignCenter);
     item->setForeground(1, ToQColor(fav ? Ui().warning : Ui().faint));
     item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled);
@@ -223,18 +223,18 @@ void PaletteWidget::_Rebuild()
     {
         if (source == kBuiltinSource)
         {
-            return tr("Встроенные");
+            return tr("Built-in");
         }
         if (source == kDocumentSource)
         {
-            return tr("Документ");
+            return tr("Document");
         }
         const PluginRecord *rec = _ctx.Plugins().Find(source);
         return rec != nullptr && !rec->plugin.info.name.empty() ? Qs(rec->plugin.info.name) : Qs(source);
     };
 
     // favorites (in the order they were added)
-    QTreeWidgetItem *fav = group(QStringLiteral("fav"), QStringLiteral("★ ") + tr("Избранное"));
+    QTreeWidgetItem *fav = group(QStringLiteral("fav"), QStringLiteral("★ ") + tr("Favorites"));
     for (const QString &id : _ctx.Favorites())
     {
         const auto it = std::ranges::find_if(entries,
@@ -252,7 +252,7 @@ void PaletteWidget::_Rebuild()
         if (filter.isEmpty())
         {
             auto *hint = new QTreeWidgetItem(fav);
-            hint->setText(0, tr("Нажмите ☆ у элемента"));
+            hint->setText(0, tr("Click ☆ next to an element"));
             hint->setFlags(Qt::ItemIsEnabled);
             hint->setForeground(0, ToQColor(Ui().faint));
         }
@@ -376,12 +376,12 @@ void PaletteWidget::_ShowMenu(const QPoint &pos)
     }
     QMenu      menu(this);
     const bool fav = _ctx.IsFavorite(id);
-    menu.addAction(fav ? tr("Убрать из избранного") : tr("Добавить в избранное"),
+    menu.addAction(fav ? tr("Remove from Favorites") : tr("Add to Favorites"),
                    [this, id, fav]
                    {
                        _ctx.SetFavorite(id, !fav);
                    });
-    menu.addAction(tr("Открыть в библиотеке…"),
+    menu.addAction(tr("Open in library…"),
                    [this, id]
                    {
                        Q_EMIT LibraryRequested(id);

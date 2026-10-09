@@ -76,6 +76,23 @@ std::expected<Plugin, std::string> ParsePlugin(std::string_view json_text, std::
         p.info.version = "1.0.0";
     }
     p.library = json::LibraryFromJson(j, warnings);
+    if (const auto it = j.find("translations"); it != j.end() && it->is_object())
+    {
+        for (const auto &[lang, dict] : it->items())
+        {
+            if (!dict.is_object())
+            {
+                continue;
+            }
+            for (const auto &[source, text] : dict.items())
+            {
+                if (text.is_string())
+                {
+                    p.translations[lang][source] = text.get<std::string>();
+                }
+            }
+        }
+    }
     if (p.library.Empty() && warnings != nullptr)
     {
         warnings->push_back("plugin '" + p.info.id + "' contains no definitions");
@@ -108,7 +125,68 @@ std::string SerializePlugin(const Plugin &plugin, int indent)
     {
         j[key] = value;
     }
+    if (!plugin.translations.empty())
+    {
+        j["translations"] = plugin.translations;
+    }
     return j.dump(indent, ' ', false, json::OrderedJson::error_handler_t::replace);
+}
+
+void LocalizePlugin(Plugin &plugin, std::string_view language)
+{
+    const auto it = plugin.translations.find(std::string(language));
+    if (it == plugin.translations.end() || it->second.empty())
+    {
+        return;
+    }
+    const auto &dict = it->second;
+    auto        tr   = [&dict](std::string &text)
+    {
+        if (const auto t = dict.find(text); t != dict.end())
+        {
+            text = t->second;
+        }
+    };
+    auto steps = [&tr](std::vector<Step> &list)
+    {
+        for (auto &s : list)
+        {
+            tr(s.label);
+            tr(s.text);
+        }
+    };
+    tr(plugin.info.name);
+    tr(plugin.info.description);
+    auto &lib = plugin.library;
+    for (auto &e : lib.elements)
+    {
+        tr(e.label);
+        tr(e.category);
+        tr(e.description);
+    }
+    for (auto &e : lib.effects)
+    {
+        tr(e.label);
+        tr(e.category);
+        tr(e.description);
+    }
+    for (auto &a : lib.animations)
+    {
+        tr(a.label);
+        tr(a.category);
+        tr(a.description);
+        for (auto &r : a.roles)
+        {
+            tr(r.label);
+        }
+        steps(a.steps);
+    }
+    for (auto &d : lib.design_systems)
+    {
+        tr(d.label);
+        tr(d.category);
+        tr(d.description);
+    }
 }
 
 Plugin MakePlugin(const PluginInfo &info, const LibrarySet &source, const std::vector<std::string> &ids)

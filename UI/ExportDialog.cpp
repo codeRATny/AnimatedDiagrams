@@ -42,7 +42,7 @@ QString SafeFileName(QString name)
 ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     : QDialog(parent), _ctl(ctl), _view_rect(view_rect), _background(Qs(ctl.GetModel().scene.background))
 {
-    setWindowTitle(tr("Экспорт анимации"));
+    setWindowTitle(tr("Export Animation"));
     setMinimumWidth(460);
     if (!_background.isValid())
     {
@@ -50,10 +50,10 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     }
 
     _format = new QComboBox;
-    _format->addItem(tr("GIF — универсально, зацикленно"), FormatId(ExportFormat::Gif));
-    _format->addItem(tr("WebM (VP9) — лучше качество/размер"), FormatId(ExportFormat::WebM));
-    _format->addItem(tr("MP4 (H.264) — для презентаций"), FormatId(ExportFormat::Mp4));
-    _format->addItem(tr("PNG — последовательность кадров"), FormatId(ExportFormat::Png));
+    _format->addItem(tr("GIF — universal, looping"), FormatId(ExportFormat::Gif));
+    _format->addItem(tr("WebM (VP9) — best quality/size"), FormatId(ExportFormat::WebM));
+    _format->addItem(tr("MP4 (H.264) — for presentations"), FormatId(ExportFormat::Mp4));
+    _format->addItem(tr("PNG — frame sequence"), FormatId(ExportFormat::Png));
     // video formats need a libav encoder for the container
     auto *model = qobject_cast<QStandardItemModel *>(_format->model());
     for (int i = 1; i <= 2; ++i)
@@ -61,7 +61,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
         const auto    f       = FormatFromId(_format->itemData(i).toString()).value_or(ExportFormat::Gif);
         const QString encoder = VideoEncoderFor(f);
         model->item(i)->setEnabled(!encoder.isEmpty());
-        model->item(i)->setToolTip(encoder.isEmpty() ? tr("Нет подходящего кодека в libav") : tr("Кодек: %1").arg(encoder));
+        model->item(i)->setToolTip(encoder.isEmpty() ? tr("No suitable codec in libav") : tr("Codec: %1").arg(encoder));
     }
 
     _fps = new QComboBox;
@@ -78,7 +78,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     }
 
     _quality                       = new QComboBox;
-    const QString quality_labels[] = {tr("Минимальный размер"), tr("Компактно"), tr("Сбалансировано"), tr("Высокое"), tr("Максимальное")};
+    const QString quality_labels[] = {tr("Smallest size"), tr("Compact"), tr("Balanced"), tr("High"), tr("Maximum")};
     for (int q = 0; q < 5; ++q)
     {
         _quality->addItem(quality_labels[q], q);
@@ -86,12 +86,12 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     _quality->setCurrentIndex(2);
 
     _framing = new QComboBox;
-    _framing->addItem(tr("По содержимому"), 0);
-    _framing->addItem(tr("Как на экране"), 1);
+    _framing->addItem(tr("Fit to content"), 0);
+    _framing->addItem(tr("As on screen"), 1);
 
     _bg_button      = new QPushButton;
-    auto *scene_btn = new QPushButton(tr("Как у сцены"));
-    auto *white_btn = new QPushButton(tr("Белый"));
+    auto *scene_btn = new QPushButton(tr("Same as scene"));
+    auto *white_btn = new QPushButton(tr("White"));
     auto *bg_row    = new QHBoxLayout;
     bg_row->addWidget(_bg_button, 1);
     bg_row->addWidget(scene_btn);
@@ -100,7 +100,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     connect(_bg_button, &QPushButton::clicked, this,
             [this]
             {
-                const QColor c = QColorDialog::getColor(_background, this, tr("Фон"));
+                const QColor c = QColorDialog::getColor(_background, this, tr("Background"));
                 if (c.isValid())
                 {
                     _SetBackground(c);
@@ -117,26 +117,26 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
                 _SetBackground(Qt::white);
             });
 
-    _loop = new QCheckBox(tr("Зациклить (GIF)"));
+    _loop = new QCheckBox(tr("Loop (GIF)"));
     _loop->setChecked(true);
 
     auto *form = new QFormLayout;
-    form->addRow(tr("Формат"), _format);
-    form->addRow(tr("Частота кадров"), _fps);
-    form->addRow(tr("Масштаб"), _scale);
-    form->addRow(tr("Качество видео"), _quality);
-    form->addRow(tr("Кадрирование"), _framing);
-    form->addRow(tr("Фон"), bg_row);
+    form->addRow(tr("Format"), _format);
+    form->addRow(tr("Frame rate"), _fps);
+    form->addRow(tr("Scale"), _scale);
+    form->addRow(tr("Video quality"), _quality);
+    form->addRow(tr("Framing"), _framing);
+    form->addRow(tr("Background"), bg_row);
     form->addRow(QString(), _loop);
 
     _estimate = new QLabel;
     _estimate->setWordWrap(true);
     _estimate->setObjectName(QStringLiteral("hint"));
     auto *buttons       = new QDialogButtonBox;
-    auto *export_button = buttons->addButton(tr("Экспортировать в фоне"), QDialogButtonBox::AcceptRole);
+    auto *export_button = buttons->addButton(tr("Export in Background"), QDialogButtonBox::AcceptRole);
     export_button->setDefault(true);
     export_button->setObjectName(QStringLiteral("primaryButton"));
-    buttons->addButton(tr("Отмена"), QDialogButtonBox::RejectRole);
+    buttons->addButton(tr("Cancel"), QDialogButtonBox::RejectRole);
     connect(export_button, &QPushButton::clicked, this, &ExportDialog::_Start);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
@@ -183,13 +183,16 @@ void ExportDialog::_UpdateEstimate()
     const auto   g      = PlanExport(_ctl.GetModel(), o, _ctl.Reg());
     const auto   frames = ExportFrameTimes(_ctl.Duration(), o.fps).size();
     const double mp     = static_cast<double>(g.px_w) * g.px_h / 1e6;
-    QString      text   = tr("≈ %1 кадров · %2×%3 px · %4 с").arg(frames).arg(g.px_w).arg(g.px_h).arg(_ctl.Duration() / 1000, 0, 'f', 1);
+    QString      text   = tr("≈ %n frame(s) · %1×%2 px · %3 s", nullptr, static_cast<int>(frames))
+                       .arg(g.px_w)
+                       .arg(g.px_h)
+                       .arg(_ctl.Duration() / 1000, 0, 'f', 1);
     if (frames > 200 || mp > 6)
     {
-        text += tr("\n⚠ Большой объём: экспорт займёт время, файл будет большим.");
+        text += tr("\n⚠ Large output: export will take a while and the file will be big.");
         if (o.format == ExportFormat::Gif)
         {
-            text += tr(" Для длинных/крупных анимаций лучше WebM или MP4.");
+            text += tr(" For long or large animations, WebM or MP4 works better.");
         }
     }
     _estimate->setText(text);
@@ -203,7 +206,7 @@ void ExportDialog::_Start()
     const QString dir       = settings.value(kLastDirKey, QDir::homePath()).toString();
     const QString suggested = dir + QLatin1Char('/') + SafeFileName(Qs(_ctl.GetModel().meta.name)) + QLatin1Char('.') + ext;
     const QString filter    = tr("%1 (*.%2)").arg(ext.toUpper(), ext);
-    QString       path      = QFileDialog::getSaveFileName(this, tr("Сохранить анимацию"), suggested, filter);
+    QString       path      = QFileDialog::getSaveFileName(this, tr("Save Animation"), suggested, filter);
     if (path.isEmpty())
     {
         return;

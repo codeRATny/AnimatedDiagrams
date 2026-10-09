@@ -4,6 +4,9 @@
 #include <array>
 #include <cmath>
 #include <numbers>
+#include <vector>
+
+#include "Utils/I18n.hpp"
 
 namespace ad
 {
@@ -11,19 +14,28 @@ namespace ad
 namespace
 {
 
-constexpr std::array kEasings{
-    EasingInfo{Easing::Linear, "linear", "Линейно"},
-    EasingInfo{Easing::EaseIn, "ease-in", "Разгон"},
-    EasingInfo{Easing::EaseOut, "ease-out", "Торможение"},
-    EasingInfo{Easing::EaseInOut, "ease-in-out", "Плавно"},
-    EasingInfo{Easing::CubicIn, "cubic-in", "Разгон (сильный)"},
-    EasingInfo{Easing::CubicOut, "cubic-out", "Торможение (сильное)"},
-    EasingInfo{Easing::CubicInOut, "cubic-in-out", "Плавно (сильно)"},
-    EasingInfo{Easing::BackOut, "back-out", "С перелётом"},
-    EasingInfo{Easing::ElasticOut, "elastic-out", "Пружина"},
-    EasingInfo{Easing::BounceOut, "bounce-out", "Отскок"},
-    EasingInfo{Easing::Step, "step", "Скачком"},
-};
+// built on first use: labels are translated with the UI language installed at startup
+const std::vector<EasingInfo> &EasingTable()
+{
+    auto t = [](const char *text)
+    {
+        return Tr("easing", text);
+    };
+    static const std::vector<EasingInfo> kTable{
+        {Easing::Linear, "linear", t(AD_TR_NOOP("easing", "Linear"))},
+        {Easing::EaseIn, "ease-in", t(AD_TR_NOOP("easing", "Ease in"))},
+        {Easing::EaseOut, "ease-out", t(AD_TR_NOOP("easing", "Ease out"))},
+        {Easing::EaseInOut, "ease-in-out", t(AD_TR_NOOP("easing", "Ease in-out"))},
+        {Easing::CubicIn, "cubic-in", t(AD_TR_NOOP("easing", "Ease in (strong)"))},
+        {Easing::CubicOut, "cubic-out", t(AD_TR_NOOP("easing", "Ease out (strong)"))},
+        {Easing::CubicInOut, "cubic-in-out", t(AD_TR_NOOP("easing", "Ease in-out (strong)"))},
+        {Easing::BackOut, "back-out", t(AD_TR_NOOP("easing", "Overshoot"))},
+        {Easing::ElasticOut, "elastic-out", t(AD_TR_NOOP("easing", "Spring"))},
+        {Easing::BounceOut, "bounce-out", t(AD_TR_NOOP("easing", "Bounce"))},
+        {Easing::Step, "step", t(AD_TR_NOOP("easing", "Step"))},
+    };
+    return kTable;
+}
 
 double BounceOut(double t)
 {
@@ -91,18 +103,20 @@ double ApplyEasing(Easing e, double t)
     return t;
 }
 
-std::span<const EasingInfo> Easings() { return kEasings; }
+std::span<const EasingInfo> Easings() { return EasingTable(); }
 
 std::string_view ToString(Easing e)
 {
-    const auto it = std::ranges::find(kEasings, e, &EasingInfo::easing);
-    return it != kEasings.end() ? it->id : "linear";
+    const auto &table = EasingTable();
+    const auto  it    = std::ranges::find(table, e, &EasingInfo::easing);
+    return it != table.end() ? it->id : "linear";
 }
 
 std::optional<Easing> EasingFromString(std::string_view s)
 {
-    const auto it = std::ranges::find(kEasings, s, &EasingInfo::id);
-    if (it == kEasings.end())
+    const auto &table = EasingTable();
+    const auto  it    = std::ranges::find(table, s, &EasingInfo::id);
+    if (it == table.end())
     {
         return std::nullopt;
     }

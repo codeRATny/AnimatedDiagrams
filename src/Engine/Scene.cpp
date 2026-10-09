@@ -9,6 +9,7 @@
 #include "Engine/Effects.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Shapes.hpp"
+#include "Utils/I18n.hpp"
 
 namespace ad
 {
@@ -530,7 +531,8 @@ private:
     void _DrawNote(const Step &s, double p)
     {
         const double       fade  = p < 0.12 ? p / 0.12 : p > 0.88 ? (1 - p) / 0.12 : 1;
-        const std::string &txt   = s.text.empty() ? kNoteDefault : s.text;
+        const std::string  note  = s.text.empty() ? Tr("scene", "note") : std::string();
+        const std::string &txt   = s.text.empty() ? note : s.text;
         const Font         font  = _Font(12.5, false);
         const double       w     = _tm.Width(txt, font) + 28;
         const Color        color = _C(s.color, Color::Rgb(0xfbbf24));
@@ -551,10 +553,11 @@ private:
         {
             return;
         }
-        const Color        color = _C(s.color, Color::Rgb(0x38bdf8));
-        const std::string &txt   = s.text.empty() ? kActionDefault : s.text;
-        const Font         font  = _Font(12, true);
-        const double       tw    = _tm.Width(txt, font);
+        const Color        color  = _C(s.color, Color::Rgb(0x38bdf8));
+        const std::string  action = s.text.empty() ? Tr("scene", "Action") : std::string();
+        const std::string &txt    = s.text.empty() ? action : s.text;
+        const Font         font   = _Font(12, true);
+        const double       tw     = _tm.Width(txt, font);
         constexpr double   kPad = 12, kSr = 7, kGapX = 7;
         const double       w = kPad + kSr * 2 + kGapX + tw + kPad;
         const Vec2         c{n->x + n->w / 2, n->y + n->h + 18};
@@ -615,9 +618,6 @@ private:
         _Text(pt, s.text, font, color, HAlign::Center, VAlign::Middle);
     }
 
-    inline static const std::string kNoteDefault   = "заметка";
-    inline static const std::string kActionDefault = "Действие";
-
     const Model                                    &_m;
     double                                          _t;
     const SceneOptions                             &_o;
@@ -657,7 +657,7 @@ Rect ContentBounds(const Model &m, const TextMeasurer &tm, const Registry &reg)
     {
         if (s.type == StepType::Note)
         {
-            const double w = tm.Width(s.text.empty() ? "заметка" : s.text, Font(12.5, false, family)) + 28;
+            const double w = tm.Width(s.text.empty() ? Tr("scene", "note") : s.text, Font(12.5, false, family)) + 28;
             b.Add(Rect{s.x, s.y, w, 30});
         }
         else if (s.type == StepType::Action)

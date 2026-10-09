@@ -5,14 +5,14 @@
   "name": "Security kit",
   "version": "1.0.0",
   "author": "Animated Diagrams",
-  "description": "Демо-плагин: IdP, WAF, хранилище секретов, токены; эффекты «отказ» и «проверено»; сценарии OAuth 2.0, проверки JWT и блокировки атаки; дизайн-система «Терминал».",
+  "description": "Demo plugin: IdP, WAF, secrets vault, tokens; “denied” and “verified” effects; OAuth 2.0, JWT validation and attack blocking scenarios; the “Terminal” design system.",
   "elements": [
     {
       "id": "idp",
       "label": "Identity provider",
       "icon": "ID",
-      "category": "Безопасность",
-      "description": "Keycloak / Auth0 / OIDC-провайдер",
+      "category": "Security",
+      "description": "Keycloak / Auth0 / OIDC provider",
       "accent": "$secondary",
       "width": 160.0,
       "height": 66.0,
@@ -26,8 +26,8 @@
       "id": "policy",
       "label": "Policy engine",
       "icon": "PDP",
-      "category": "Безопасность",
-      "description": "OPA / решения о доступе",
+      "category": "Security",
+      "description": "OPA / access decisions",
       "accent": "$info",
       "width": 150.0,
       "height": 62.0,
@@ -39,9 +39,9 @@
     },
     {
       "id": "vault",
-      "label": "Хранилище секретов",
+      "label": "Secrets vault",
       "icon": "V",
-      "category": "Безопасность",
+      "category": "Security",
       "description": "HashiCorp Vault / KMS",
       "accent": "#ffd814",
       "width": 160.0,
@@ -56,8 +56,8 @@
       "id": "waf",
       "label": "WAF",
       "icon": "W",
-      "category": "Безопасность",
-      "description": "Web application firewall (свой SVG-контур щита)",
+      "category": "Security",
+      "description": "Web application firewall (custom SVG shield outline)",
       "accent": "$danger",
       "width": 120.0,
       "height": 90.0,
@@ -70,9 +70,9 @@
     },
     {
       "id": "token",
-      "label": "Токен",
+      "label": "Token",
       "icon": "T",
-      "category": "Безопасность",
+      "category": "Security",
       "description": "JWT / access token",
       "accent": "$warning",
       "width": 120.0,
@@ -85,10 +85,10 @@
     },
     {
       "id": "ca",
-      "label": "Удостоверяющий центр",
+      "label": "Certificate authority",
       "icon": "CA",
-      "category": "Безопасность",
-      "description": "PKI, выпуск сертификатов",
+      "category": "Security",
+      "description": "PKI, certificate issuing",
       "accent": "$success",
       "width": 150.0,
       "height": 72.0,
@@ -100,10 +100,10 @@
     },
     {
       "id": "attacker",
-      "label": "Злоумышленник",
+      "label": "Attacker",
       "icon": "!",
-      "category": "Безопасность",
-      "description": "Источник атаки",
+      "category": "Security",
+      "description": "Attack source",
       "accent": "$danger",
       "width": 140.0,
       "height": 70.0,
@@ -118,9 +118,9 @@
   "effects": [
     {
       "id": "denied",
-      "label": "Отказ",
-      "category": "Безопасность",
-      "description": "Красная вспышка и встряхивание — доступ запрещён",
+      "label": "Denied",
+      "category": "Security",
+      "description": "A red flash and a shake — access denied",
       "color": "$danger",
       "repeat": 1,
       "tracks": [
@@ -184,9 +184,9 @@
     },
     {
       "id": "verified",
-      "label": "Проверено",
-      "category": "Безопасность",
-      "description": "Зелёное свечение с отскоком — проверка пройдена",
+      "label": "Verified",
+      "category": "Security",
+      "description": "A green glow with a bounce — the check passed",
       "color": "$success",
       "repeat": 1,
       "tracks": [
@@ -236,9 +236,9 @@
     },
     {
       "id": "locked",
-      "label": "Блокировка",
-      "category": "Безопасность",
-      "description": "Узел «сжимается» и тускнеет — заблокирован",
+      "label": "Block",
+      "category": "Security",
+      "description": "The node “shrinks” and dims — blocked",
       "color": "$warning",
       "repeat": 1,
       "tracks": [
@@ -279,9 +279,9 @@
     },
     {
       "id": "scan",
-      "label": "Сканирование",
-      "category": "Безопасность",
-      "description": "Ритмичная подсветка — идёт анализ трафика",
+      "label": "Scanning",
+      "category": "Security",
+      "description": "A rhythmic highlight — traffic is being inspected",
       "color": "$info",
       "repeat": 3,
       "tracks": [
@@ -311,16 +311,16 @@
     {
       "id": "oauth-code-flow",
       "label": "OAuth 2.0: authorization code",
-      "category": "Безопасность",
-      "description": "Вход пользователя через IdP, обмен кода на токен и вызов API",
+      "category": "Security",
+      "description": "User sign-in through the IdP, code-for-token exchange and an API call",
       "roles": [
         {
           "id": "user",
-          "label": "Пользователь"
+          "label": "User"
         },
         {
           "id": "client",
-          "label": "Приложение"
+          "label": "Application"
         },
         {
           "id": "idp",
@@ -340,7 +340,7 @@
           "from": "user",
           "to": "client",
           "variant": "request",
-          "label": "войти"
+          "label": "sign in"
         },
         {
           "id": "t2",
@@ -360,7 +360,7 @@
           "from": "user",
           "to": "idp",
           "variant": "request",
-          "label": "логин + пароль"
+          "label": "login + password"
         },
         {
           "id": "t4",
@@ -417,7 +417,7 @@
           "start": 6300.0,
           "duration": 700.0,
           "nodeId": "api",
-          "text": "проверка токена"
+          "text": "token check"
         },
         {
           "id": "t10",
@@ -433,17 +433,17 @@
     },
     {
       "id": "jwt-validation",
-      "label": "Проверка JWT на шлюзе",
-      "category": "Безопасность",
-      "description": "Шлюз проверяет подпись токена по ключам IdP; просроченный токен отклоняется",
+      "label": "JWT validation at the gateway",
+      "category": "Security",
+      "description": "The gateway checks the token signature with the IdP keys; an expired token is rejected",
       "roles": [
         {
           "id": "client",
-          "label": "Клиент"
+          "label": "Client"
         },
         {
           "id": "gateway",
-          "label": "Шлюз"
+          "label": "Gateway"
         },
         {
           "id": "idp",
@@ -451,7 +451,7 @@
         },
         {
           "id": "service",
-          "label": "Сервис"
+          "label": "Service"
         }
       ],
       "steps": [
@@ -545,17 +545,17 @@
     },
     {
       "id": "block-attack",
-      "label": "Блокировка атаки WAF",
-      "category": "Безопасность",
-      "description": "Флуд с одного адреса упирается в WAF и блокируется; легитимные запросы проходят",
+      "label": "WAF blocks an attack",
+      "category": "Security",
+      "description": "A flood from one address hits the WAF and is blocked; legitimate requests pass",
       "roles": [
         {
           "id": "attacker",
-          "label": "Злоумышленник"
+          "label": "Attacker"
         },
         {
           "id": "user",
-          "label": "Пользователь"
+          "label": "User"
         },
         {
           "id": "waf",
@@ -632,7 +632,7 @@
           "duration": 2600.0,
           "nodeId": "attacker",
           "state": "disabled",
-          "label": "заблокирован"
+          "label": "blocked"
         },
         {
           "id": "t8",
@@ -650,9 +650,9 @@
   "designSystems": [
     {
       "id": "terminal",
-      "label": "Терминал",
-      "category": "Безопасность",
-      "description": "Зелёный на чёрном, моноширинный шрифт, прямые связи",
+      "label": "Terminal",
+      "category": "Security",
+      "description": "Green on black, monospaced font, straight edges",
       "background": "#070b08",
       "edgeColor": "#2f8f4e",
       "textColor": "#c4f5cf",
@@ -722,5 +722,44 @@
         "labelColor": "#7fcf95"
       }
     }
-  ]
+  ],
+  "translations": {
+    "ru": {
+      "A flood from one address hits the WAF and is blocked; legitimate requests pass": "Флуд с одного адреса упирается в WAF и блокируется; легитимные запросы проходят",
+      "A green glow with a bounce — the check passed": "Зелёное свечение с отскоком — проверка пройдена",
+      "A red flash and a shake — access denied": "Красная вспышка и встряхивание — доступ запрещён",
+      "A rhythmic highlight — traffic is being inspected": "Ритмичная подсветка — идёт анализ трафика",
+      "Application": "Приложение",
+      "Attack source": "Источник атаки",
+      "Attacker": "Злоумышленник",
+      "Block": "Блокировка",
+      "Certificate authority": "Удостоверяющий центр",
+      "Client": "Клиент",
+      "Demo plugin: IdP, WAF, secrets vault, tokens; “denied” and “verified” effects; OAuth 2.0, JWT validation and attack blocking scenarios; the “Terminal” design system.": "Демо-плагин: IdP, WAF, хранилище секретов, токены; эффекты «отказ» и «проверено»; сценарии OAuth 2.0, проверки JWT и блокировки атаки; дизайн-система «Терминал».",
+      "Denied": "Отказ",
+      "Gateway": "Шлюз",
+      "Green on black, monospaced font, straight edges": "Зелёный на чёрном, моноширинный шрифт, прямые связи",
+      "JWT validation at the gateway": "Проверка JWT на шлюзе",
+      "Keycloak / Auth0 / OIDC provider": "Keycloak / Auth0 / OIDC-провайдер",
+      "OPA / access decisions": "OPA / решения о доступе",
+      "PKI, certificate issuing": "PKI, выпуск сертификатов",
+      "Scanning": "Сканирование",
+      "Secrets vault": "Хранилище секретов",
+      "Security": "Безопасность",
+      "Service": "Сервис",
+      "Terminal": "Терминал",
+      "The gateway checks the token signature with the IdP keys; an expired token is rejected": "Шлюз проверяет подпись токена по ключам IdP; просроченный токен отклоняется",
+      "The node “shrinks” and dims — blocked": "Узел «сжимается» и тускнеет — заблокирован",
+      "Token": "Токен",
+      "User": "Пользователь",
+      "User sign-in through the IdP, code-for-token exchange and an API call": "Вход пользователя через IdP, обмен кода на токен и вызов API",
+      "Verified": "Проверено",
+      "WAF blocks an attack": "Блокировка атаки WAF",
+      "Web application firewall (custom SVG shield outline)": "Web application firewall (свой SVG-контур щита)",
+      "blocked": "заблокирован",
+      "login + password": "логин + пароль",
+      "sign in": "войти",
+      "token check": "проверка токена"
+    }
+  }
 }

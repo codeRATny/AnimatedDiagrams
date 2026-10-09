@@ -35,6 +35,7 @@ add_library(ad_core STATIC
     Timeline/TimelineLayout.cpp
     Utils/CrashHandler.cpp
     Utils/File.cpp
+    Utils/I18n.cpp
     Utils/Text.cpp
 )
 add_library(ad::core ALIAS ad_core)

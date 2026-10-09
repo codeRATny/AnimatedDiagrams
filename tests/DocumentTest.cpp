@@ -29,11 +29,11 @@ TEST(DocumentTest, AddNodeUsesTypeDefaults)
     Document    d;
     const Node &n = d.AddNode({100, 50}, Type("db"));
     EXPECT_EQ(n.type, "db");
-    EXPECT_EQ(n.label, "БД 1");
+    EXPECT_EQ(n.label, "DB 1");
     EXPECT_DOUBLE_EQ(n.w, Type("db").width);
     EXPECT_DOUBLE_EQ(n.x, 100 - n.w / 2);
     EXPECT_TRUE(n.id.starts_with("n_"));
-    EXPECT_EQ(d.AddNode({0, 0}, Type("db")).label, "БД 2");
+    EXPECT_EQ(d.AddNode({0, 0}, Type("db")).label, "DB 2");
 }
 
 TEST(DocumentTest, AddEdgeRejectsSelfAndUnknown)
@@ -217,7 +217,7 @@ TEST(DocumentTest, MergeKeyCoalescesEdits)
         d.Mutable().FindNode("svcA")->label = label;
     }
     ASSERT_TRUE(d.Undo());
-    EXPECT_EQ(d.Get().FindNode("svcA")->label, "Сервис A");
+    EXPECT_EQ(d.Get().FindNode("svcA")->label, "Service A");
     EXPECT_FALSE(d.CanUndo());
 }
 

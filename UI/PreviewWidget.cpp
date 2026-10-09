@@ -171,9 +171,9 @@ void PreviewWidget::ShowDesignSystem(const DesignSystem &ds, const Registry &reg
 {
     Model m;
     m.library.Upsert(ds);
-    m.nodes.push_back(MakeNode("c", "Клиент", "client", 0, 40, 140, 64));
-    m.nodes.push_back(MakeNode("s", "Сервис", "service", 240, 40, 140, 64));
-    m.nodes.push_back(MakeNode("d", "БД", "db", 480, 34, 140, 74));
+    m.nodes.push_back(MakeNode("c", Us(tr("Client")), "client", 0, 40, 140, 64));
+    m.nodes.push_back(MakeNode("s", Us(tr("Service")), "service", 240, 40, 140, 64));
+    m.nodes.push_back(MakeNode("d", Us(tr("DB")), "db", 480, 34, 140, 74));
     for (const auto &[from, to] : {std::pair{"c", "s"}, std::pair{"s", "d"}})
     {
         Edge e;
@@ -229,7 +229,7 @@ void PreviewWidget::paintEvent(QPaintEvent * /*e*/)
     if (!_has_scene)
     {
         p.setPen(ToQColor(Ui().muted));
-        p.drawText(rect(), Qt::AlignCenter, tr("Нет предпросмотра"));
+        p.drawText(rect(), Qt::AlignCenter, tr("No preview"));
         return;
     }
     const double t = _animated ? std::fmod(static_cast<double>(_clock.elapsed()), std::max(1.0, _model.scenario.duration)) : 0;

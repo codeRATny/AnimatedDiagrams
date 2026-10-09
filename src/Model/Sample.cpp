@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "Utils/I18n.hpp"
+
 namespace ad
 {
 
@@ -71,8 +73,9 @@ Model EmptyModel() { return Model{}; }
 Model SampleModel()
 {
     Model m;
-    m.meta.name = "Пример: fallback с ретраями и таймаутом";
-    m.nodes     = {Service("svcA", "Сервис A", 80, 120), Service("svcB", "Сервис B", 480, 60), Service("svcC", "Сервис C", 480, 260)};
+    m.meta.name = Tr("sample", "Example: fallback with retries and a timeout");
+    m.nodes     = {Service("svcA", Tr("sample", "Service A"), 80, 120), Service("svcB", Tr("sample", "Service B"), 480, 60),
+                   Service("svcC", Tr("sample", "Service C"), 480, 260)};
 
     Edge ab;
     ab.id    = "eAB";
@@ -98,17 +101,17 @@ Model SampleModel()
 
     m.scenario.duration = 12000;
     m.scenario.steps    = {
-        Message("s1", "svcA", "svcB", "request", "запрос", 300, 1100), // 1. A -> B: request
-        State("s2", "svcB", "down", 1400, 10600),                      // 2. B is down
-        Note("s2b", "Сервис B недоступен", 470, 20, 1500, 5100),
+        Message("s1", "svcA", "svcB", "request", Tr("sample", "request"), 300, 1100), // 1. A -> B: request
+        State("s2", "svcB", "down", 1400, 10600),                                     // 2. B is down
+        Note("s2b", Tr("sample", "Service B is down"), 470, 20, 1500, 5100),
         timer, // 3. 5 s timer and retries
         Message("s4", "svcA", "svcB", "retry", "retry 1", 2400, 900),
-        Message("s5e", "svcB", "svcA", "error", "нет ответа", 4750, 700),
+        Message("s5e", "svcB", "svcA", "error", Tr("sample", "no response"), 4750, 700),
         Message("s5", "svcA", "svcB", "retry", "retry 2", 3800, 900),
         Message("s6", "svcA", "svcB", "retry", "retry 3", 5200, 900),
         pulse, // 4. timeout -> C
-        Note("s7n", "5с истекли — переключение на C", 60, 210, 6600, 2200),
-        Message("s8", "svcA", "svcC", "request", "запрос", 7000, 1100),
+        Note("s7n", Tr("sample", "5 s elapsed — switching to C"), 60, 210, 6600, 2200),
+        Message("s8", "svcA", "svcC", "request", Tr("sample", "request"), 7000, 1100),
         State("s9", "svcC", "active", 8100, 3900),
         Message("s10", "svcC", "svcA", "success", "200 OK", 8400, 1000),
         State("s11", "svcA", "success", 9500, 2500),

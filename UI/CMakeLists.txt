@@ -14,6 +14,7 @@ qt_add_library(ad_ui STATIC
     Exporter.cpp Exporter.hpp
     Fields.cpp Fields.hpp
     Inspector.cpp Inspector.hpp
+    Language.cpp Language.hpp
     LibraryDialog.cpp LibraryDialog.hpp
     MainWindow.cpp MainWindow.hpp
     McpHosts.cpp McpHosts.hpp

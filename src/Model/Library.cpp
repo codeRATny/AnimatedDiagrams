@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <array>
 
+#include "Utils/I18n.hpp"
+
 namespace ad
 {
 
@@ -268,7 +270,7 @@ AnimationTemplate MakeTemplate(std::string id, std::string label, std::string de
     a.id          = std::move(id);
     a.label       = std::move(label);
     a.description = std::move(description);
-    a.category    = "Сценарии";
+    a.category    = Tr("library", "Scenarios");
     a.roles       = std::move(roles);
     a.steps       = std::move(steps);
     for (size_t i = 0; i < a.steps.size(); ++i)
@@ -284,9 +286,9 @@ std::vector<DesignSystem> MakeDesignSystems()
 
     DesignSystem dark;
     dark.id          = "dark";
-    dark.label       = "Тёмная (по умолчанию)";
-    dark.category    = "Встроенные";
-    dark.description = "Исходный вид редактора: тёмный холст, мягкие акценты";
+    dark.label       = Tr("library", "Dark (default)");
+    dark.category    = Tr("library", "Built-in");
+    dark.description = Tr("library", "The original editor look: dark canvas, soft accents");
     dark.background  = "#0a111f";
     dark.edge_color  = "#5f7196";
     dark.text_color  = "#f2f6ff";
@@ -297,9 +299,9 @@ std::vector<DesignSystem> MakeDesignSystems()
 
     DesignSystem light;
     light.id               = "light";
-    light.label            = "Светлая";
-    light.category         = "Встроенные";
-    light.description      = "Белый холст для документации и презентаций";
+    light.label            = Tr("library", "Light");
+    light.category         = Tr("library", "Built-in");
+    light.description      = Tr("library", "White canvas for documentation and presentations");
     light.background       = "#f6f8fc";
     light.edge_color       = "#94a3b8";
     light.text_color       = "#0f172a";
@@ -320,9 +322,9 @@ std::vector<DesignSystem> MakeDesignSystems()
 
     DesignSystem blueprint;
     blueprint.id             = "blueprint";
-    blueprint.label          = "Чертёж";
-    blueprint.category       = "Встроенные";
-    blueprint.description    = "Синий фон, тонкие линии, моноширинный шрифт, ортогональные связи";
+    blueprint.label          = Tr("library", "Blueprint");
+    blueprint.category       = Tr("library", "Built-in");
+    blueprint.description    = Tr("library", "Blue background, thin lines, monospaced font, orthogonal edges");
     blueprint.background     = "#0b3a6e";
     blueprint.edge_color     = "#cfe8ff";
     blueprint.text_color     = "#ffffff";
@@ -347,9 +349,9 @@ std::vector<DesignSystem> MakeDesignSystems()
 
     DesignSystem contrast;
     contrast.id                = "high-contrast";
-    contrast.label             = "Высокий контраст";
-    contrast.category          = "Встроенные";
-    contrast.description       = "Максимальная читаемость: чёрный фон, толстые белые линии, яркие состояния";
+    contrast.label             = Tr("library", "High contrast");
+    contrast.category          = Tr("library", "Built-in");
+    contrast.description       = Tr("library", "Maximum legibility: black background, thick white lines, bright states");
     contrast.background        = "#000000";
     contrast.edge_color        = "#ffffff";
     contrast.text_color        = "#ffffff";
@@ -379,79 +381,87 @@ LibrarySet MakeBuiltins()
     LibrarySet set;
 
     set.elements = {
-        MakeElement("service", "Сервис", "▢", "Архитектура", "#4f8cff", "rounded"),
-        MakeElement("client", "Клиент", "◎", "Архитектура", "#22c55e", "rounded"),
-        MakeElement("gateway", "Шлюз", "◇", "Архитектура", "#06b6d4", "rounded"),
-        MakeElement("balancer", "Балансировщик", "⇉", "Архитектура", "#14b8a6", "parallelogram", 150, 60),
-        MakeElement("external", "Внешний", "◈", "Архитектура", "#94a3b8", "rounded"),
-        MakeElement("user", "Пользователь", "☺", "Архитектура", "#f472b6", "ellipse", 130, 70),
-        MakeElement("db", "БД", "◫", "Данные", "#a855f7", "cylinder", 140, 74),
-        MakeElement("queue", "Очередь", "≣", "Данные", "#f59e0b", "queue"),
-        MakeElement("cache", "Кэш", "⚡", "Данные", "#ef4444", "hexagon", 140, 66),
-        MakeElement("document", "Документ", "▤", "Данные", "#64748b", "document", 130, 74),
-        MakeElement("cloud", "Облако", "☁", "Прочее", "#38bdf8", "cloud", 160, 84),
-        MakeElement("decision", "Решение", "◆", "Логика", "#eab308", "diamond", 140, 84),
-        MakeElement("note", "Заметка", "✎", "Прочее", "#fbbf24", "note", 150, 70),
+        MakeElement("service", Tr("library", "Service"), "▢", Tr("library", "Architecture"), "#4f8cff", "rounded"),
+        MakeElement("client", Tr("library", "Client"), "◎", Tr("library", "Architecture"), "#22c55e", "rounded"),
+        MakeElement("gateway", Tr("library", "Gateway"), "◇", Tr("library", "Architecture"), "#06b6d4", "rounded"),
+        MakeElement("balancer", Tr("library", "Load balancer"), "⇉", Tr("library", "Architecture"), "#14b8a6", "parallelogram", 150, 60),
+        MakeElement("external", Tr("library", "External"), "◈", Tr("library", "Architecture"), "#94a3b8", "rounded"),
+        MakeElement("user", Tr("library", "User"), "☺", Tr("library", "Architecture"), "#f472b6", "ellipse", 130, 70),
+        MakeElement("db", Tr("library", "DB"), "◫", Tr("library", "Data"), "#a855f7", "cylinder", 140, 74),
+        MakeElement("queue", Tr("library", "Queue"), "≣", Tr("library", "Data"), "#f59e0b", "queue"),
+        MakeElement("cache", Tr("library", "Cache"), "⚡", Tr("library", "Data"), "#ef4444", "hexagon", 140, 66),
+        MakeElement("document", Tr("library", "Document"), "▤", Tr("library", "Data"), "#64748b", "document", 130, 74),
+        MakeElement("cloud", Tr("library", "Cloud"), "☁", Tr("library", "Other"), "#38bdf8", "cloud", 160, 84),
+        MakeElement("decision", Tr("library", "Decision"), "◆", Tr("library", "Logic"), "#eab308", "diamond", 140, 84),
+        MakeElement("note", Tr("library", "Note"), "✎", Tr("library", "Other"), "#fbbf24", "note", 150, 70),
     };
     set.elements[4].style.stroke_style = "dashed"; // external
     set.design_systems                 = MakeDesignSystems();
 
     set.effects = {
-        MakeEffect("pulse", "Пульс", "Пульсация с подсветкой", 2,
+        MakeEffect("pulse", Tr("library", "Pulse"), Tr("library", "Pulsing with a glow"), 2,
                    {Track(P::Scale, {{0, 1}, {0.5, 1.06, E::EaseInOut}, {1, 1, E::EaseInOut}}),
                     Track(P::Glow, {{0, 0.35}, {0.5, 0.9, E::EaseInOut}, {1, 0.35, E::EaseInOut}})}),
-        MakeEffect("glow", "Свечение", "Плавное появление и затухание ореола", 1,
+        MakeEffect("glow", Tr("library", "Glow"), Tr("library", "A halo that fades in and out"), 1,
                    {Track(P::Glow, {{0, 0}, {0.2, 1, E::EaseOut}, {0.8, 1}, {1, 0, E::EaseIn}})}),
-        MakeEffect("shake", "Тряска", "Горизонтальная тряска (ошибка)", 1,
+        MakeEffect("shake", Tr("library", "Shake"), Tr("library", "Horizontal shake (error)"), 1,
                    {Track(P::OffsetX, {{0, 0}, {0.1, -7}, {0.3, 7}, {0.5, -5}, {0.7, 5}, {0.9, -2}, {1, 0}}),
                     Track(P::Tint, {{0, 0}, {0.2, 0.4}, {1, 0}})},
                    "#ef4444"),
-        MakeEffect("blink", "Мигание", "Прозрачность вкл/выкл", 3, {Track(P::Opacity, {{0, 1}, {0.5, 0.15, E::Step}, {1, 1, E::Step}})}),
-        MakeEffect("bounce", "Подпрыгивание", "Прыжок вверх с отскоком", 2,
+        MakeEffect("blink", Tr("library", "Blink"), Tr("library", "Opacity on/off"), 3,
+                   {Track(P::Opacity, {{0, 1}, {0.5, 0.15, E::Step}, {1, 1, E::Step}})}),
+        MakeEffect("bounce", Tr("library", "Bounce"), Tr("library", "A jump up with a bounce"), 2,
                    {Track(P::OffsetY, {{0, 0}, {0.4, -14, E::EaseOut}, {1, 0, E::BounceOut}})}),
-        MakeEffect("fade-in", "Появление", "Плавное появление", 1, {Track(P::Opacity, {{0, 0}, {1, 1, E::EaseOut}})}),
-        MakeEffect("fade-out", "Исчезновение", "Плавное исчезновение", 1, {Track(P::Opacity, {{0, 1}, {1, 0, E::EaseIn}})}),
-        MakeEffect("pop", "Появление с отскоком", "Масштаб с перелётом", 1,
+        MakeEffect("fade-in", Tr("library", "Fade in"), Tr("library", "Smooth fade in"), 1,
+                   {Track(P::Opacity, {{0, 0}, {1, 1, E::EaseOut}})}),
+        MakeEffect("fade-out", Tr("library", "Fade out"), Tr("library", "Smooth fade out"), 1,
+                   {Track(P::Opacity, {{0, 1}, {1, 0, E::EaseIn}})}),
+        MakeEffect("pop", Tr("library", "Pop in"), Tr("library", "Scale with an overshoot"), 1,
                    {Track(P::Scale, {{0, 0.7}, {0.6, 1.12, E::BackOut}, {1, 1, E::EaseOut}}),
                     Track(P::Opacity, {{0, 0}, {0.3, 1, E::EaseOut}, {1, 1}})}),
-        MakeEffect("spin", "Вращение", "Полный оборот", 1, {Track(P::Rotate, {{0, 0}, {1, 360, E::EaseInOut}})}),
-        MakeEffect("wobble", "Покачивание", "Покачивание из стороны в сторону", 1,
+        MakeEffect("spin", Tr("library", "Spin"), Tr("library", "A full turn"), 1, {Track(P::Rotate, {{0, 0}, {1, 360, E::EaseInOut}})}),
+        MakeEffect("wobble", Tr("library", "Wobble"), Tr("library", "Swaying from side to side"), 1,
                    {Track(P::Rotate, {{0, 0}, {0.2, -6}, {0.4, 5}, {0.6, -4}, {0.8, 2}, {1, 0}})}),
-        MakeEffect("highlight", "Выделение", "Подкраска и свечение акцентным цветом", 1,
+        MakeEffect("highlight", Tr("library", "Highlight"), Tr("library", "Tint and glow in the accent color"), 1,
                    {Track(P::Tint, {{0, 0}, {0.2, 0.55, E::EaseOut}, {0.8, 0.55}, {1, 0, E::EaseIn}}),
                     Track(P::Glow, {{0, 0}, {0.2, 0.8, E::EaseOut}, {0.8, 0.8}, {1, 0, E::EaseIn}})},
                    "#facc15"),
     };
     for (auto &e : set.effects)
     {
-        e.category = "Базовые";
+        e.category = Tr("library", "Basic");
     }
 
     set.animations = {
-        MakeTemplate("request-response", "Запрос → ответ", "Клиент отправляет запрос, сервер обрабатывает и отвечает",
-                     {{"client", "Клиент"}, {"server", "Сервер"}},
-                     {Msg("client", "server", "request", "запрос", 0, 1000), Action("server", "Обработка", 1000, 800),
-                      Msg("server", "client", "success", "200 OK", 1800, 1000)}),
-        MakeTemplate("retry-backoff", "Ретраи с backoff", "Ошибки 503 и повторные попытки с растущей паузой",
-                     {{"client", "Клиент"}, {"server", "Сервер"}},
-                     {Msg("client", "server", "request", "запрос", 0, 900), Msg("server", "client", "error", "503", 1000, 700),
-                      Timer("client", 1, "backoff", 1700, 1000), Msg("client", "server", "retry", "retry 1", 2700, 900),
-                      Msg("server", "client", "error", "503", 3700, 700), Timer("client", 2, "backoff", 4400, 2000),
-                      Msg("client", "server", "retry", "retry 2", 6400, 900), Msg("server", "client", "success", "200 OK", 7400, 900)}),
-        MakeTemplate("timeout-fallback", "Таймаут и fallback", "Основной сервис недоступен — по таймауту переключение на резервный",
-                     {{"client", "Клиент"}, {"primary", "Основной"}, {"fallback", "Резервный"}},
-                     {Msg("client", "primary", "request", "запрос", 0, 1000), State("primary", "down", 1000, 6500),
+        MakeTemplate("request-response", Tr("library", "Request → response"),
+                     Tr("library", "The client sends a request, the server processes it and responds"),
+                     {{"client", Tr("library", "Client")}, {"server", Tr("library", "Server")}},
+                     {Msg("client", "server", "request", Tr("library", "request"), 0, 1000),
+                      Action("server", Tr("library", "Processing"), 1000, 800), Msg("server", "client", "success", "200 OK", 1800, 1000)}),
+        MakeTemplate("retry-backoff", Tr("library", "Retries with backoff"), Tr("library", "503 errors and retries with a growing pause"),
+                     {{"client", Tr("library", "Client")}, {"server", Tr("library", "Server")}},
+                     {Msg("client", "server", "request", Tr("library", "request"), 0, 900),
+                      Msg("server", "client", "error", "503", 1000, 700), Timer("client", 1, "backoff", 1700, 1000),
+                      Msg("client", "server", "retry", "retry 1", 2700, 900), Msg("server", "client", "error", "503", 3700, 700),
+                      Timer("client", 2, "backoff", 4400, 2000), Msg("client", "server", "retry", "retry 2", 6400, 900),
+                      Msg("server", "client", "success", "200 OK", 7400, 900)}),
+        MakeTemplate("timeout-fallback", Tr("library", "Timeout and fallback"),
+                     Tr("library", "The primary service is down — on timeout the client switches to the fallback"),
+                     {{"client", Tr("library", "Client")}, {"primary", Tr("library", "Primary")}, {"fallback", Tr("library", "Fallback")}},
+                     {Msg("client", "primary", "request", Tr("library", "request"), 0, 1000), State("primary", "down", 1000, 6500),
                       Timer("client", 3, "timeout", 1000, 3000), Effect("client", "shake", 4000, 600),
-                      Msg("client", "fallback", "request", "запрос", 4600, 1000), Action("fallback", "Обработка", 5600, 800),
+                      Msg("client", "fallback", "request", Tr("library", "request"), 4600, 1000),
+                      Action("fallback", Tr("library", "Processing"), 5600, 800),
                       Msg("fallback", "client", "success", "200 OK", 6400, 1000)}),
-        MakeTemplate("pub-sub", "Публикация / подписка", "Событие через брокер к подписчику",
-                     {{"publisher", "Издатель"}, {"broker", "Брокер"}, {"subscriber", "Подписчик"}},
-                     {Msg("publisher", "broker", "event", "event", 0, 900), Action("broker", "Маршрутизация", 900, 700),
-                      Msg("broker", "subscriber", "event", "event", 1600, 900), Effect("subscriber", "pop", 2500, 500)}),
-        MakeTemplate("cache-aside", "Cache-aside", "Промах кэша, чтение из БД и запись в кэш",
-                     {{"app", "Приложение"}, {"cache", "Кэш"}, {"db", "БД"}},
+        MakeTemplate(
+            "pub-sub", Tr("library", "Publish / subscribe"), Tr("library", "An event through the broker to the subscriber"),
+            {{"publisher", Tr("library", "Publisher")}, {"broker", Tr("library", "Broker")}, {"subscriber", Tr("library", "Subscriber")}},
+            {Msg("publisher", "broker", "event", "event", 0, 900), Action("broker", Tr("library", "Routing"), 900, 700),
+             Msg("broker", "subscriber", "event", "event", 1600, 900), Effect("subscriber", "pop", 2500, 500)}),
+        MakeTemplate("cache-aside", "Cache-aside", Tr("library", "Cache miss, read from the DB and write to the cache"),
+                     {{"app", Tr("library", "Application")}, {"cache", Tr("library", "Cache")}, {"db", Tr("library", "DB")}},
                      {Msg("app", "cache", "request", "GET", 0, 800), Msg("cache", "app", "error", "miss", 800, 700),
-                      Msg("app", "db", "request", "SELECT", 1500, 900), Action("db", "Запрос", 2400, 600),
+                      Msg("app", "db", "request", "SELECT", 1500, 900), Action("db", Tr("library", "Query"), 2400, 600),
                       Msg("db", "app", "response", "rows", 3000, 900), Msg("app", "cache", "request", "SET", 3900, 800),
                       Effect("cache", "glow", 4700, 600)}),
     };

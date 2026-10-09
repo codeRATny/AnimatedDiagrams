@@ -39,22 +39,22 @@ TEST(SceneTest, Utf8Length)
 TEST(SceneTest, StaticDiagram)
 {
     const Frame f = BuildFrame(SampleModel(), 0, {}, kTm);
-    EXPECT_TRUE(HasText(f, "Сервис A"));
+    EXPECT_TRUE(HasText(f, "Service A"));
     EXPECT_TRUE(HasText(f, "REST"));
-    EXPECT_TRUE(HasText(f, "Норма"));
-    EXPECT_FALSE(HasText(f, "запрос"));
+    EXPECT_TRUE(HasText(f, "Normal"));
+    EXPECT_FALSE(HasText(f, "request"));
 }
 
 TEST(SceneTest, MessagesStatesTimer)
 {
     const Model m = SampleModel();
-    EXPECT_TRUE(HasText(BuildFrame(m, 800, {}, kTm), "запрос"));
-    EXPECT_TRUE(HasText(BuildFrame(m, 2000, {}, kTm), "Недоступен"));
-    EXPECT_TRUE(HasText(BuildFrame(m, 1600, {}, kTm), "5с"));
-    EXPECT_TRUE(HasText(BuildFrame(m, 4100, {}, kTm), "3с"));
+    EXPECT_TRUE(HasText(BuildFrame(m, 800, {}, kTm), "request"));
+    EXPECT_TRUE(HasText(BuildFrame(m, 2000, {}, kTm), "Down"));
+    EXPECT_TRUE(HasText(BuildFrame(m, 1600, {}, kTm), "5s"));
+    EXPECT_TRUE(HasText(BuildFrame(m, 4100, {}, kTm), "3s"));
     const Frame last = BuildFrame(m, m.scenario.duration, {}, kTm);
-    EXPECT_TRUE(HasText(last, "Успех"));
-    EXPECT_TRUE(HasText(last, "Активен"));
+    EXPECT_TRUE(HasText(last, "Success"));
+    EXPECT_TRUE(HasText(last, "Active"));
 }
 
 TEST(SceneTest, EffectTransformsNode)

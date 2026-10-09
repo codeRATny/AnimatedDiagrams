@@ -23,7 +23,7 @@ namespace ad::ui
 
 ApplyTemplateDialog::ApplyTemplateDialog(Controller &ctl, const QString &template_id, QWidget *parent) : QDialog(parent), _ctl(ctl)
 {
-    setWindowTitle(tr("Применить анимацию"));
+    setWindowTitle(tr("Apply animation"));
     setMinimumWidth(420);
 
     _template = new QComboBox;
@@ -45,15 +45,15 @@ ApplyTemplateDialog::ApplyTemplateDialog(Controller &ctl, const QString &templat
     _start->setRange(0, 3'600'000);
     _start->setDecimals(0);
     _start->setSingleStep(100);
-    _start->setSuffix(tr(" мс"));
+    _start->setSuffix(tr(" ms"));
     _start->setValue(_ctl.Time());
 
     auto *top = new QFormLayout;
-    top->addRow(tr("Анимация"), _template);
+    top->addRow(tr("Animation"), _template);
     top->addRow(QString(), _description);
-    top->addRow(tr("Начало"), _start);
+    top->addRow(tr("Start"), _start);
 
-    auto *roles = new QGroupBox(tr("Роли → узлы"));
+    auto *roles = new QGroupBox(tr("Roles → nodes"));
     _roles_form = new QFormLayout(roles);
 
     auto *buttons = fields::OkCancelButtons(this);

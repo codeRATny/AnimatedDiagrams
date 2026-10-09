@@ -94,13 +94,13 @@ void NotifyAboutCrashReports(QWidget *parent)
     }
     MarkCrashReportsSeen();
     const QString path = QDir::toNativeSeparators(reports.front());
-    QMessageBox   box(QMessageBox::Warning, QObject::tr("Аварийное завершение"),
-                      QObject::tr("Предыдущий сеанс завершился аварийно. Открытые вкладки восстановлены из автосохранения.\n\n"
-                                    "Отчёт о сбое сохранён:\n%1\n\nПриложите его к сообщению об ошибке.")
+    QMessageBox   box(QMessageBox::Warning, QObject::tr("Unexpected Shutdown"),
+                      QObject::tr("The previous session ended unexpectedly. Open tabs have been restored from autosave.\n\n"
+                                    "A crash report was saved to:\n%1\n\nPlease attach it to your bug report.")
                           .arg(path),
                       QMessageBox::Close, parent);
-    QPushButton  *open = box.addButton(QObject::tr("Открыть папку"), QMessageBox::ActionRole);
-    QPushButton  *copy = box.addButton(QObject::tr("Скопировать путь"), QMessageBox::ActionRole);
+    QPushButton  *open = box.addButton(QObject::tr("Open folder"), QMessageBox::ActionRole);
+    QPushButton  *copy = box.addButton(QObject::tr("Copy path"), QMessageBox::ActionRole);
     box.exec();
     if (box.clickedButton() == open)
     {

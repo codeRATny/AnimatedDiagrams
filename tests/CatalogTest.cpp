@@ -6,11 +6,11 @@ using namespace ad;
 
 TEST(CatalogTest, LookupWithFallback)
 {
-    EXPECT_EQ(NodeState("down").label, "Недоступен");
+    EXPECT_EQ(NodeState("down").label, "Down");
     EXPECT_EQ(NodeState("nope").id, "ok");
     EXPECT_EQ(MsgVariant("retry").dash, 6);
     EXPECT_EQ(LinkAnim("nope").id, "flow");
-    EXPECT_EQ(TimeUnit("m").short_label, "мин");
+    EXPECT_EQ(TimeUnit("m").short_label, "min");
 }
 
 TEST(CatalogTest, StepTypeStrings)

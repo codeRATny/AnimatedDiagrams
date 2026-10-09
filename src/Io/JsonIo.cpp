@@ -5,6 +5,7 @@
 
 #include "Io/JsonCodec.hpp"
 #include "Model/Document.hpp"
+#include "Utils/I18n.hpp"
 
 namespace ad
 {
@@ -25,7 +26,7 @@ void NormalizeModel(Model &m)
     m.version = kModelVersion;
     if (m.meta.name.empty())
     {
-        m.meta.name = "Без названия";
+        m.meta.name = Tr("document", "Untitled");
     }
     if (!(m.view.zoom > 0))
     {
@@ -122,11 +123,11 @@ std::expected<Model, std::string> ParseModel(std::string_view text)
     const json::Json j = json::Json::parse(text, nullptr, /*allow_exceptions=*/false);
     if (j.is_discarded())
     {
-        return std::unexpected(std::string("Файл не является корректным JSON"));
+        return std::unexpected(std::string(Tr("document", "The file is not valid JSON")));
     }
     if (!j.is_object() || !j.contains("nodes") || !j.contains("scenario"))
     {
-        return std::unexpected(std::string("Некорректный формат файла: нет nodes/scenario"));
+        return std::unexpected(std::string(Tr("document", "Invalid file format: no nodes/scenario")));
     }
     Model m = json::ModelFromJson(j);
     NormalizeModel(m);

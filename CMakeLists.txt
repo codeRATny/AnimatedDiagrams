@@ -21,6 +21,7 @@ option(BUILD_APP "Build the Qt application (UI/ + apps/)" ON)
 option(BUILD_TESTS "Build unit tests" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors (CI)" OFF)
 option(WITH_LIBAV "WebM / MP4 export through the FFmpeg libraries (libav*)" ON)
+option(REQUIRE_TRANSLATIONS "Fail when Qt LinguistTools are missing (otherwise the interface is English only)" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CompilerWarnings)

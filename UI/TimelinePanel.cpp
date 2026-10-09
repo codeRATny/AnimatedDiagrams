@@ -36,23 +36,23 @@ TimelinePanel::TimelinePanel(Controller &ctl, QWidget *parent) : QWidget(parent)
         l->addWidget(b);
         return b;
     };
-    mk(QStyle::SP_MediaSkipBackward, tr("В начало (Home)"),
+    mk(QStyle::SP_MediaSkipBackward, tr("Go to start (Home)"),
        [this]
        {
            _ctl.Seek(0);
        });
-    _play_btn = mk(QStyle::SP_MediaPlay, tr("Играть / Пауза (Пробел)"),
+    _play_btn = mk(QStyle::SP_MediaPlay, tr("Play / Pause (Space)"),
                    [this]
                    {
                        _ctl.TogglePlay();
                    });
     _play_btn->setObjectName(QStringLiteral("primaryButton"));
-    mk(QStyle::SP_MediaStop, tr("Стоп"),
+    mk(QStyle::SP_MediaStop, tr("Stop"),
        [this]
        {
            _ctl.Stop();
        });
-    mk(QStyle::SP_MediaSkipForward, tr("В конец (End)"),
+    mk(QStyle::SP_MediaSkipForward, tr("Go to end (End)"),
        [this]
        {
            _ctl.Seek(_ctl.Duration());
@@ -62,7 +62,7 @@ TimelinePanel::TimelinePanel(Controller &ctl, QWidget *parent) : QWidget(parent)
     _readout->setObjectName(QStringLiteral("readout"));
     l->addWidget(_readout);
 
-    l->addWidget(new QLabel(tr("Скорость")));
+    l->addWidget(new QLabel(tr("Speed")));
     _speed = new QComboBox;
     for (const double s : {0.25, 0.5, 1.0, 2.0, 4.0})
     {
@@ -76,7 +76,7 @@ TimelinePanel::TimelinePanel(Controller &ctl, QWidget *parent) : QWidget(parent)
             });
     l->addWidget(_speed);
 
-    l->addWidget(new QLabel(tr("Длит., с")));
+    l->addWidget(new QLabel(tr("Duration, s")));
     _duration = new QDoubleSpinBox;
     _duration->setRange(1, 3600);
     _duration->setDecimals(1);
@@ -94,7 +94,7 @@ TimelinePanel::TimelinePanel(Controller &ctl, QWidget *parent) : QWidget(parent)
             });
     l->addWidget(_duration);
 
-    _loop = new QCheckBox(tr("Повтор"));
+    _loop = new QCheckBox(tr("Loop"));
     _loop->setChecked(_ctl.Loop());
     connect(_loop, &QCheckBox::toggled, this,
             [this](bool v)
@@ -110,12 +110,12 @@ TimelinePanel::TimelinePanel(Controller &ctl, QWidget *parent) : QWidget(parent)
         _step_type->addItem(Qs(t.label), static_cast<int>(t.type));
     }
     l->addWidget(_step_type);
-    auto *add = new QPushButton(tr("＋ Добавить шаг"));
+    auto *add = new QPushButton(tr("＋ Add step"));
     add->setObjectName(QStringLiteral("primaryButton"));
     connect(add, &QPushButton::clicked, this, &TimelinePanel::AddStep);
     l->addWidget(add);
-    auto *anim = new QPushButton(tr("▶ Анимация…"));
-    anim->setToolTip(tr("Вставить готовую анимацию (шаблон из библиотеки)"));
+    auto *anim = new QPushButton(tr("▶ Animation…"));
+    anim->setToolTip(tr("Insert a ready-made animation (template from the library)"));
     connect(anim, &QPushButton::clicked, this, &TimelinePanel::AnimationRequested);
     l->addWidget(anim);
 
@@ -149,7 +149,7 @@ void TimelinePanel::AddStep()
     auto       step = _ctl.Doc().MakeDefaultStep(type, _ctl.Time());
     if (!step.has_value())
     {
-        Q_EMIT StatusMessage(type == StepType::Link ? tr("Сначала добавьте связь между узлами") : tr("Сначала добавьте узлы на диаграмму"));
+        Q_EMIT StatusMessage(type == StepType::Link ? tr("Add an edge between nodes first") : tr("Add nodes to the diagram first"));
         return;
     }
     const std::string id = _ctl.Doc().AddStep(std::move(*step)).id;

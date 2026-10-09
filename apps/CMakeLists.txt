@@ -17,6 +17,30 @@ if(UNIX AND NOT APPLE)
     set_target_properties(animated_diagrams PROPERTIES ENABLE_EXPORTS ON)
 endif()
 target_compile_definitions(animated_diagrams PRIVATE AD_VERSION_STRING="${PROJECT_VERSION}")
+
+# ---- translations (Qt Linguist) -----------------------------------------------
+# Source strings are English; i18n/*.ts are compiled into the executable (:/i18n).
+# `cmake --build build --target update_translations` refreshes the .ts files from the sources.
+find_package(Qt6 6.4 QUIET COMPONENTS LinguistTools)
+if(Qt6LinguistTools_FOUND)
+    file(GLOB_RECURSE AD_TR_SOURCES CONFIGURE_DEPENDS
+        ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.hpp
+        ${PROJECT_SOURCE_DIR}/UI/*.cpp ${PROJECT_SOURCE_DIR}/UI/*.hpp
+        ${PROJECT_SOURCE_DIR}/apps/*.cpp)
+    qt_add_translations(animated_diagrams
+        TS_FILES
+            ${PROJECT_SOURCE_DIR}/i18n/animated-diagrams_en.ts
+            ${PROJECT_SOURCE_DIR}/i18n/animated-diagrams_ru.ts
+        SOURCES ${AD_TR_SOURCES}
+        RESOURCE_PREFIX /i18n
+        # core strings: Tr("context", "text") and AD_TR_NOOP("context", "text")
+        LUPDATE_OPTIONS -tr-function-alias translate+=Tr,QT_TRANSLATE_NOOP+=AD_TR_NOOP -locations relative)
+elseif(REQUIRE_TRANSLATIONS)
+    message(FATAL_ERROR "Qt6 LinguistTools not found (install qt6-l10n-tools + qt6-tools-dev / qt6-qttools-devel)")
+else()
+    message(WARNING "Qt6 LinguistTools not found: the interface is English only "
+                    "(install qt6-l10n-tools + qt6-tools-dev / qt6-qttools-devel)")
+endif()
 target_link_libraries(animated_diagrams PRIVATE ad_ui)
 ad_set_warnings(animated_diagrams)
 

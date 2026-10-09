@@ -12,8 +12,8 @@ namespace ad::ui
 
 QString HumanSize(qint64 bytes)
 {
-    return bytes < 1024 * 1024 ? QObject::tr("%1 КБ").arg(std::max<qint64>(1, bytes / 1024))
-                               : QObject::tr("%1 МБ").arg(static_cast<double>(bytes) / 1024 / 1024, 0, 'f', 2);
+    return bytes < 1024 * 1024 ? QObject::tr("%1 KB").arg(std::max<qint64>(1, bytes / 1024))
+                               : QObject::tr("%1 MB").arg(static_cast<double>(bytes) / 1024 / 1024, 0, 'f', 2);
 }
 
 ExportManager::ExportManager(QObject *parent) : QObject(parent) {}
@@ -133,7 +133,7 @@ void ExportManager::_OnFinished(int id, const std::expected<ExportResult, QStrin
         j->info.result = *result;
         j->info.done   = result->frames;
         j->info.total  = result->frames;
-        QString msg    = tr("%1 кадров · %2").arg(result->frames).arg(HumanSize(result->bytes));
+        QString msg    = tr("%n frame(s) · %1", nullptr, result->frames).arg(HumanSize(result->bytes));
         if (!result->encoder.isEmpty())
         {
             msg += QStringLiteral(" · ") + result->encoder;
@@ -162,7 +162,7 @@ void ExportManager::Cancel(int id)
     if (j->info.state == ExportJobInfo::State::Queued)
     {
         j->info.state   = ExportJobInfo::State::Cancelled;
-        j->info.message = tr("Отменено");
+        j->info.message = tr("Cancelled");
         Q_EMIT JobFinished(id);
         Q_EMIT JobsChanged();
         return;

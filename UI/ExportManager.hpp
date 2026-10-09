@@ -37,7 +37,7 @@ struct ExportJobInfo
     State        state  = State::Queued;
     int          done   = 0;
     int          total  = 0;
-    QString      message; // error text or a short result ("120 кадров · 1.2 МБ · libx264")
+    QString      message; // error text or a short result ("120 frames · 1.2 MB · libx264")
     ExportResult result;
 
     [[nodiscard]] bool Finished() const { return state == State::Done || state == State::Failed || state == State::Cancelled; }

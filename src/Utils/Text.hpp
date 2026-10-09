@@ -30,7 +30,7 @@ std::string HtmlToText(std::string_view html);
 
 std::string Trim(std::string_view s);
 
-/// Lowercase ASCII identifier from arbitrary text ("Мой Эффект 2" -> "effect-2" style slugs; non-ASCII dropped).
+/// Lowercase ASCII identifier from arbitrary text ("My Effect 2" -> "my-effect-2"; non-ASCII dropped).
 std::string Slugify(std::string_view s, std::string_view fallback = "item");
 
 /// Encode a code point as UTF-8.

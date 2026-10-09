@@ -16,7 +16,7 @@ Prefer the MCP server; fall back to the CLI only for one-shot conversions/export
 | Mode | Setup | When |
 |---|---|---|
 | stdio (headless) | `claude mcp add animated-diagrams -- animated-diagrams --mcp [file.json]` | no window needed; most automation |
-| HTTP (live window) | user enables *Инструменты → MCP-сервер* (or starts `animated-diagrams --mcp-port 8765`), then `claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp` | the user watches/edits the same document; changes are undoable with Ctrl+Z |
+| HTTP (live window) | user enables *Tools → MCP Server for Agents* (Russian UI: *Инструменты → MCP-сервер для агентов*) (or starts `animated-diagrams --mcp-port 8765`), then `claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp` | the user watches/edits the same document; changes are undoable with Ctrl+Z |
 
 In the live window the editor has several documents in tabs: tools work on the **active tab**;
 `list_documents` / `select_document {index}` switch it, and `new_document` / `open_document` /
@@ -120,13 +120,15 @@ without MCP, write JSON in the native format — see [references/document-format
 A plugin is a JSON file bundling element types, effects, animation templates and design systems
 ([references/definitions.md](references/definitions.md#plugin-file)). Install it by copying into the
 user plugin directory (Linux `~/.local/share/AnimatedDiagrams/animated-diagrams/plugins/`, Windows
-`%APPDATA%\AnimatedDiagrams\animated-diagrams\plugins\`) or via *Библиотека → Плагины → Установить*;
+`%APPDATA%\AnimatedDiagrams\animated-diagrams\plugins\`) or via *Library → Plugins… → Install from file…*;
 `AD_PLUGIN_PATH` adds directories for a single run. The MCP server sees plugins loaded at its start.
 Bundled: **Cloud kit** (k8s pod, function, topic, bucket, CDN, firewall; circuit-breaker, saga),
 **Data platform** (postgres, pg-replica, clickhouse, kafka, redis, object-store, etl-job, bi-dashboard;
 templates `cdc-pipeline`, `replica-failover`, `batch-etl`; design system `clickhouse`),
 **Security kit** (idp, policy, vault, waf, token, ca, attacker; templates `oauth-code-flow`,
 `jwt-validation`, `block-attack`; design system `terminal`).
+Write plugin texts in English and add translations as `"translations": {"ru": {"English text": "Перевод"}}`;
+labels returned by `list_library` are in the user's interface language (English or Russian).
 
 ## Pitfalls
 

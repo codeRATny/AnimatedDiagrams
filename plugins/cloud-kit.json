@@ -5,14 +5,14 @@
   "name": "Cloud kit",
   "version": "1.0.0",
   "author": "Animated Diagrams",
-  "description": "Пример плагина: облачные элементы, эффекты и сценарии (circuit breaker, saga)",
+  "description": "Sample plugin: cloud elements, effects and scenarios (circuit breaker, saga)",
   "elements": [
     {
       "id": "k8s-pod",
       "label": "Pod",
       "icon": "☸",
-      "category": "Облако",
-      "description": "Под Kubernetes",
+      "category": "Cloud",
+      "description": "Kubernetes pod",
       "accent": "#326ce5",
       "width": 150.0,
       "height": 70.0,
@@ -24,10 +24,10 @@
     },
     {
       "id": "function",
-      "label": "Функция",
+      "label": "Function",
       "icon": "λ",
-      "category": "Облако",
-      "description": "Serverless-функция",
+      "category": "Cloud",
+      "description": "Serverless function",
       "accent": "#f59e0b",
       "width": 150.0,
       "height": 64.0,
@@ -39,10 +39,10 @@
     },
     {
       "id": "topic",
-      "label": "Топик",
+      "label": "Topic",
       "icon": "≋",
-      "category": "Облако",
-      "description": "Топик брокера сообщений (Kafka, NATS)",
+      "category": "Cloud",
+      "description": "Message broker topic (Kafka, NATS)",
       "accent": "#a78bfa",
       "width": 170.0,
       "height": 60.0,
@@ -54,10 +54,10 @@
     },
     {
       "id": "bucket",
-      "label": "Бакет",
+      "label": "Bucket",
       "icon": "▤",
-      "category": "Облако",
-      "description": "Объектное хранилище (S3)",
+      "category": "Cloud",
+      "description": "Object storage (S3)",
       "accent": "#34d399",
       "width": 130.0,
       "height": 80.0,
@@ -71,8 +71,8 @@
       "id": "cdn",
       "label": "CDN",
       "icon": "☁",
-      "category": "Облако",
-      "description": "Сеть доставки контента",
+      "category": "Cloud",
+      "description": "Content delivery network",
       "accent": "#38bdf8",
       "width": 160.0,
       "height": 90.0,
@@ -86,8 +86,8 @@
       "id": "firewall",
       "label": "Firewall",
       "icon": "⛨",
-      "category": "Облако",
-      "description": "Межсетевой экран (свой SVG-контур)",
+      "category": "Cloud",
+      "description": "Firewall (custom SVG outline)",
       "accent": "#f472b6",
       "width": 150.0,
       "height": 64.0,
@@ -103,9 +103,9 @@
   "effects": [
     {
       "id": "heartbeat",
-      "label": "Сердцебиение",
-      "category": "Облако",
-      "description": "Двойной удар — признак живого сервиса (health check)",
+      "label": "Heartbeat",
+      "category": "Cloud",
+      "description": "A double beat — the service is alive (health check)",
       "color": "#f43f5e",
       "repeat": 2,
       "tracks": [
@@ -169,9 +169,9 @@
     },
     {
       "id": "alarm",
-      "label": "Тревога",
-      "category": "Облако",
-      "description": "Мигание красным с покачиванием",
+      "label": "Alarm",
+      "category": "Cloud",
+      "description": "Blinking red with a wobble",
       "color": "#ef4444",
       "repeat": 3,
       "tracks": [
@@ -219,9 +219,9 @@
     },
     {
       "id": "slide-in",
-      "label": "Въезд слева",
-      "category": "Облако",
-      "description": "Узел появляется, выезжая слева",
+      "label": "Slide in from the left",
+      "category": "Cloud",
+      "description": "The node appears sliding in from the left",
       "color": "#22d3ee",
       "repeat": 1,
       "tracks": [
@@ -261,9 +261,9 @@
     },
     {
       "id": "scale-out",
-      "label": "Масштабирование",
-      "category": "Облако",
-      "description": "Горизонтальное масштабирование: узел «растёт»",
+      "label": "Scaling",
+      "category": "Cloud",
+      "description": "Horizontal scaling: the node “grows”",
       "color": "#4ade80",
       "repeat": 1,
       "tracks": [
@@ -311,16 +311,16 @@
     {
       "id": "circuit-breaker",
       "label": "Circuit breaker",
-      "category": "Облако",
-      "description": "Ошибки размыкают предохранитель: запросы идут в fallback, затем пробный запрос замыкает его",
+      "category": "Cloud",
+      "description": "Errors open the breaker: requests go to the fallback, then a probe request closes it",
       "roles": [
         {
           "id": "client",
-          "label": "Клиент"
+          "label": "Client"
         },
         {
           "id": "service",
-          "label": "Сервис"
+          "label": "Service"
         },
         {
           "id": "fallback",
@@ -336,7 +336,7 @@
           "from": "client",
           "to": "service",
           "variant": "request",
-          "label": "запрос"
+          "label": "request"
         },
         {
           "id": "t2",
@@ -356,7 +356,7 @@
           "from": "client",
           "to": "service",
           "variant": "retry",
-          "label": "запрос"
+          "label": "request"
         },
         {
           "id": "t4",
@@ -403,7 +403,7 @@
           "from": "fallback",
           "to": "client",
           "variant": "response",
-          "label": "кэш"
+          "label": "cache"
         },
         {
           "id": "t9",
@@ -438,21 +438,21 @@
     },
     {
       "id": "saga",
-      "label": "Saga (оркестрация)",
-      "category": "Облако",
-      "description": "Шаги саги и компенсирующая транзакция при отказе платежа",
+      "label": "Saga (orchestration)",
+      "category": "Cloud",
+      "description": "Saga steps and a compensating transaction when the payment fails",
       "roles": [
         {
           "id": "orchestrator",
-          "label": "Оркестратор"
+          "label": "Orchestrator"
         },
         {
           "id": "inventory",
-          "label": "Склад"
+          "label": "Warehouse"
         },
         {
           "id": "payment",
-          "label": "Платёж"
+          "label": "Payment"
         }
       ],
       "steps": [
@@ -520,7 +520,7 @@
           "start": 4200.0,
           "duration": 900.0,
           "nodeId": "inventory",
-          "text": "Компенсация"
+          "text": "Compensation"
         },
         {
           "id": "t8",
@@ -534,5 +534,39 @@
         }
       ]
     }
-  ]
+  ],
+  "translations": {
+    "ru": {
+      "A double beat — the service is alive (health check)": "Двойной удар — признак живого сервиса (health check)",
+      "Alarm": "Тревога",
+      "Blinking red with a wobble": "Мигание красным с покачиванием",
+      "Bucket": "Бакет",
+      "Client": "Клиент",
+      "Cloud": "Облако",
+      "Compensation": "Компенсация",
+      "Content delivery network": "Сеть доставки контента",
+      "Errors open the breaker: requests go to the fallback, then a probe request closes it": "Ошибки размыкают предохранитель: запросы идут в fallback, затем пробный запрос замыкает его",
+      "Firewall (custom SVG outline)": "Межсетевой экран (свой SVG-контур)",
+      "Function": "Функция",
+      "Heartbeat": "Сердцебиение",
+      "Horizontal scaling: the node “grows”": "Горизонтальное масштабирование: узел «растёт»",
+      "Kubernetes pod": "Под Kubernetes",
+      "Message broker topic (Kafka, NATS)": "Топик брокера сообщений (Kafka, NATS)",
+      "Object storage (S3)": "Объектное хранилище (S3)",
+      "Orchestrator": "Оркестратор",
+      "Payment": "Платёж",
+      "Saga (orchestration)": "Saga (оркестрация)",
+      "Saga steps and a compensating transaction when the payment fails": "Шаги саги и компенсирующая транзакция при отказе платежа",
+      "Sample plugin: cloud elements, effects and scenarios (circuit breaker, saga)": "Пример плагина: облачные элементы, эффекты и сценарии (circuit breaker, saga)",
+      "Scaling": "Масштабирование",
+      "Serverless function": "Serverless-функция",
+      "Service": "Сервис",
+      "Slide in from the left": "Въезд слева",
+      "The node appears sliding in from the left": "Узел появляется, выезжая слева",
+      "Topic": "Топик",
+      "Warehouse": "Склад",
+      "cache": "кэш",
+      "request": "запрос"
+    }
+  }
 }
