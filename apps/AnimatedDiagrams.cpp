@@ -47,6 +47,7 @@
 #include "Plugins/PluginManager.hpp"
 #include "QtRender.hpp"
 #include "Theme.hpp"
+#include "TitleBar.hpp"
 #include "Utils/File.hpp"
 
 namespace
@@ -316,6 +317,7 @@ int main(int argc, char **argv)
     }
 
     ApplyTheme();
+    InstallNativeFrameTheming();
     AppContext ctx;
     MainWindow window(ctx);
     window.RestoreSession(files.isEmpty()); // all tabs of the previous session

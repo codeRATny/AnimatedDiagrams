@@ -81,6 +81,9 @@ QString MakeStyleSheet(const UiPalette &u)
         QTabBar::tab:selected { background: {selected}; border-color: {accent}; color: {text}; }
         QTabBar::tab:hover { color: {text}; }
         QDockWidget::title { background: {panel}; padding: 4px 8px; }
+        QMenuBar { background: transparent; border: none; }
+        QMenuBar::item { background: transparent; padding: 5px 9px; border-radius: 5px; color: {text}; }
+        QMenuBar::item:selected, QMenuBar::item:pressed { background: {hover}; }
         QMenu { background: {window}; border: 1px solid {border}; }
         QMenu::item:selected { background: {selected}; }
         QMenu::separator { height: 1px; background: {border}; margin: 4px 8px; }

@@ -17,6 +17,8 @@
 #include <QLabel>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QMouseEvent>
+#include <QPainter>
 #include <QProgressBar>
 #include <QRegularExpression>
 #include <QSettings>
@@ -27,6 +29,7 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
+#include <QWindow>
 
 #include <algorithm>
 #include <array>
@@ -48,6 +51,7 @@
 #include "QtRender.hpp"
 #include "Theme.hpp"
 #include "TimelinePanel.hpp"
+#include "TitleBar.hpp"
 #include "Utils/CrashHandler.hpp"
 #include "Utils/File.hpp"
 
@@ -66,6 +70,8 @@ constexpr auto    kSessionCurrent = "session/current";
 constexpr auto    kMcpPortKey     = "mcp/port";
 constexpr auto    kMcpAutostart   = "mcp/autostart";
 constexpr auto    kUiThemeKey     = "ui/designSystem"; // empty -- follow the active document
+constexpr auto    kSystemFrameKey = "window/systemFrame";
+constexpr int     kResizeBorder   = 5; // px around the frameless window that resize it
 constexpr quint16 kDefaultMcpPort = 8765;
 constexpr int     kStateVersion   = 3;
 
@@ -102,6 +108,7 @@ MainWindow::MainWindow(AppContext &ctx, QWidget *parent) : QMainWindow(parent), 
 
     _BuildDocks();
     _BuildToolBar();
+    _menu_bar = new QMenuBar;
     _BuildMenus();
     _BuildStatusBar();
 
@@ -115,6 +122,11 @@ MainWindow::MainWindow(AppContext &ctx, QWidget *parent) : QMainWindow(parent), 
     _ctx.SetWorkspace(this);
 
     setWindowIcon(QIcon(QStringLiteral(":/icons/animated-diagrams.png")));
+    // the menu lives in our own title bar (the window frame is drawn in the app theme)
+    _title_bar = new TitleBar(this, _menu_bar);
+    setMenuWidget(_title_bar);
+    setMouseTracking(true); // resize cursors at the window edges
+    _SetCustomFrame(!QSettings().value(kSystemFrameKey, false).toBool());
     resize(1440, 900);
     _default_state = saveState(kStateVersion);
     const QSettings s;
@@ -362,7 +374,7 @@ void MainWindow::_BuildMenus()
         };
     };
 
-    QMenu *file = menuBar()->addMenu(tr("&Файл"));
+    QMenu *file = _menu_bar->addMenu(tr("&Файл"));
     act(file, tr("Новая диаграмма"), QKeySequence::New,
         [this]
         {
@@ -419,7 +431,7 @@ void MainWindow::_BuildMenus()
             close();
         });
 
-    QMenu *edit = menuBar()->addMenu(tr("&Правка"));
+    QMenu *edit = _menu_bar->addMenu(tr("&Правка"));
     _undo_act   = act(edit, tr("Отменить"), QKeySequence::Undo,
                       with_tab(
                         [](Tab &t)
@@ -463,7 +475,7 @@ void MainWindow::_BuildMenus()
                 t.ctl->ClearSelection();
             }));
 
-    QMenu *view = menuBar()->addMenu(tr("&Вид"));
+    QMenu *view = _menu_bar->addMenu(tr("&Вид"));
     act(view, tr("Вписать в экран"), QKeySequence(Qt::CTRL | Qt::Key_0),
         with_tab(
             [](Tab &t)
@@ -495,6 +507,16 @@ void MainWindow::_BuildMenus()
         panels->addAction(d->toggleViewAction());
     }
     panels->addAction(_tools_bar->toggleViewAction());
+    QAction *frame = view->addAction(tr("Системная рамка окна"));
+    frame->setCheckable(true);
+    frame->setChecked(QSettings().value(kSystemFrameKey, false).toBool());
+    frame->setToolTip(tr("Заголовок окна от системы вместо заголовка в стиле приложения"));
+    connect(frame, &QAction::toggled, this,
+            [this](bool system)
+            {
+                QSettings().setValue(kSystemFrameKey, system);
+                _SetCustomFrame(!system);
+            });
     QMenu *theme = view->addMenu(tr("Тема интерфейса"));
     theme->setToolTip(tr("Дизайн-система, в цветах которой показан редактор"));
     connect(theme, &QMenu::aboutToShow, this,
@@ -533,7 +555,7 @@ void MainWindow::_BuildMenus()
             isFullScreen() ? showNormal() : showFullScreen();
         });
 
-    QMenu *play = menuBar()->addMenu(tr("&Воспроизведение"));
+    QMenu *play = _menu_bar->addMenu(tr("&Воспроизведение"));
     act(play, tr("Играть / Пауза"), QKeySequence(Qt::Key_Space),
         with_tab(
             [](Tab &t)
@@ -559,7 +581,7 @@ void MainWindow::_BuildMenus()
                 t.ctl->Seek(t.ctl->Duration());
             }));
 
-    QMenu *lib = menuBar()->addMenu(tr("&Библиотека"));
+    QMenu *lib = _menu_bar->addMenu(tr("&Библиотека"));
     act(lib, tr("Элементы, эффекты, анимации, дизайн-системы…"), QKeySequence(Qt::CTRL | Qt::Key_L),
         [this]
         {
@@ -577,7 +599,7 @@ void MainWindow::_BuildMenus()
             _ShowPlugins();
         });
 
-    QMenu *tools = menuBar()->addMenu(tr("&Инструменты"));
+    QMenu *tools = _menu_bar->addMenu(tr("&Инструменты"));
     _mcp_act     = tools->addAction(tr("MCP-сервер для агентов"));
     _mcp_act->setCheckable(true);
     connect(_mcp_act, &QAction::toggled, this, &MainWindow::_ToggleMcp);
@@ -609,7 +631,7 @@ void MainWindow::_BuildMenus()
             _ShowMcpHelp();
         });
 
-    QMenu *help = menuBar()->addMenu(tr("&Справка"));
+    QMenu *help = _menu_bar->addMenu(tr("&Справка"));
     act(help, tr("Отчёты о сбоях…"), {},
         []
         {
@@ -1027,6 +1049,113 @@ void MainWindow::_UpdateMcpState()
         _mcp_act->setChecked(running);
     }
     _mcp_label->setText(running ? tr("MCP: %1").arg(_ctx.McpUrl()) : tr("MCP: выкл"));
+}
+
+// ---------------------------------------------------------------------------
+// Window frame
+// ---------------------------------------------------------------------------
+
+void MainWindow::_SetCustomFrame(bool on)
+{
+    const bool visible = isVisible();
+    setWindowFlag(Qt::FramelessWindowHint, on); // hides a visible window
+    _title_bar->SetCustomFrame(on);
+    _UpdateFrameMargins();
+    if (visible)
+    {
+        show();
+    }
+}
+
+void MainWindow::_UpdateFrameMargins()
+{
+    const bool border = _title_bar != nullptr && _title_bar->CustomFrame() && !isMaximized() && !isFullScreen();
+    const int  m      = border ? kResizeBorder : 0;
+    setContentsMargins(m, m, m, m);
+    update();
+}
+
+Qt::Edges MainWindow::_EdgesAt(const QPoint &pos) const
+{
+    Qt::Edges edges;
+    if (contentsMargins().left() == 0)
+    {
+        return edges; // system frame, maximized or full screen
+    }
+    const int grip = kResizeBorder + 3; // corners are easier to hit
+    edges.setFlag(Qt::LeftEdge, pos.x() < grip);
+    edges.setFlag(Qt::RightEdge, pos.x() >= width() - grip);
+    edges.setFlag(Qt::TopEdge, pos.y() < grip);
+    edges.setFlag(Qt::BottomEdge, pos.y() >= height() - grip);
+    return edges;
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent *e)
+{
+    const Qt::Edges edges = _EdgesAt(e->position().toPoint());
+    if ((edges & (Qt::LeftEdge | Qt::RightEdge)) != 0 && (edges & (Qt::TopEdge | Qt::BottomEdge)) != 0)
+    {
+        const bool main_diagonal = edges == (Qt::LeftEdge | Qt::TopEdge) || edges == (Qt::RightEdge | Qt::BottomEdge);
+        setCursor(main_diagonal ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
+    }
+    else if ((edges & (Qt::LeftEdge | Qt::RightEdge)) != 0)
+    {
+        setCursor(Qt::SizeHorCursor);
+    }
+    else if ((edges & (Qt::TopEdge | Qt::BottomEdge)) != 0)
+    {
+        setCursor(Qt::SizeVerCursor);
+    }
+    else
+    {
+        unsetCursor();
+    }
+    QMainWindow::mouseMoveEvent(e);
+}
+
+void MainWindow::mousePressEvent(QMouseEvent *e)
+{
+    const Qt::Edges edges = _EdgesAt(e->position().toPoint());
+    if (e->button() == Qt::LeftButton && edges != Qt::Edges() && windowHandle() != nullptr && windowHandle()->startSystemResize(edges))
+    {
+        return;
+    }
+    QMainWindow::mousePressEvent(e);
+}
+
+void MainWindow::leaveEvent(QEvent *e)
+{
+    unsetCursor();
+    QMainWindow::leaveEvent(e);
+}
+
+void MainWindow::paintEvent(QPaintEvent *e)
+{
+    QMainWindow::paintEvent(e);
+    if (contentsMargins().left() > 0)
+    {
+        QPainter    p(this);
+        const QRect inner = rect().marginsRemoved(contentsMargins());
+        QRegion     frame(rect());
+        frame -= QRegion(inner);
+        p.setClipRegion(frame);
+        p.fillRect(rect(), ToQColor(Ui().base));
+        p.setPen(ToQColor(isActiveWindow() ? Ui().border.Mix(Ui().accent, 0.35) : Ui().border));
+        p.drawRect(rect().adjusted(0, 0, -1, -1));
+    }
+}
+
+void MainWindow::changeEvent(QEvent *e)
+{
+    QMainWindow::changeEvent(e);
+    if (e->type() == QEvent::WindowStateChange)
+    {
+        _UpdateFrameMargins();
+    }
+    else if (e->type() == QEvent::ActivationChange)
+    {
+        update();
+    }
 }
 
 void MainWindow::showEvent(QShowEvent *e)

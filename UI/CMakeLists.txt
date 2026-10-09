@@ -25,8 +25,12 @@ qt_add_library(ad_ui STATIC
     Theme.cpp Theme.hpp
     TimelinePanel.cpp TimelinePanel.hpp
     TimelineWidget.cpp TimelineWidget.hpp
+    TitleBar.cpp TitleBar.hpp
 )
 target_include_directories(ad_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_definitions(ad_ui PUBLIC QT_NO_KEYWORDS)
 target_link_libraries(ad_ui PUBLIC ad_core Qt6::Widgets Qt6::Network)
+if(WIN32)
+    target_link_libraries(ad_ui PRIVATE dwmapi) # title bar colors of system frames
+endif()
 ad_set_warnings(ad_ui)

@@ -13,6 +13,7 @@ class QAction;
 class QDockWidget;
 class QLabel;
 class QMenu;
+class QMenuBar;
 class QProgressBar;
 class QStackedWidget;
 class QTabWidget;
@@ -34,6 +35,7 @@ class LibraryDialog;
 class PaletteWidget;
 class PluginsDialog;
 class TimelinePanel;
+class TitleBar;
 
 class MainWindow : public QMainWindow, public Workspace
 {
@@ -64,6 +66,11 @@ public:
 protected:
     void closeEvent(QCloseEvent *e) override;
     void showEvent(QShowEvent *e) override;
+    void changeEvent(QEvent *e) override;
+    void paintEvent(QPaintEvent *e) override;
+    void mouseMoveEvent(QMouseEvent *e) override;
+    void mousePressEvent(QMouseEvent *e) override;
+    void leaveEvent(QEvent *e) override;
 
 private:
     struct Tab
@@ -98,7 +105,11 @@ private:
     void _UpdateExportsIndicator();
     /// Apply the UI theme: the chosen design system or the one of the active document.
     void _UpdateUiTheme();
-    void _FillThemeMenu(QMenu *menu);
+    /// Title bar in the application style (frameless window) or the system frame.
+    void                    _SetCustomFrame(bool on);
+    void                    _UpdateFrameMargins();
+    [[nodiscard]] Qt::Edges _EdgesAt(const QPoint &pos) const;
+    void                    _FillThemeMenu(QMenu *menu);
 
     void _NewDiagram();
     void _OpenDiagram();
@@ -127,6 +138,8 @@ private:
     QDockWidget    *_timeline_dock   = nullptr;
     QDockWidget    *_exports_dock    = nullptr;
     QToolBar       *_tools_bar       = nullptr;
+    QMenuBar       *_menu_bar        = nullptr;
+    TitleBar       *_title_bar       = nullptr;
     QByteArray      _default_state;
     QString         _pending_type = QStringLiteral("service");
 
