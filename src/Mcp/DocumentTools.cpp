@@ -396,23 +396,36 @@ public:
              });
 
         _Add("export_animation", "Export animation",
-             "Export the whole scenario to GIF, PNG frames, WebM (VP9) or MP4 (H.264), encoded in process with libav.",
+             "Export the whole scenario to GIF, PNG frames, WebM (VP9), MP4 (H.264) or a PowerPoint presentation (.pptx). "
+             "PowerPoint modes: video (MP4 slides playing automatically), gif (also for Google Slides), animated (editable "
+             "shapes with PowerPoint animations), morph (key frame slides with the Morph transition). Markers split the "
+             "scenario into slides; insertInto adds the slides to an existing presentation (written to path).",
              Schema({{"path", Prop("string", "Output file")},
-                     {"format", EnumProp({"gif", "png", "webm", "mp4"}, "Default: by extension")},
+                     {"format", EnumProp({"gif", "png", "webm", "mp4", "pptx"}, "Default: by extension")},
                      {"fps", Prop("number", "Frames per second (default 15)")},
                      {"scale", Prop("number", "Resolution scale (default 1)")},
-                     {"quality", Prop("integer", "WebM / MP4 quality 0 (smallest) .. 4 (best), default 2")}},
+                     {"quality", Prop("integer", "WebM / MP4 quality 0 (smallest) .. 4 (best), default 2")},
+                     {"pptxMode", EnumProp({"video", "gif", "animated", "morph"}, "PowerPoint slides (default video)")},
+                     {"slideSize", EnumProp({"16:9", "4:3"}, "Slide size of a new presentation (default 16:9)")},
+                     {"insertInto", Prop("string", "Existing .pptx to add the slides to")},
+                     {"insertAfter", Prop("integer", "Insert after this 1-based slide (default: at the end)")},
+                     {"bySegments", Prop("boolean", "A slide per segment between markers (default true)")}},
                     {"path"}),
              false,
              [this](const Json &a)
              {
                  ExportRequest req;
-                 req.path    = RequireString(a, "path");
-                 req.format  = a.value("format", std::string{});
-                 req.fps     = std::clamp(a.value("fps", 15.0), 1.0, 60.0);
-                 req.scale   = std::clamp(a.value("scale", 1.0), 0.25, 8.0);
-                 req.quality = std::clamp(a.value("quality", 2), 0, 4);
-                 auto res    = _host.Export(req);
+                 req.path         = RequireString(a, "path");
+                 req.format       = a.value("format", std::string{});
+                 req.fps          = std::clamp(a.value("fps", 15.0), 1.0, 60.0);
+                 req.scale        = std::clamp(a.value("scale", 1.0), 0.25, 8.0);
+                 req.quality      = std::clamp(a.value("quality", 2), 0, 4);
+                 req.pptx_mode    = a.value("pptxMode", std::string("video"));
+                 req.slide_size   = a.value("slideSize", std::string("16:9"));
+                 req.insert_into  = a.value("insertInto", std::string{});
+                 req.insert_after = a.value("insertAfter", -1);
+                 req.by_markers   = a.value("bySegments", true);
+                 auto res         = _host.Export(req);
                  if (!res.has_value())
                  {
                      throw ToolError(res.error());

@@ -13,6 +13,7 @@
 #include "Engine/Scene.hpp"
 #include "Export/GifEncoder.hpp"
 #include "Export/VideoEncoder.hpp"
+#include "PresentationExport.hpp"
 #include "QtRender.hpp"
 #include "Utils/File.hpp"
 
@@ -139,13 +140,43 @@ QString FormatId(ExportFormat f)
         return QStringLiteral("webm");
     case ExportFormat::Mp4:
         return QStringLiteral("mp4");
+    case ExportFormat::Pptx:
+        return QStringLiteral("pptx");
     }
     return {};
 }
 
+QString PptxModeId(PptxMode m)
+{
+    switch (m)
+    {
+    case PptxMode::Video:
+        return QStringLiteral("video");
+    case PptxMode::Gif:
+        return QStringLiteral("gif");
+    case PptxMode::Animated:
+        return QStringLiteral("animated");
+    case PptxMode::Morph:
+        return QStringLiteral("morph");
+    }
+    return {};
+}
+
+std::optional<PptxMode> PptxModeFromId(const QString &id)
+{
+    for (const auto m : {PptxMode::Video, PptxMode::Gif, PptxMode::Animated, PptxMode::Morph})
+    {
+        if (PptxModeId(m).compare(id, Qt::CaseInsensitive) == 0)
+        {
+            return m;
+        }
+    }
+    return std::nullopt;
+}
+
 std::optional<ExportFormat> FormatFromId(const QString &id)
 {
-    for (const auto f : {ExportFormat::Gif, ExportFormat::Png, ExportFormat::WebM, ExportFormat::Mp4})
+    for (const auto f : {ExportFormat::Gif, ExportFormat::Png, ExportFormat::WebM, ExportFormat::Mp4, ExportFormat::Pptx})
     {
         if (FormatId(f).compare(id, Qt::CaseInsensitive) == 0)
         {
@@ -218,8 +249,19 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
     {
         return std::unexpected(QObject::tr("Cannot access folder %1").arg(out.absolutePath()));
     }
-    const ExportGeometry g     = PlanExport(m, o, reg);
-    const auto           times = ExportFrameTimes(m.scenario.duration, o.fps);
+    if (o.format == ExportFormat::Pptx)
+    {
+        return ExportPresentation(m, o, reg, stop, progress);
+    }
+    const ExportGeometry g = PlanExport(m, o, reg);
+    // the requested time range (a clip of a presentation segment)
+    const double start = std::clamp(o.start_ms, 0.0, m.scenario.duration);
+    const double end   = o.end_ms < 0 ? m.scenario.duration : std::clamp(o.end_ms, start, m.scenario.duration);
+    auto         times = ExportFrameTimes(std::max(1.0, end - start), o.fps);
+    for (double &t : times)
+    {
+        t += start;
+    }
     switch (o.format)
     {
     case ExportFormat::Gif:
@@ -229,6 +271,8 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
     case ExportFormat::WebM:
     case ExportFormat::Mp4:
         return ExportVideo(m, o, reg, g, times, stop, progress);
+    case ExportFormat::Pptx:
+        break; // handled above
     }
     return std::unexpected(QObject::tr("Unknown format"));
 }

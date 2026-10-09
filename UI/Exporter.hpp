@@ -27,7 +27,27 @@ enum class ExportFormat
     Gif,
     Png,
     WebM,
-    Mp4
+    Mp4,
+    Pptx // PowerPoint presentation (see PresentationExport.hpp)
+};
+
+/// How a diagram becomes PowerPoint slides.
+enum class PptxMode
+{
+    Video,    // MP4 per slide, plays automatically (PowerPoint, Keynote, Impress)
+    Gif,      // animated GIF per slide (also Google Slides)
+    Animated, // editable shapes + PowerPoint animations
+    Morph     // key frame slides with the Morph transition (PowerPoint 2019 / 365)
+};
+
+struct PresentationOptions
+{
+    PptxMode mode       = PptxMode::Video;
+    bool     wide       = true;  // 16:9, otherwise 4:3 (new presentations)
+    bool     by_markers = true;  // a slide per scenario segment between markers
+    QString  insert_into;        // existing presentation to add the slides to
+    int      insert_after  = -1; // 1-based slide number (-1 -- at the end)
+    double   morph_step_ms = 400;
 };
 
 enum class Framing
@@ -46,7 +66,11 @@ struct ExportOptions
     QColor       background = QColor(0x0a, 0x11, 0x1f);
     bool         loop       = true; // GIF only
     QString      output_path;
-    int          quality = 2; // WebM / MP4: 0 (smallest) .. 4 (best)
+    int          quality  = 2;  // WebM / MP4: 0 (smallest) .. 4 (best)
+    double       start_ms = 0;  // exported time range
+    double       end_ms   = -1; // -1 -- the end of the scenario
+
+    PresentationOptions presentation; // ExportFormat::Pptx
 };
 
 struct ExportResult
@@ -61,6 +85,8 @@ using ProgressFn = std::function<void(int done, int total)>;
 
 QString                     FormatId(ExportFormat f);
 std::optional<ExportFormat> FormatFromId(const QString &id);
+QString                     PptxModeId(PptxMode m); // video | gif | animated | morph
+std::optional<PptxMode>     PptxModeFromId(const QString &id);
 bool                        IsVideo(ExportFormat f);
 /// Encoder that will be tried first for a video format; empty -- the format is unavailable.
 QString VideoEncoderFor(ExportFormat f);

@@ -44,7 +44,7 @@ Please attach it to your bug report.</source>
         <translation>%1 МБ</translation>
     </message>
     <message>
-        <location filename="../UI/Exporter.cpp" line="+27"/>
+        <location filename="../UI/Exporter.cpp" line="+28"/>
         <source>Export cancelled</source>
         <translation>Экспорт прерван</translation>
     </message>
@@ -66,7 +66,7 @@ Please attach it to your bug report.</source>
         <translation>Видео: %1</translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="+117"/>
         <source>No output file specified</source>
         <translation>Не указан файл для сохранения</translation>
     </message>
@@ -81,7 +81,7 @@ Please attach it to your bug report.</source>
         <translation>Нет доступа к каталогу %1</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+27"/>
         <source>Unknown format</source>
         <translation>Неизвестный формат</translation>
     </message>
@@ -267,6 +267,31 @@ Please attach it to your bug report.</source>
         <source>elements: %1 · effects: %2 · animations: %3</source>
         <translation>элементов: %1 · эффектов: %2 · анимаций: %3</translation>
     </message>
+    <message>
+        <location filename="../UI/PresentationExport.cpp" line="+31"/>
+        <source>Presentation not found: %1</source>
+        <translation>Презентация не найдена: %1</translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>Cannot create a temporary folder</source>
+        <translation>Не удалось создать временную папку</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>MP4 export is not available in this build: choose the GIF mode</source>
+        <translation>Экспорт MP4 недоступен в этой сборке: выберите режим GIF</translation>
+    </message>
+    <message>
+        <location line="+38"/>
+        <source>Cannot write %1</source>
+        <translation>Не удалось записать %1</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>PowerPoint export failed: %1</source>
+        <translation>Ошибка экспорта в PowerPoint: %1</translation>
+    </message>
 </context>
 <context>
     <name>ad::ui::ApplyTemplateDialog</name>
@@ -335,7 +360,7 @@ Please attach it to your bug report.</source>
 <context>
     <name>ad::ui::ExportDialog</name>
     <message>
-        <location filename="../UI/ExportDialog.cpp" line="+45"/>
+        <location filename="../UI/ExportDialog.cpp" line="+48"/>
         <source>Export Animation</source>
         <translation>Экспорт анимации</translation>
     </message>
@@ -358,6 +383,11 @@ Please attach it to your bug report.</source>
         <location line="+1"/>
         <source>PNG — frame sequence</source>
         <translation>PNG — последовательность кадров</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>PowerPoint (.pptx) — slides for presentations</source>
+        <translation>PowerPoint (.pptx) — слайды для презентаций</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -421,17 +451,97 @@ Please attach it to your bug report.</source>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+26"/>
+        <location line="+76"/>
         <source>Background</source>
         <translation>Фон</translation>
     </message>
     <message>
-        <location line="-9"/>
+        <location line="-59"/>
         <source>Loop (GIF)</source>
         <translation>Зациклить (GIF)</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
+        <source>Video — plays automatically (PowerPoint, Keynote, Impress)</source>
+        <translation>Видео — запускается само (PowerPoint, Keynote, Impress)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>GIF — works everywhere, also Google Slides</source>
+        <translation>GIF — работает везде, в том числе в Google Slides</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Editable shapes with PowerPoint animations</source>
+        <translation>Редактируемые фигуры с анимациями PowerPoint</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Morph key frames (PowerPoint 2019 / 365)</source>
+        <translation>Ключевые кадры с переходом «Трансформация» (PowerPoint 2019 / 365)</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>16:9</source>
+        <translation>16:9</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>4:3</source>
+        <translation>4:3</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>A slide per segment between markers (click to continue)</source>
+        <translation>Слайд на каждый отрезок между маркерами (продолжение по клику)</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Add to an existing presentation</source>
+        <translation>Добавить в существующую презентацию</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>presentation.pptx</source>
+        <translation>презентация.pptx</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Browse…</source>
+        <translation>Обзор…</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>at the end</source>
+        <translation>в конец</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>after slide </source>
+        <translation>после слайда </translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Presentation</source>
+        <translation>Презентация</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>PowerPoint (*.pptx)</source>
+        <translation>PowerPoint (*.pptx)</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Slides</source>
+        <translation>Слайды</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Slide size</source>
+        <translation>Размер слайда</translation>
+    </message>
+    <message>
+        <location line="+12"/>
         <source>Format</source>
         <translation>Формат</translation>
     </message>
@@ -456,7 +566,7 @@ Please attach it to your bug report.</source>
         <translation>Кадрирование</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>Export in Background</source>
         <translation>Экспортировать в фоне</translation>
     </message>
@@ -466,7 +576,7 @@ Please attach it to your bug report.</source>
         <translation>Отмена</translation>
     </message>
     <message numerus="yes">
-        <location line="+47"/>
+        <location line="+62"/>
         <source>≈ %n frame(s) · %1×%2 px · %3 s</source>
         <translation>
             <numerusform>≈ %n кадр · %1×%2 px · %3 с</numerusform>
@@ -487,7 +597,17 @@ Please attach it to your bug report.</source>
         <translation> Для длинных/крупных анимаций лучше WebM или MP4.</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+11"/>
+        <source>PowerPoint</source>
+        <translation>PowerPoint</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Choose an existing presentation to add the slides to.</source>
+        <translation>Выберите существующую презентацию, в которую нужно добавить слайды.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>%1 (*.%2)</source>
         <translation>%1 (*.%2)</translation>
     </message>
@@ -3335,13 +3455,13 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>scene</name>
     <message>
-        <location filename="../src/Engine/Scene.cpp" line="+534"/>
-        <location line="+126"/>
+        <location filename="../src/Engine/Scene.cpp" line="+542"/>
+        <location line="+127"/>
         <source>note</source>
         <translation>заметка</translation>
     </message>
     <message>
-        <location line="-103"/>
+        <location line="-104"/>
         <source>Action</source>
         <translation>Действие</translation>
     </message>

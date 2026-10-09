@@ -23,6 +23,7 @@ add_executable(ad_core_tests
     LibraryTest.cpp
     McpServerTest.cpp
     PathTest.cpp
+    PptxTest.cpp
     PluginTest.cpp
     RegistryTest.cpp
     SceneTest.cpp
@@ -68,3 +69,31 @@ endif()
 add_test(NAME TranslationsComplete.ru
     COMMAND ${CMAKE_COMMAND} -DTS_FILE=${PROJECT_SOURCE_DIR}/i18n/animated-diagrams_ru.ts
         -P ${CMAKE_CURRENT_SOURCE_DIR}/translations_check.cmake)
+
+# PowerPoint files read back by an independent implementation (python-pptx) and, with
+# -DAD_OOXML_XSD_DIR=<ECMA-376 transitional schemas>, validated against the schemas
+if(TARGET animated_diagrams)
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_FOUND)
+        execute_process(COMMAND ${Python3_EXECUTABLE} -c "import pptx, lxml" RESULT_VARIABLE ad_no_pptx OUTPUT_QUIET ERROR_QUIET)
+        if(ad_no_pptx EQUAL 0)
+            set(pptx_modes gif animated morph)
+            if(WITH_LIBAV)
+                list(PREPEND pptx_modes video)
+            endif()
+            list(JOIN pptx_modes "," pptx_modes_arg)
+            add_test(NAME AppPptxSmoke
+                COMMAND ${CMAKE_COMMAND}
+                    -DAPP=$<TARGET_FILE:animated_diagrams>
+                    -DPYTHON=${Python3_EXECUTABLE}
+                    -DINPUT=${PROJECT_SOURCE_DIR}/samples/fallback-retry.json
+                    -DOUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/pptx
+                    -DXSD=${AD_OOXML_XSD_DIR}
+                    -DMODES=${pptx_modes_arg}
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/pptx_smoke.cmake)
+            set_tests_properties(AppPptxSmoke PROPERTIES TIMEOUT 300 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+        else()
+            message(STATUS "python-pptx not found: PowerPoint smoke test disabled")
+        endif()
+    endif()
+endif()

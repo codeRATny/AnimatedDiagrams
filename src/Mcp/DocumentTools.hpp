@@ -20,10 +20,16 @@ namespace ad::mcp
 struct ExportRequest
 {
     std::string path;
-    std::string format; // gif | png | webm | mp4 (empty -- by extension)
+    std::string format; // gif | png | webm | mp4 | pptx (empty -- by extension)
     double      fps     = 15;
     double      scale   = 1;
     int         quality = 2; // WebM / MP4: 0 (smallest) .. 4 (best)
+    // pptx
+    std::string pptx_mode  = "video"; // video | gif | animated | morph
+    std::string slide_size = "16:9";  // 16:9 | 4:3 (new presentations)
+    std::string insert_into;          // existing presentation to add the slides to
+    int         insert_after = -1;    // 1-based slide number, -1 -- at the end
+    bool        by_markers   = true;  // a slide per scenario segment
 };
 
 /// One open document (a GUI tab).

@@ -91,7 +91,7 @@ animated-diagrams --mcp-port 8765 diagram.json          # GUI + MCP по HTTP
 | Анимация из шаблона | `Ctrl+T` или «▶ Анимация…» — роли шаблона сопоставляются узлам |
 | Импорт draw.io | `Ctrl+I` |
 | Правка | `Ctrl+Z` / `Ctrl+Shift+Z` · `Del` · `Ctrl+D` дублировать шаг |
-| Файлы | `Ctrl+S` · `Ctrl+Shift+S` · `Ctrl+E` экспорт в фоне (прогресс — в строке состояния и на панели «Экспорт») |
+| Файлы | `Ctrl+S` · `Ctrl+Shift+S` · `Ctrl+E` экспорт в фоне: GIF / PNG / WebM / MP4 / PowerPoint (прогресс — в строке состояния и на панели «Экспорт») |
 
 Типы шагов: сообщение (по связи или напрямую; форма/размер/количество пакетов, кривая движения, след),
 таймер, смена состояния узла, действие, анимация связи, заметка, эффект.
@@ -110,6 +110,7 @@ Windows: `%APPDATA%\AnimatedDiagrams\animated-diagrams\crashes`). Адреса �
 
 - [Формат документа](docs/file-format.md)
 - [Дизайн-системы](docs/design-systems.md)
+- [Презентации](docs/presentations.md) — PowerPoint (видео, GIF, анимации PowerPoint, Morph), вставка в готовую презентацию
 - [Локализация](docs/localization.md) — английский и русский, добавление языков, переводы в плагинах
 - [Плагины](docs/plugins.md) — три плагина в комплекте: [`plugins/`](plugins)
 - [MCP-сервер](docs/mcp.md)

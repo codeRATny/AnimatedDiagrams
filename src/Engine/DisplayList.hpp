@@ -133,7 +133,8 @@ struct Item
     Shape                    shape;
     Paint                    paint;
     std::optional<Transform> transform;
-    std::optional<Path>      clip; // clip outline in item coordinates
+    std::optional<Path>      clip;  // clip outline in item coordinates
+    std::string              owner; // "node:<id>", "edge:<id>", "step:<id>" (exporters group items by it)
 };
 
 struct Frame

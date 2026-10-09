@@ -21,6 +21,7 @@ qt_add_library(ad_ui STATIC
     McpHttpServer.cpp McpHttpServer.hpp
     PaletteWidget.cpp PaletteWidget.hpp
     PluginsDialog.cpp PluginsDialog.hpp
+    PresentationExport.cpp PresentationExport.hpp
     PreviewWidget.cpp PreviewWidget.hpp
     QtRender.cpp QtRender.hpp
     Theme.cpp Theme.hpp

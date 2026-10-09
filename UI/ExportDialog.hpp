@@ -7,6 +7,8 @@
 
 class QCheckBox;
 class QComboBox;
+class QLineEdit;
+class QSpinBox;
 class QLabel;
 class QPushButton;
 
@@ -48,6 +50,15 @@ private:
     QPushButton *_bg_button = nullptr;
     QCheckBox   *_loop      = nullptr;
     QLabel      *_estimate  = nullptr;
+
+    // PowerPoint
+    QWidget   *_pptx_box     = nullptr;
+    QComboBox *_pptx_mode    = nullptr;
+    QComboBox *_slide_size   = nullptr;
+    QCheckBox *_by_markers   = nullptr;
+    QCheckBox *_insert       = nullptr;
+    QLineEdit *_insert_path  = nullptr;
+    QSpinBox  *_insert_after = nullptr;
 };
 
 } // namespace ad::ui

@@ -80,14 +80,17 @@ public:
         _ComputeNodeEffects(active);
         for (const auto &e : _m.edges)
         {
+            _owner = "edge:" + e.id;
             _DrawEdge(e);
         }
         for (const auto &n : _m.nodes)
         {
+            _owner = "node:" + n.id;
             _DrawNode(n);
         }
         for (const Step *s : active)
         {
+            _owner         = "step:" + s->id;
             const double p = std::clamp((_t - s->start) / std::max(1.0, s->duration), 0.0, 1.0);
             switch (s->type)
             {
@@ -134,7 +137,7 @@ private:
 
     void _Add(Shape shape, Paint paint, std::optional<Transform> tr = std::nullopt, std::optional<Path> clip = std::nullopt)
     {
-        _frame.items.push_back(Item{std::move(shape), std::move(paint), std::move(tr), std::move(clip)});
+        _frame.items.push_back(Item{std::move(shape), std::move(paint), std::move(tr), std::move(clip), _owner});
     }
 
     void _Text(Vec2 pos, std::string s, Font font, Color color, HAlign a = HAlign::Left, VAlign v = VAlign::Baseline, double opacity = 1,
@@ -445,10 +448,12 @@ private:
             const Vec2 end   = geom::BorderPoint(b->Center(), b->w / 2 + 8, b->h / 2 + 8, a->Center());
             path             = Path::Line(start, end);
         }
-        const FlatPath fp(path);
+        const FlatPath    fp(path);
+        const std::string owner = _owner; // parts are tagged: "<owner>/trail", "/packet<i>", "/label"
 
         if (s.trail)
         {
+            _owner      = owner + "/trail";
             Stroke tail = Solid(color, 3);
             if (variant.dash > 0)
             {
@@ -474,6 +479,7 @@ private:
             const double len = (forward ? e : 1 - e) * fp.Length();
             const Vec2   pos = fp.PointAtLength(len);
             const Vec2   dir = fp.DirectionAt(len, forward);
+            _owner           = owner + "/packet" + std::to_string(i);
             _Packet(s.packet, pos, std::atan2(dir.y, dir.x) * 180 / std::numbers::pi, s.packet_size, color);
             if (!lead)
             {
@@ -482,6 +488,7 @@ private:
             }
         }
 
+        _owner = owner + "/label";
         if (lead && !s.label.empty())
         {
             const Font   font = _Font(11, true);
@@ -490,6 +497,7 @@ private:
             _Add(RectShape{{o.x - tw / 2, o.y - 13, tw, 18}, 5}, Paint{kDark, Solid(color, 1), 0.82, PaintEffect::None});
             _Text(o, s.label, font, color, HAlign::Center);
         }
+        _owner = owner;
     }
 
     // -----------------------------------------------------------------------
@@ -620,6 +628,7 @@ private:
 
     const Model                                    &_m;
     double                                          _t;
+    std::string                                     _owner; // entity of the items being added
     const SceneOptions                             &_o;
     const TextMeasurer                             &_tm;
     const Registry                                 &_reg;

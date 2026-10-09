@@ -10,9 +10,12 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSettings>
+#include <QSpinBox>
 #include <QStandardItemModel>
 #include <QVBoxLayout>
 
@@ -54,6 +57,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     _format->addItem(tr("WebM (VP9) — best quality/size"), FormatId(ExportFormat::WebM));
     _format->addItem(tr("MP4 (H.264) — for presentations"), FormatId(ExportFormat::Mp4));
     _format->addItem(tr("PNG — frame sequence"), FormatId(ExportFormat::Png));
+    _format->addItem(tr("PowerPoint (.pptx) — slides for presentations"), FormatId(ExportFormat::Pptx));
     // video formats need a libav encoder for the container
     auto *model = qobject_cast<QStandardItemModel *>(_format->model());
     for (int i = 1; i <= 2; ++i)
@@ -120,6 +124,56 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     _loop = new QCheckBox(tr("Loop (GIF)"));
     _loop->setChecked(true);
 
+    // ---- PowerPoint
+    _pptx_mode = new QComboBox;
+    _pptx_mode->addItem(tr("Video — plays automatically (PowerPoint, Keynote, Impress)"), PptxModeId(PptxMode::Video));
+    _pptx_mode->addItem(tr("GIF — works everywhere, also Google Slides"), PptxModeId(PptxMode::Gif));
+    _pptx_mode->addItem(tr("Editable shapes with PowerPoint animations"), PptxModeId(PptxMode::Animated));
+    _pptx_mode->addItem(tr("Morph key frames (PowerPoint 2019 / 365)"), PptxModeId(PptxMode::Morph));
+    _pptx_mode->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    _slide_size = new QComboBox;
+    _slide_size->addItem(tr("16:9"), true);
+    _slide_size->addItem(tr("4:3"), false);
+    _by_markers = new QCheckBox(tr("A slide per segment between markers (click to continue)"));
+    _by_markers->setChecked(true);
+    _insert      = new QCheckBox(tr("Add to an existing presentation"));
+    _insert_path = new QLineEdit;
+    _insert_path->setPlaceholderText(tr("presentation.pptx"));
+    auto *browse  = new QPushButton(tr("Browse…"));
+    _insert_after = new QSpinBox;
+    _insert_after->setRange(0, 999);
+    _insert_after->setSpecialValueText(tr("at the end"));
+    _insert_after->setPrefix(tr("after slide "));
+    _insert_after->setValue(0);
+    auto *insert_row = new QHBoxLayout;
+    insert_row->addWidget(_insert_path, 1);
+    insert_row->addWidget(browse);
+    connect(browse, &QPushButton::clicked, this,
+            [this]
+            {
+                const QString file =
+                    QFileDialog::getOpenFileName(this, tr("Presentation"), _insert_path->text(), tr("PowerPoint (*.pptx)"));
+                if (!file.isEmpty())
+                {
+                    _insert_path->setText(file);
+                    _insert->setChecked(true);
+                }
+            });
+    _pptx_box       = new QWidget;
+    auto *pptx_form = new QFormLayout(_pptx_box);
+    pptx_form->setContentsMargins(0, 0, 0, 0);
+    pptx_form->addRow(tr("Slides"), _pptx_mode);
+    pptx_form->addRow(tr("Slide size"), _slide_size);
+    pptx_form->addRow(QString(), _by_markers);
+    pptx_form->addRow(QString(), _insert);
+    pptx_form->addRow(QString(), insert_row);
+    pptx_form->addRow(QString(), _insert_after);
+    for (QWidget *w : std::initializer_list<QWidget *>{_insert_path, browse, _insert_after})
+    {
+        w->setEnabled(false);
+        connect(_insert, &QCheckBox::toggled, w, &QWidget::setEnabled);
+    }
+
     auto *form = new QFormLayout;
     form->addRow(tr("Format"), _format);
     form->addRow(tr("Frame rate"), _fps);
@@ -128,6 +182,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     form->addRow(tr("Framing"), _framing);
     form->addRow(tr("Background"), bg_row);
     form->addRow(QString(), _loop);
+    form->addRow(_pptx_box);
 
     _estimate = new QLabel;
     _estimate->setWordWrap(true);
@@ -145,7 +200,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     layout->addWidget(_estimate);
     layout->addWidget(buttons);
 
-    for (QComboBox *c : {_format, _fps, _scale, _quality, _framing})
+    for (QComboBox *c : {_format, _fps, _scale, _quality, _framing, _pptx_mode})
     {
         connect(c, &QComboBox::currentIndexChanged, this, &ExportDialog::_UpdateEstimate);
     }
@@ -172,6 +227,15 @@ ExportOptions ExportDialog::_Options() const
     o.background = _background;
     o.loop       = _loop->isChecked();
     o.quality    = _quality->currentData().toInt();
+    if (o.format == ExportFormat::Pptx)
+    {
+        auto &p        = o.presentation;
+        p.mode         = PptxModeFromId(_pptx_mode->currentData().toString()).value_or(PptxMode::Video);
+        p.wide         = _slide_size->currentData().toBool();
+        p.by_markers   = _by_markers->isChecked();
+        p.insert_into  = _insert->isChecked() ? _insert_path->text().trimmed() : QString();
+        p.insert_after = _insert_after->value() == 0 ? -1 : _insert_after->value();
+    }
     return o;
 }
 
@@ -179,7 +243,13 @@ void ExportDialog::_UpdateEstimate()
 {
     const ExportOptions o = _Options();
     _loop->setVisible(o.format == ExportFormat::Gif);
-    _quality->setEnabled(IsVideo(o.format));
+    _pptx_box->setVisible(o.format == ExportFormat::Pptx);
+    const bool vector = o.format == ExportFormat::Pptx && o.presentation.mode != PptxMode::Video && o.presentation.mode != PptxMode::Gif;
+    _quality->setEnabled(IsVideo(o.format) || (o.format == ExportFormat::Pptx && o.presentation.mode == PptxMode::Video));
+    _fps->setEnabled(!vector);
+    _scale->setEnabled(!vector);
+    _framing->setEnabled(!vector);
+    adjustSize();
     const auto   g      = PlanExport(_ctl.GetModel(), o, _ctl.Reg());
     const auto   frames = ExportFrameTimes(_ctl.Duration(), o.fps).size();
     const double mp     = static_cast<double>(g.px_w) * g.px_h / 1e6;
@@ -200,7 +270,12 @@ void ExportDialog::_UpdateEstimate()
 
 void ExportDialog::_Start()
 {
-    ExportOptions o   = _Options();
+    ExportOptions o = _Options();
+    if (o.format == ExportFormat::Pptx && _insert->isChecked() && !QFileInfo::exists(o.presentation.insert_into))
+    {
+        QMessageBox::warning(this, tr("PowerPoint"), tr("Choose an existing presentation to add the slides to."));
+        return;
+    }
     const QString ext = FormatId(o.format);
     QSettings     settings;
     const QString dir       = settings.value(kLastDirKey, QDir::homePath()).toString();

@@ -122,7 +122,7 @@ int RunExport(const QCommandLineParser &cli, const Model &model, const Registry 
     const auto    format = FormatFromId(fmt);
     if (!format.has_value())
     {
-        std::cerr << "error: unknown format '" << fmt.toStdString() << "' (gif, png, webm, mp4)\n";
+        std::cerr << "error: unknown format '" << fmt.toStdString() << "' (gif, png, webm, mp4, pptx)\n";
         return 2;
     }
     o.format     = *format;
@@ -134,6 +134,25 @@ int RunExport(const QCommandLineParser &cli, const Model &model, const Registry 
     {
         std::cerr << "error: invalid --fps/--scale/--background\n";
         return 2;
+    }
+    if (o.format == ExportFormat::Pptx)
+    {
+        auto      &p    = o.presentation;
+        const auto mode = PptxModeFromId(cli.value(QStringLiteral("pptx-mode")));
+        if (!mode.has_value())
+        {
+            std::cerr << "error: invalid --pptx-mode (video, gif, animated, morph)\n";
+            return 2;
+        }
+        p.mode         = *mode;
+        p.wide         = cli.value(QStringLiteral("slide-size")) != QStringLiteral("4:3");
+        p.insert_into  = cli.value(QStringLiteral("pptx-insert"));
+        p.insert_after = cli.isSet(QStringLiteral("pptx-after")) ? cli.value(QStringLiteral("pptx-after")).toInt() : -1;
+        p.by_markers   = !cli.isSet(QStringLiteral("no-segments"));
+        if (!cli.isSet(QStringLiteral("fps")))
+        {
+            o.fps = 30; // smooth video on slides
+        }
     }
 
     int        last_percent = -1;
@@ -263,12 +282,22 @@ int main(int argc, char **argv)
     cli.addVersionOption();
     cli.addPositionalArgument(QStringLiteral("file"), QStringLiteral("Diagram to open: .json or draw.io (.drawio / .xml)"));
     cli.addOptions({
-        {QStringLiteral("export"), QStringLiteral("Export without GUI to <path> (gif/png/webm/mp4 by extension)"), QStringLiteral("path")},
-        {QStringLiteral("format"), QStringLiteral("Export format: gif, png, webm, mp4"), QStringLiteral("format")},
+        {QStringLiteral("export"), QStringLiteral("Export without GUI to <path> (gif/png/webm/mp4/pptx by extension)"),
+         QStringLiteral("path")},
+        {QStringLiteral("format"), QStringLiteral("Export format: gif, png, webm, mp4, pptx"), QStringLiteral("format")},
         {QStringLiteral("fps"), QStringLiteral("Frame rate (default 15)"), QStringLiteral("fps"), QStringLiteral("15")},
         {QStringLiteral("scale"), QStringLiteral("Resolution scale (default 1)"), QStringLiteral("scale"), QStringLiteral("1")},
         {QStringLiteral("background"), QStringLiteral("Background color #rrggbb (default: scene background)"), QStringLiteral("color")},
         {QStringLiteral("no-loop"), QStringLiteral("GIF without looping")},
+        {QStringLiteral("pptx-mode"), QStringLiteral("PowerPoint: video (default), gif, animated (editable shapes), morph"),
+         QStringLiteral("mode"), QStringLiteral("video")},
+        {QStringLiteral("pptx-insert"), QStringLiteral("PowerPoint: add the slides to this existing presentation (written to --export)"),
+         QStringLiteral("file")},
+        {QStringLiteral("pptx-after"), QStringLiteral("PowerPoint: insert after this slide number (default: at the end)"),
+         QStringLiteral("n")},
+        {QStringLiteral("slide-size"), QStringLiteral("PowerPoint: 16:9 (default) or 4:3 for new presentations"), QStringLiteral("ratio"),
+         QStringLiteral("16:9")},
+        {QStringLiteral("no-segments"), QStringLiteral("PowerPoint: one slide for the whole scenario (ignore markers)")},
         {QStringLiteral("convert"), QStringLiteral("Save the input (e.g. a draw.io file) as a native .json document"),
          QStringLiteral("path")},
         {QStringLiteral("page"), QStringLiteral("draw.io page index (default 0)"), QStringLiteral("index"), QStringLiteral("0")},

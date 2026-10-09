@@ -38,13 +38,27 @@ std::expected<ExportOptions, std::string> ExportOptionsFor(const Model &m, const
     const auto    format = FormatFromId(fmt);
     if (!format.has_value())
     {
-        return std::unexpected("unknown export format '" + Us(fmt) + "' (gif, png, webm, mp4)");
+        return std::unexpected("unknown export format '" + Us(fmt) + "' (gif, png, webm, mp4, pptx)");
     }
     o.format     = *format;
     o.fps        = request.fps;
     o.scale      = request.scale;
     o.quality    = request.quality;
     o.background = QColor(Qs(m.scene.background));
+    if (o.format == ExportFormat::Pptx)
+    {
+        const auto mode = PptxModeFromId(Qs(request.pptx_mode));
+        if (!mode.has_value())
+        {
+            return std::unexpected("unknown pptxMode '" + request.pptx_mode + "' (video, gif, animated, morph)");
+        }
+        auto &p        = o.presentation;
+        p.mode         = *mode;
+        p.wide         = request.slide_size != "4:3";
+        p.insert_into  = Qs(request.insert_into);
+        p.insert_after = request.insert_after;
+        p.by_markers   = request.by_markers;
+    }
     return o;
 }
 
