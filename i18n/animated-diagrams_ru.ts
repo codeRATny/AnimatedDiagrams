@@ -44,17 +44,18 @@ Please attach it to your bug report.</source>
         <translation>%1 МБ</translation>
     </message>
     <message>
-        <location filename="../UI/Exporter.cpp" line="+27"/>
+        <location filename="../UI/Exporter.cpp" line="+32"/>
         <source>Export cancelled</source>
         <translation>Экспорт прерван</translation>
     </message>
     <message>
         <location line="+27"/>
+        <location line="+96"/>
         <source>Could not write %1: %2</source>
         <translation>Не удалось записать %1: %2</translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="-74"/>
         <source>Could not write %1</source>
         <translation>Не удалось записать %1</translation>
     </message>
@@ -66,7 +67,12 @@ Please attach it to your bug report.</source>
         <translation>Видео: %1</translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="+10"/>
+        <source>The HTML player is not included in this build</source>
+        <translation>HTML-плеер не входит в эту сборку</translation>
+    </message>
+    <message>
+        <location line="+122"/>
         <source>No output file specified</source>
         <translation>Не указан файл для сохранения</translation>
     </message>
@@ -81,7 +87,7 @@ Please attach it to your bug report.</source>
         <translation>Нет доступа к каталогу %1</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+20"/>
         <source>Unknown format</source>
         <translation>Неизвестный формат</translation>
     </message>
@@ -335,7 +341,7 @@ Please attach it to your bug report.</source>
 <context>
     <name>ad::ui::ExportDialog</name>
     <message>
-        <location filename="../UI/ExportDialog.cpp" line="+45"/>
+        <location filename="../UI/ExportDialog.cpp" line="+47"/>
         <source>Export Animation</source>
         <translation>Экспорт анимации</translation>
     </message>
@@ -360,7 +366,12 @@ Please attach it to your bug report.</source>
         <translation>PNG — последовательность кадров</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+3"/>
+        <source>HTML player — interactive, for web slides</source>
+        <translation>HTML-плеер — интерактивный, для веб-слайдов</translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>No suitable codec in libav</source>
         <translation>Нет подходящего кодека в libav</translation>
     </message>
@@ -421,17 +432,22 @@ Please attach it to your bug report.</source>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+26"/>
+        <location line="+32"/>
         <source>Background</source>
         <translation>Фон</translation>
     </message>
     <message>
-        <location line="-9"/>
-        <source>Loop (GIF)</source>
-        <translation>Зациклить (GIF)</translation>
+        <location line="-15"/>
+        <source>Loop</source>
+        <translation>Зациклить</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+2"/>
+        <source>Start playing when opened</source>
+        <translation>Воспроизводить при открытии</translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>Format</source>
         <translation>Формат</translation>
     </message>
@@ -465,8 +481,13 @@ Please attach it to your bug report.</source>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
+    <message>
+        <location line="+55"/>
+        <source>One self-contained HTML page (≈ %1): plays in any modern browser and embeds in web presentations (reveal.js, Slidev, Marp, an iframe).</source>
+        <translation>Одна самодостаточная HTML-страница (≈ %1): воспроизводится в любом современном браузере и встраивается в веб-презентации (reveal.js, Slidev, Marp, iframe).</translation>
+    </message>
     <message numerus="yes">
-        <location line="+47"/>
+        <location line="+8"/>
         <source>≈ %n frame(s) · %1×%2 px · %3 s</source>
         <translation>
             <numerusform>≈ %n кадр · %1×%2 px · %3 с</numerusform>

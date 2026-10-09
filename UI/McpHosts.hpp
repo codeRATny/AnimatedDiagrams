@@ -30,6 +30,7 @@ public:
     void                                             SetCurrentPath(std::string path) override;
     std::expected<std::vector<uint8_t>, std::string> RenderPng(double time_ms, double scale) override;
     std::expected<std::string, std::string>          Export(const mcp::ExportRequest &request) override;
+    [[nodiscard]] std::vector<std::string>           ExportFormats() const override;
     std::vector<mcp::DocumentInfo>                   Documents() override;
     bool                                             SelectDocument(size_t index) override;
     void                                             BeginNewDocument() override;
@@ -48,8 +49,11 @@ public:
 
     std::expected<std::vector<uint8_t>, std::string> RenderPng(double time_ms, double scale) override;
     std::expected<std::string, std::string>          Export(const mcp::ExportRequest &request) override;
+    [[nodiscard]] std::vector<std::string>           ExportFormats() const override;
 };
 
+/// Formats of this build for MCP clients (AvailableFormatIds).
+std::vector<std::string> McpExportFormats();
 /// Export options for an MCP request (format by extension when not given).
 std::expected<ExportOptions, std::string> ExportOptionsFor(const Model &m, const mcp::ExportRequest &request);
 /// Synchronous export for the headless host.

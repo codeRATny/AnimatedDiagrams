@@ -2,7 +2,8 @@
 
 Десктоп-редактор диаграмм архитектуры с **анимацией flow-сценариев**: запросы между сервисами,
 недоступность, таймеры/таймауты, ретраи, эффекты, fallback-переключения — всё рисуется и проигрывается
-по времени, а затем экспортируется в **GIF / WebM / MP4 / PNG-кадры**.
+по времени, а затем экспортируется в **GIF / WebM / MP4 / PNG-кадры** или в **интерактивный HTML-плеер**
+для веб-презентаций (reveal.js, Slidev, Marp, iframe, PowerPoint Web Viewer).
 
 - **Расширяемая библиотека**: типы элементов (форма, цвета, обводка, шрифт, свой SVG-контур), эффекты
   на ключевых кадрах (масштаб, поворот, сдвиг, прозрачность, свечение, тонирование), шаблоны анимаций
@@ -52,9 +53,17 @@ cd build && cpack -G DEB        # или RPM / "NSIS;ZIP"
 ```
 
 Опции: `BUILD_APP` (ON), `BUILD_TESTS` (OFF), `WARNINGS_AS_ERRORS` (OFF), `WITH_LIBAV` (ON; OFF — только
-GIF / PNG). `nlohmann_json` и `GoogleTest` берутся из системы, а если их нет (Windows) — скачиваются CMake'ом
+GIF / PNG), `AD_PLAYER_HTML` (путь к собранному `player.html`; пусто — без экспорта в HTML). `nlohmann_json` и `GoogleTest` берутся из системы, а если их нет (Windows) — скачиваются CMake'ом
 с проверкой SHA256. libav ищется через pkg-config (Fedora: `libavcodec-free-devel libavformat-free-devel libswscale-free-devel`); на Windows укажите
 `-DFFMPEG_ROOT=<FFmpeg shared SDK>` (include/, lib/, bin/) — DLL попадут в установщик.
+
+HTML-плеер — движок, скомпилированный Emscripten (`emsdk` 6.0.10), собирается отдельно и встраивается в
+приложение ([подробнее](docs/presentations.md#сборка-плеера)):
+
+```bash
+emcmake cmake -S . -B build/player -G Ninja && cmake --build build/player     # или --preset player
+cmake -S . -B build/release ... -DAD_PLAYER_HTML=$PWD/build/player/player/player.html
+```
 
 ## Командная строка
 
@@ -62,12 +71,14 @@ GIF / PNG). `nlohmann_json` и `GoogleTest` берутся из системы, 
 animated-diagrams diagram.json                          # открыть (или .drawio — импорт)
 animated-diagrams --export out.gif diagram.json         # экспорт без GUI (дисплей не нужен)
 animated-diagrams --export out.mp4 --fps 30 --scale 2 diagram.json
+animated-diagrams --export slides/flow.html diagram.json # HTML-плеер для веб-слайдов
 animated-diagrams --convert out.json scheme.drawio --page 1    # draw.io → .json
 animated-diagrams --mcp [diagram.json]                  # MCP-сервер через stdio
 animated-diagrams --mcp-port 8765 diagram.json          # GUI + MCP по HTTP
 ```
 
-Опции экспорта: `--format gif|png|webm|mp4` (иначе по расширению), `--fps`, `--scale`, `--background`, `--no-loop`.
+Опции экспорта: `--format gif|png|webm|mp4|html` (иначе по расширению), `--fps`, `--scale`, `--background`, `--no-loop`,
+`--no-autoplay` (HTML).
 Несколько файлов в командной строке открываются во вкладках; прошлая сессия (все вкладки) восстанавливается.
 
 ## Работа в редакторе
@@ -113,13 +124,15 @@ Windows: `%APPDATA%\AnimatedDiagrams\animated-diagrams\crashes`). Адреса �
 - [Локализация](docs/localization.md) — английский и русский, добавление языков, переводы в плагинах
 - [Плагины](docs/plugins.md) — три плагина в комплекте: [`plugins/`](plugins)
 - [MCP-сервер](docs/mcp.md)
+- [Презентации](docs/presentations.md) — HTML-плеер для reveal.js / Slidev / Marp / iframe, PowerPoint
 - [Скилл для агентов](skills/animated-diagrams/SKILL.md) — устанавливается в `share/animated-diagrams/skills`;
   для Claude Code: `cp -r skills/animated-diagrams ~/.claude/skills/`
 
 ## Архитектура
 
 ```
-src/        ad_core — вся логика без Qt (покрыта unit-тестами)
+src/        ad_core — вся логика без Qt (покрыта unit-тестами); её часть ad_engine (модель, JSON, геометрия,
+            движок, таймлайн) зависит только от STL и nlohmann_json и собирается также в WebAssembly
   Model/      модель, библиотека (элементы/эффекты/анимации), реестр, документ + undo/redo
   Engine/     кадр(t) → display list: формы, эффекты, шаблоны, авто-раскладка
   Geometry/   пути, SVG path, Catmull-Rom, длина дуги
@@ -127,11 +140,12 @@ src/        ad_core — вся логика без Qt (покрыта unit-те�
   Plugins/    формат плагинов, менеджер (сканирование, установка, вкл/выкл)
   Import/     draw.io: inflate, XML, преобразование в модель
   Mcp/        JSON-RPC MCP-сервер, инструменты документа, stdio-транспорт
-  Export/     GIF89a-энкодер, видео через libav (WebM / MP4), сетка кадров
+  Export/     GIF89a-энкодер, видео через libav (WebM / MP4), сетка кадров, шаблон HTML-плеера
 UI/         Qt Widgets: вкладки, док-панели, холст, таймлайн, инспектор, палитра, библиотека, плагины,
             фоновый экспорт (ExportManager), HTTP-транспорт MCP; AppContext — общее для всех вкладок
 apps/       точка входа (GUI / CLI / MCP)
-tests/      GoogleTest (175+ тестов) + smoke-тесты экспорта (GIF / PNG / WebM / MP4) и MCP-сессии
+player/     HTML-плеер: ad_engine → WebAssembly (Emscripten) + рендерер display list на <canvas>
+tests/      GoogleTest (175+ тестов) + smoke-тесты экспорта (GIF / PNG / WebM / MP4 / HTML) и MCP-сессии
 ```
 
 Кадр — чистая функция от `(модель, t)`, поэтому перемотка, пауза, скорость и экспорт дают ровно то же,
@@ -143,6 +157,7 @@ tests/      GoogleTest (175+ тестов) + smoke-тесты экспорта (
 
 | Job | Что делает |
 |---|---|
+| HTML player | Emscripten 6.0.10: `player.html` (артефакт `player-html`), который встраивают сборки Linux и Windows |
 | Ubuntu 24.04 / Debian 13 | clang-19, `-Werror`, тесты, `cpack -G DEB` |
 | Ubuntu 24.04 (gcc-13) | сборка и тесты GCC, `-Werror` |
 | Fedora 43 | clang, `-Werror`, тесты, `cpack -G RPM` |

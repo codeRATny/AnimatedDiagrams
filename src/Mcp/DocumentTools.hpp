@@ -20,10 +20,12 @@ namespace ad::mcp
 struct ExportRequest
 {
     std::string path;
-    std::string format; // gif | png | webm | mp4 (empty -- by extension)
-    double      fps     = 15;
-    double      scale   = 1;
-    int         quality = 2; // WebM / MP4: 0 (smallest) .. 4 (best)
+    std::string format; // gif | png | webm | mp4 | html (empty -- by extension)
+    double      fps      = 15;
+    double      scale    = 1;
+    int         quality  = 2;    // WebM / MP4: 0 (smallest) .. 4 (best)
+    bool        loop     = true; // GIF, HTML player
+    bool        autoplay = true; // HTML player
 };
 
 /// One open document (a GUI tab).
@@ -56,6 +58,8 @@ public:
     virtual std::expected<std::vector<uint8_t>, std::string> RenderPng(double time_ms, double scale);
     /// Export the animation; returns a human readable result line.
     virtual std::expected<std::string, std::string> Export(const ExportRequest &request);
+    /// Formats Export() supports (the export_animation schema); "html" only when the build has the player.
+    [[nodiscard]] virtual std::vector<std::string> ExportFormats() const;
 
     /// Open documents; a single-document host returns just the current one.
     virtual std::vector<DocumentInfo> Documents();

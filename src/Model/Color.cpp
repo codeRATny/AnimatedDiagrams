@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <format>
 
 namespace ad
 {
@@ -77,7 +76,18 @@ std::optional<Color> Color::Parse(std::string_view s)
 
 Color Color::Parse(std::string_view s, Color fallback) { return Parse(s).value_or(fallback); }
 
-std::string Color::Hex() const { return std::format("#{:02x}{:02x}{:02x}", r, g, b); }
+std::string Color::Hex() const
+{
+    // no std::format here: it would pull the float formatting tables into the HTML player
+    constexpr std::string_view kDigits = "0123456789abcdef";
+    std::string                out     = "#";
+    for (const uint8_t c : {r, g, b})
+    {
+        out += kDigits[c >> 4U];
+        out += kDigits[c & 0xfU];
+    }
+    return out;
+}
 
 Color Color::Darker(double k) const
 {

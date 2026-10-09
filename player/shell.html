@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Animated Diagrams @AD_VERSION@ (HTML player)">
+<title>{{AD_TITLE}}</title>
+<style>/*@AD_PLAYER_CSS@*/</style>
+</head>
+<body>
+<!--
+  Animated Diagrams HTML player. Options (URL query, e.g. player.html?autoplay=0&controls=1,
+  or data-* attributes of #ad-player): autoplay, loop, controls (auto | 1 | 0), segment (1-based),
+  t (start time, s), speed, keys (focus | 1 | 0). See docs/presentations.md.
+-->
+<div id="ad-player" class="ad-player" tabindex="0" role="application" aria-roledescription="animated diagram">
+  <canvas class="ad-canvas" aria-hidden="true"></canvas>
+  <div class="ad-message" role="status" hidden></div>
+</div>
+<script type="application/json" id="ad-player-options">{{AD_PLAYER_OPTIONS}}</script>
+<script type="application/json" id="ad-document">{{AD_DOCUMENT_JSON}}</script>
+<script>/*@AD_ENGINE_JS@*/</script>
+<script>/*@AD_PLAYER_JS@*/</script>
+</body>
+</html>

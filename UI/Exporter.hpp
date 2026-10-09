@@ -5,6 +5,7 @@
 #include <QColor>
 #include <QImage>
 #include <QString>
+#include <QStringList>
 
 #include <expected>
 #include <functional>
@@ -16,7 +17,8 @@
 #include "Model/Registry.hpp"
 
 /// @file Exporter.hpp
-/// @brief Animation export: GIF (built-in encoder), PNG sequence, WebM / MP4 (libav, in process).
+/// @brief Animation export: GIF (built-in encoder), PNG sequence, WebM / MP4 (libav, in process),
+///        HTML player (the document in a self-contained page, when the build embeds the player).
 ///        UI independent -- used by the export dialog, the CLI (--export) and the MCP server.
 
 namespace ad::ui
@@ -27,7 +29,8 @@ enum class ExportFormat
     Gif,
     Png,
     WebM,
-    Mp4
+    Mp4,
+    Html // interactive player page (player/, embedded with -DAD_PLAYER_HTML)
 };
 
 enum class Framing
@@ -44,7 +47,8 @@ struct ExportOptions
     Framing      framing = Framing::Content;
     Rect         view_rect; // Framing::View -- the visible canvas area (world coordinates)
     QColor       background = QColor(0x0a, 0x11, 0x1f);
-    bool         loop       = true; // GIF only
+    bool         loop       = true; // GIF, HTML player
+    bool         autoplay   = true; // HTML player
     QString      output_path;
     int          quality = 2; // WebM / MP4: 0 (smallest) .. 4 (best)
 };
@@ -62,6 +66,10 @@ using ProgressFn = std::function<void(int done, int total)>;
 QString                     FormatId(ExportFormat f);
 std::optional<ExportFormat> FormatFromId(const QString &id);
 bool                        IsVideo(ExportFormat f);
+/// The build embeds the HTML player (otherwise the HTML format is not offered).
+bool HtmlPlayerAvailable();
+/// Ids of the formats this build can export ("gif", "png", "webm", "mp4", "html").
+QStringList AvailableFormatIds();
 /// Encoder that will be tried first for a video format; empty -- the format is unavailable.
 QString VideoEncoderFor(ExportFormat f);
 

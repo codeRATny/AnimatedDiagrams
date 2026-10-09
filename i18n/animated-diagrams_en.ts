@@ -39,17 +39,18 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../UI/Exporter.cpp" line="+27"/>
+        <location filename="../UI/Exporter.cpp" line="+32"/>
         <source>Export cancelled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+27"/>
+        <location line="+96"/>
         <source>Could not write %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+22"/>
+        <location line="-74"/>
         <source>Could not write %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -61,7 +62,12 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="+10"/>
+        <source>The HTML player is not included in this build</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+122"/>
         <source>No output file specified</source>
         <translation type="unfinished"></translation>
     </message>
@@ -76,7 +82,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+20"/>
         <source>Unknown format</source>
         <translation type="unfinished"></translation>
     </message>
@@ -330,7 +336,7 @@ Please attach it to your bug report.</source>
 <context>
     <name>ad::ui::ExportDialog</name>
     <message>
-        <location filename="../UI/ExportDialog.cpp" line="+45"/>
+        <location filename="../UI/ExportDialog.cpp" line="+47"/>
         <source>Export Animation</source>
         <translation type="unfinished"></translation>
     </message>
@@ -355,7 +361,12 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+3"/>
+        <source>HTML player — interactive, for web slides</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>No suitable codec in libav</source>
         <translation type="unfinished"></translation>
     </message>
@@ -416,17 +427,22 @@ Please attach it to your bug report.</source>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+26"/>
+        <location line="+32"/>
         <source>Background</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-9"/>
-        <source>Loop (GIF)</source>
+        <location line="-15"/>
+        <source>Loop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+2"/>
+        <source>Start playing when opened</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>Format</source>
         <translation type="unfinished"></translation>
     </message>
@@ -460,8 +476,13 @@ Please attach it to your bug report.</source>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location line="+55"/>
+        <source>One self-contained HTML page (≈ %1): plays in any modern browser and embeds in web presentations (reveal.js, Slidev, Marp, an iframe).</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message numerus="yes">
-        <location line="+47"/>
+        <location line="+8"/>
         <source>≈ %n frame(s) · %1×%2 px · %3 s</source>
         <translation>
             <numerusform>≈ %n frame · %1×%2 px · %3 s</numerusform>

@@ -35,3 +35,16 @@ if(WIN32)
     target_link_libraries(ad_ui PRIVATE dwmapi) # title bar colors of system frames
 endif()
 ad_set_warnings(ad_ui)
+
+# HTML player (player/ built with Emscripten): embedded as :/player/player.html when
+# AD_PLAYER_HTML points to a prebuilt player.html; without it the HTML export is not offered.
+if(AD_PLAYER_HTML)
+    if(NOT EXISTS "${AD_PLAYER_HTML}")
+        message(FATAL_ERROR "AD_PLAYER_HTML: ${AD_PLAYER_HTML} does not exist (build player/ with emcmake first)")
+    endif()
+    set_source_files_properties("${AD_PLAYER_HTML}" PROPERTIES QT_RESOURCE_ALIAS player.html)
+    qt_add_resources(ad_ui "player" PREFIX "/player" FILES "${AD_PLAYER_HTML}")
+    message(STATUS "HTML player: ${AD_PLAYER_HTML}")
+else()
+    message(STATUS "HTML player: not embedded (set AD_PLAYER_HTML to enable the HTML export)")
+endif()

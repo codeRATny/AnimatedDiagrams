@@ -10,6 +10,7 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLocale>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSettings>
@@ -20,6 +21,7 @@
 #include "Controller.hpp"
 #include "Export/ExportPlan.hpp"
 #include "ExportManager.hpp"
+#include "Io/JsonIo.hpp"
 #include "QtRender.hpp"
 
 namespace ad::ui
@@ -54,6 +56,10 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     _format->addItem(tr("WebM (VP9) — best quality/size"), FormatId(ExportFormat::WebM));
     _format->addItem(tr("MP4 (H.264) — for presentations"), FormatId(ExportFormat::Mp4));
     _format->addItem(tr("PNG — frame sequence"), FormatId(ExportFormat::Png));
+    if (HtmlPlayerAvailable())
+    {
+        _format->addItem(tr("HTML player — interactive, for web slides"), FormatId(ExportFormat::Html));
+    }
     // video formats need a libav encoder for the container
     auto *model = qobject_cast<QStandardItemModel *>(_format->model());
     for (int i = 1; i <= 2; ++i)
@@ -117,8 +123,14 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
                 _SetBackground(Qt::white);
             });
 
-    _loop = new QCheckBox(tr("Loop (GIF)"));
+    _loop = new QCheckBox(tr("Loop"));
     _loop->setChecked(true);
+    _autoplay = new QCheckBox(tr("Start playing when opened"));
+    _autoplay->setChecked(true);
+    auto *flags_row = new QHBoxLayout;
+    flags_row->addWidget(_loop);
+    flags_row->addWidget(_autoplay);
+    flags_row->addStretch(1);
 
     auto *form = new QFormLayout;
     form->addRow(tr("Format"), _format);
@@ -127,7 +139,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     form->addRow(tr("Video quality"), _quality);
     form->addRow(tr("Framing"), _framing);
     form->addRow(tr("Background"), bg_row);
-    form->addRow(QString(), _loop);
+    form->addRow(QString(), flags_row);
 
     _estimate = new QLabel;
     _estimate->setWordWrap(true);
@@ -171,15 +183,31 @@ ExportOptions ExportDialog::_Options() const
     o.view_rect  = _view_rect;
     o.background = _background;
     o.loop       = _loop->isChecked();
+    o.autoplay   = _autoplay->isChecked();
     o.quality    = _quality->currentData().toInt();
     return o;
 }
 
 void ExportDialog::_UpdateEstimate()
 {
-    const ExportOptions o = _Options();
-    _loop->setVisible(o.format == ExportFormat::Gif);
+    const ExportOptions o    = _Options();
+    const bool          html = o.format == ExportFormat::Html;
+    _loop->setVisible(o.format == ExportFormat::Gif || html);
+    _autoplay->setVisible(html);
     _quality->setEnabled(IsVideo(o.format));
+    for (QComboBox *c : {_fps, _scale, _framing})
+    {
+        c->setEnabled(!html); // the player renders in the browser at the page size
+    }
+    if (html)
+    {
+        const qint64 bytes =
+            QFileInfo(QStringLiteral(":/player/player.html")).size() + static_cast<qint64>(SerializeModel(_ctl.GetModel(), -1).size());
+        _estimate->setText(tr("One self-contained HTML page (≈ %1): plays in any modern browser and embeds in "
+                              "web presentations (reveal.js, Slidev, Marp, an iframe).")
+                               .arg(QLocale().formattedDataSize(bytes)));
+        return;
+    }
     const auto   g      = PlanExport(_ctl.GetModel(), o, _ctl.Reg());
     const auto   frames = ExportFrameTimes(_ctl.Duration(), o.fps).size();
     const double mp     = static_cast<double>(g.px_w) * g.px_h / 1e6;

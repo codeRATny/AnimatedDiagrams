@@ -13,10 +13,12 @@ add_executable(ad_core_tests
     EngineTest.cpp
     ExportPlanTest.cpp
     FileTest.cpp
+    FrameBufferTest.cpp
     I18nTest.cpp
     GeometryTest.cpp
     GifEncoderTest.cpp
     HitTestTest.cpp
+    HtmlPlayerTest.cpp
     InflateTest.cpp
     JsonIoTest.cpp
     LayoutTest.cpp
@@ -62,6 +64,16 @@ if(TARGET animated_diagrams)
             -DOUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/smoke
             -P ${CMAKE_CURRENT_SOURCE_DIR}/mcp_smoke.cmake)
     set_tests_properties(AppMcpStdioSmoke PROPERTIES TIMEOUT 120)
+    if(AD_PLAYER_HTML)
+        # the HTML player is embedded: export the sample to a page
+        add_test(NAME AppExportSmoke.html
+            COMMAND ${CMAKE_COMMAND}
+                -DAPP=$<TARGET_FILE:animated_diagrams>
+                -DINPUT=${PROJECT_SOURCE_DIR}/samples/fallback-retry.json
+                -DOUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/smoke
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/html_export_smoke.cmake)
+        set_tests_properties(AppExportSmoke.html PROPERTIES TIMEOUT 120)
+    endif()
 endif()
 
 # every interface string of the Russian translation is translated
