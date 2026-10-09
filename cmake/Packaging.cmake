@@ -1,5 +1,5 @@
-# CPack: DEB (Debian/Ubuntu), RPM (Fedora etc.), NSIS + ZIP (Windows).
-# The generator is chosen in CI: cpack -G DEB | RPM | "NSIS;ZIP".
+# CPack: DEB (Debian/Ubuntu), RPM (Fedora etc.), Inno Setup installer + ZIP (Windows).
+# The generator is chosen in CI: cpack -G DEB | RPM | "INNOSETUP;ZIP" (CMake 3.27+, Inno Setup 6).
 
 set(AD_PACKAGE_RELEASE_SUFFIX "" CACHE STRING "Package release suffix, e.g. ubuntu24.04 / debian13")
 
@@ -42,17 +42,31 @@ set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
     /usr/share/icons/hicolor/scalable
     /usr/share/icons/hicolor/scalable/apps)
 
-# ---- Windows ----------------------------------------------------------------
-set(CPACK_NSIS_DISPLAY_NAME "Animated Diagrams")
-set(CPACK_NSIS_PACKAGE_NAME "Animated Diagrams")
-set(CPACK_NSIS_MUI_ICON "${PROJECT_SOURCE_DIR}/packaging/windows/animated-diagrams.ico")
-set(CPACK_NSIS_MUI_UNIICON "${PROJECT_SOURCE_DIR}/packaging/windows/animated-diagrams.ico")
-set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\animated-diagrams.exe")
-set(CPACK_NSIS_URL_INFO_ABOUT "${PROJECT_HOMEPAGE_URL}")
-set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-set(CPACK_NSIS_EXECUTABLES_DIRECTORY "bin")
-set(CPACK_NSIS_CREATE_ICONS_EXTRA
-    "CreateShortCut '$DESKTOP\\\\Animated Diagrams.lnk' '$INSTDIR\\\\bin\\\\animated-diagrams.exe'")
-set(CPACK_NSIS_DELETE_ICONS_EXTRA "Delete '$DESKTOP\\\\Animated Diagrams.lnk'")
+# ---- Windows: Inno Setup installer + portable ZIP ------------------------------
+# A setup with the same AppId updates the installed copy in place: same folder and shortcuts, one entry
+# in "Apps & features", the running application is closed first (Restart Manager), files of the previous
+# version are replaced (packaging/windows/installer.iss), user data in %APPDATA% is kept. Older versions
+# are not installed over newer ones without confirmation (packaging/windows/installer.pas).
+set(CPACK_INNOSETUP_ARCHITECTURE x64)
+set(CPACK_INNOSETUP_LANGUAGES english russian)
+set(CPACK_INNOSETUP_USE_MODERN_WIZARD ON)
+set(CPACK_INNOSETUP_ICON_FILE "${PROJECT_SOURCE_DIR}/packaging/windows/animated-diagrams.ico")
+set(CPACK_INNOSETUP_PROGRAM_MENU_FOLDER "Animated Diagrams")
+set(CPACK_INNOSETUP_RUN_EXECUTABLES animated-diagrams)
+set(CPACK_CREATE_DESKTOP_LINKS animated-diagrams)
+set(CPACK_INNOSETUP_SETUP_AppId "AnimatedDiagrams") # never change: it identifies the installation
+set(CPACK_INNOSETUP_SETUP_AppName "Animated Diagrams")
+set(CPACK_INNOSETUP_SETUP_AppPublisher "${CPACK_PACKAGE_VENDOR}")
+set(CPACK_INNOSETUP_SETUP_AppPublisherURL "${PROJECT_HOMEPAGE_URL}")
+set(CPACK_INNOSETUP_SETUP_AppSupportURL "${PROJECT_HOMEPAGE_URL}/issues")
+set(CPACK_INNOSETUP_SETUP_AppUpdatesURL "${PROJECT_HOMEPAGE_URL}/releases")
+set(CPACK_INNOSETUP_SETUP_UninstallDisplayName "Animated Diagrams")
+set(CPACK_INNOSETUP_SETUP_UninstallDisplayIcon "{app}\\\\bin\\\\animated-diagrams.exe")
+set(CPACK_INNOSETUP_SETUP_CloseApplications "force")
+set(CPACK_INNOSETUP_SETUP_CloseApplicationsFilter "*.exe,*.dll")
+set(CPACK_INNOSETUP_SETUP_RestartApplications OFF)
+set(CPACK_INNOSETUP_SETUP_ChangesAssociations OFF)
+set(CPACK_INNOSETUP_EXTRA_SCRIPTS "${PROJECT_SOURCE_DIR}/packaging/windows/installer.iss")
+set(CPACK_INNOSETUP_CODE_FILES "${PROJECT_SOURCE_DIR}/packaging/windows/installer.pas")
 
 include(CPack)

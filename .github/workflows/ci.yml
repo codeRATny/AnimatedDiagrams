@@ -234,7 +234,7 @@ jobs:
         run: run-clang-tidy-19 -p build -quiet -j 4 "^${GITHUB_WORKSPACE}/(src|UI|apps)/"
 
   windows:
-    name: Windows (MSVC, NSIS + ZIP)
+    name: Windows (MSVC, Inno Setup + ZIP)
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     needs: player
     runs-on: windows-2022
@@ -285,9 +285,12 @@ jobs:
           echo "FFMPEG_ROOT=$(cygpath -m "$root")" >> "$GITHUB_ENV"
           cygpath -w "$root/bin" >> "$GITHUB_PATH"
 
-      - name: Ensure NSIS
+      - name: Ensure Inno Setup
         shell: bash
-        run: command -v makensis || choco install nsis -y --no-progress
+        run: |
+          iscc="/c/Program Files (x86)/Inno Setup 6"
+          [ -x "$iscc/ISCC.exe" ] || choco install innosetup -y --no-progress
+          cygpath -w "$iscc" >> "$GITHUB_PATH"
 
       - name: Version from tag
         shell: bash
@@ -312,9 +315,15 @@ jobs:
 
       - name: Package
         shell: bash
+        run: cd build && cpack -G "INNOSETUP;ZIP" -C ${{ env.BUILD_TYPE }} -B ../dist
+
+      - name: "Installer: install, update, downgrade, uninstall"
+        shell: pwsh
         run: |
-          export PATH="$PATH:/c/Program Files (x86)/NSIS:/c/Program Files/NSIS"
-          cd build && cpack -G "NSIS;ZIP" -C ${{ env.BUILD_TYPE }} -B ../dist
+          # an "old" setup of the same build (version 0.0.1) is updated by the real one
+          cpack --config build/CPackConfig.cmake -G INNOSETUP -C ${{ env.BUILD_TYPE }} -B dist-old -R 0.0.1
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          ./ci/test-windows-installer.ps1 -Old (Get-Item dist-old/*.exe).FullName -New (Get-Item dist/*.exe).FullName
 
       - uses: actions/upload-artifact@v5
         with:

@@ -85,7 +85,7 @@ if(WIN32)
 endif()
 
 if(WIN32)
-    # windeployqt: Qt libraries and plugins next to the exe (for ZIP / NSIS)
+    # windeployqt: Qt libraries and plugins next to the exe (for the ZIP and the installer)
     qt_generate_deploy_app_script(
         TARGET animated_diagrams
         OUTPUT_SCRIPT deploy_script
