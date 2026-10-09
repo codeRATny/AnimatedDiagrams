@@ -74,6 +74,8 @@ if(WIN32 AND WITH_LIBAV AND LibAV_RUNTIME_DIR)
 endif()
 
 if(WIN32)
+    # libraries from vcpkg (libzip, zlib, pugixml, ...) next to the exe
+    install(FILES $<TARGET_RUNTIME_DLLS:animated_diagrams> DESTINATION ${CMAKE_INSTALL_BINDIR})
     # windeployqt: Qt libraries and plugins next to the exe (for ZIP / NSIS)
     qt_generate_deploy_app_script(
         TARGET animated_diagrams

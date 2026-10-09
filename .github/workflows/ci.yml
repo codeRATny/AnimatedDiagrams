@@ -74,6 +74,7 @@ jobs:
             qt6-base-dev qt6-qpa-plugins libgl-dev qt6-tools-dev qt6-l10n-tools \
             libgtest-dev nlohmann-json3-dev \
             libavcodec-dev libavformat-dev libswscale-dev \
+            libzip-dev libpugixml-dev \
             dpkg-dev file fonts-dejavu-core
 
       - name: Install dependencies (dnf)
@@ -84,6 +85,7 @@ jobs:
             qt6-qtbase-devel mesa-libGL-devel qt6-qttools-devel qt6-linguist \
             gtest-devel json-devel \
             libavcodec-free-devel libavformat-free-devel libavutil-free-devel libswscale-free-devel \
+            libzip-devel pugixml-devel \
             rpm-build dejavu-sans-fonts dejavu-sans-mono-fonts
 
       - uses: actions/checkout@v5
@@ -134,7 +136,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build pkg-config clang-19 libclang-rt-19-dev libgtest-dev nlohmann-json3-dev \
-            libavcodec-dev libavformat-dev libswscale-dev
+            libavcodec-dev libavformat-dev libswscale-dev libzip-dev libpugixml-dev
       - uses: actions/checkout@v5
       - name: Configure
         run: >
@@ -161,7 +163,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             ninja-build pkg-config clang-19 clang-format-19 clang-tidy-19 \
             qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev \
-            libavcodec-dev libavformat-dev libswscale-dev
+            libavcodec-dev libavformat-dev libswscale-dev libzip-dev libpugixml-dev
       - uses: actions/checkout@v5
       - name: clang-format
         run: |
@@ -208,6 +210,17 @@ jobs:
           echo "FFMPEG_ROOT=$(cygpath -m "$root")" >> "$GITHUB_ENV"
           cygpath -w "$root/bin" >> "$GITHUB_PATH"
 
+      - name: vcpkg binary cache
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/vcpkg-cache"
+          echo "VCPKG_BINARY_SOURCES=clear;files,$(cygpath -w "$RUNNER_TEMP/vcpkg-cache"),readwrite" >> "$GITHUB_ENV"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-${{ hashFiles('vcpkg.json') }}
+
       - name: Ensure NSIS
         shell: bash
         run: command -v makensis || choco install nsis -y --no-progress
@@ -220,6 +233,8 @@ jobs:
         shell: bash
         run: >
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          "-DCMAKE_TOOLCHAIN_FILE=$(cygpath -m "$VCPKG_INSTALLATION_ROOT")/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-windows
           -DBUILD_TESTS=ON
           -DREQUIRE_TRANSLATIONS=ON
           ${AD_VERSION_ARG:-}

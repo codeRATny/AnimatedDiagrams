@@ -1,0 +1,9 @@
+{
+  "name": "animated-diagrams",
+  "version-string": "2.1.0",
+  "description": "Libraries for Windows builds (Linux uses system packages)",
+  "dependencies": [
+    "pugixml",
+    { "name": "libzip", "default-features": false }
+  ]
+}
