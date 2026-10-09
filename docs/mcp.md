@@ -34,7 +34,7 @@ claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp
 
 | Инструмент | Назначение |
 |---|---|
-| `get_summary` | обзор: узлы с id, связи, шаги, библиотека — вызывать первым |
+| `get_summary` | обзор: узлы с id, связи, шаги, маркеры и сегменты, библиотека — вызывать первым |
 | `get_document` | весь документ в формате .json |
 | `list_documents`, `select_document` | открытые вкладки и переключение активной |
 | `list_library` | типы элементов, эффекты, анимации, дизайн-системы и справочники (формы, состояния, варианты сообщений) |
@@ -44,6 +44,7 @@ claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp
 | `add_edge`, `update_edge`, `remove_edge` | связи |
 | `add_step`, `update_step`, `remove_step` | шаги сценария |
 | `apply_animation` | вставить шаблон анимации, сопоставив роли узлам |
+| `add_marker`, `update_marker`, `remove_marker` | маркеры (главы) таймлайна: `add_marker {time, label}` → `id`; `update_marker {id, time?, label?}` |
 | `upsert_library_item`, `remove_library_item` | свои элементы / эффекты / анимации / дизайн-системы в документе |
 | `set_scene` | название, длительность, цвета холста, дизайн-система (`designSystem`) |
 | `auto_layout` | авто-раскладка узлов по связям |

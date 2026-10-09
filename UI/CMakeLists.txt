@@ -22,6 +22,7 @@ qt_add_library(ad_ui STATIC
     PaletteWidget.cpp PaletteWidget.hpp
     PluginsDialog.cpp PluginsDialog.hpp
     PresentationExport.cpp PresentationExport.hpp
+    PresenterWindow.cpp PresenterWindow.hpp
     PreviewWidget.cpp PreviewWidget.hpp
     QtRender.cpp QtRender.hpp
     Theme.cpp Theme.hpp

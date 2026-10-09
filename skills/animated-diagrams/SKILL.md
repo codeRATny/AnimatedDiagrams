@@ -40,7 +40,11 @@ user to connect the server. Never edit the user's open document over HTTP withou
    Optionally `auto_layout {direction: "LR"|"TB"}`.
 4. Build the scenario:
    - whole patterns at once: `apply_animation {template, roles: {role: nodeId}, start}`;
-   - single steps: `add_step {type, start, duration, …}` (ms).
+   - single steps: `add_step {type, start, duration, …}` (ms);
+   - optional chapters for presenting: `add_marker {time, label}` at the boundaries of logical
+     phases (e.g. "Request", "Failure", "Fallback"); `update_marker {id, time?, label?}`,
+     `remove_marker {id}`. Presenter mode (F5) stops at each marker; slide exports make one slide
+     per segment. Place a marker after the last step of a phase, not in the middle of a message.
 5. **Verify**: `render_frame {timeMs}` at 2–4 interesting moments (mid-message, during a state change,
    end). Look at the images; fix overlaps, wrong directions, unreadable labels.
 6. `save_document {path}` (plugin definitions used by the diagram are embedded) and/or

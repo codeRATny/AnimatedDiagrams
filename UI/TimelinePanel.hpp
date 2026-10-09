@@ -10,7 +10,8 @@ class QLabel;
 class QPushButton;
 
 /// @file TimelinePanel.hpp
-/// @brief Transport bar (play / pause, time, speed, duration, add step) + timeline of one tab.
+/// @brief Transport bar (play / pause, time, speed, duration, loop, stop at markers, add marker,
+///        add step) + timeline of one tab.
 
 namespace ad::ui
 {
@@ -26,6 +27,8 @@ public:
     explicit TimelinePanel(Controller &ctl, QWidget *parent = nullptr);
 
     void AddStep();
+    /// Add a marker at the playhead (status message when one is already there).
+    void AddMarker();
 
 Q_SIGNALS:
     void AnimationRequested();
@@ -41,6 +44,7 @@ private:
     QDoubleSpinBox *_duration  = nullptr;
     QComboBox      *_speed     = nullptr;
     QCheckBox      *_loop      = nullptr;
+    QCheckBox      *_stop_at   = nullptr;
     QComboBox      *_step_type = nullptr;
 };
 

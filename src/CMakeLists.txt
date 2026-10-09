@@ -31,6 +31,7 @@ add_library(ad_core STATIC
     Model/Document.cpp
     Model/Easing.cpp
     Model/Library.cpp
+    Model/Markers.cpp
     Model/Model.cpp
     Model/Registry.cpp
     Model/Sample.cpp

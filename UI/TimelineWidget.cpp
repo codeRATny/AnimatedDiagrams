@@ -1,5 +1,8 @@
 #include "TimelineWidget.hpp"
 
+#include <QContextMenuEvent>
+#include <QInputDialog>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -10,6 +13,7 @@
 #include <cmath>
 
 #include "Controller.hpp"
+#include "Model/Markers.hpp"
 #include "QtRender.hpp"
 #include "Theme.hpp"
 #include "Timeline/TimelineLayout.hpp"
@@ -23,7 +27,7 @@ TimelineWidget::TimelineWidget(Controller &ctl, QWidget *parent) : QAbstractScro
     setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     viewport()->setMouseTracking(true);
-    setToolTip(tr("Ctrl + wheel — zoom the timeline"));
+    setToolTip(tr("Ctrl + wheel — zoom the timeline. Right-click the ruler to add a marker"));
     setMinimumHeight(120);
 
     connect(&_ctl, &Controller::ModelChanged, this,
@@ -108,9 +112,126 @@ QRectF TimelineWidget::_BarRect(const std::string &step_id) const
     return {x, y, std::max(14.0, _TimeToX(s->duration)), 24};
 }
 
+double TimelineWidget::_MarkerRoom(const Marker &m) const
+{
+    // a flag does not cover the next marker
+    double room = 160;
+    for (const auto &other : _ctl.GetModel().scenario.markers)
+    {
+        if (other.time > m.time + kMarkerEpsilon)
+        {
+            room = std::min(room, _TimeToX(other.time) - _TimeToX(m.time) - 3);
+        }
+    }
+    return std::max(10.0, room);
+}
+
+QString TimelineWidget::_MarkerText(const Marker &m) const
+{
+    QFont f = font();
+    f.setPixelSize(11);
+    const int room = static_cast<int>(_MarkerRoom(m)) - 12;
+    return room < 12 ? QString() : QFontMetrics(f).elidedText(Qs(m.label), Qt::ElideRight, room);
+}
+
+QRectF TimelineWidget::_MarkerRect(const Marker &m) const
+{
+    QFont f = font();
+    f.setPixelSize(11);
+    const QString text = _MarkerText(m);
+    const double  w    = text.isEmpty() ? 10.0 : std::min(_MarkerRoom(m), QFontMetrics(f).horizontalAdvance(text) + 12.0);
+    const double  x    = _TimeToX(m.time) - horizontalScrollBar()->value();
+    return {x, 4, w, 16};
+}
+
+std::string TimelineWidget::_MarkerAt(QPointF pos) const
+{
+    const auto &markers = _ctl.GetModel().scenario.markers;
+    for (auto it = markers.rbegin(); it != markers.rend(); ++it) // the last drawn is on top
+    {
+        if (_MarkerRect(*it).adjusted(-4, -4, 2, 6).contains(pos))
+        {
+            return it->id;
+        }
+    }
+    return {};
+}
+
+bool TimelineWidget::AddMarkerAt(double time)
+{
+    const Marker *m = _ctl.Doc().AddMarker(std::round(time));
+    if (m == nullptr)
+    {
+        Q_EMIT StatusMessage(tr("There already is a marker at %1").arg(Qs(FormatTime(time))));
+        return false;
+    }
+    _ctl.Changed(false);
+    return true;
+}
+
+void TimelineWidget::RenameMarker(const std::string &marker_id)
+{
+    const Marker *m = _ctl.GetModel().FindMarker(marker_id);
+    if (m == nullptr)
+    {
+        return;
+    }
+    bool          ok    = false;
+    const QString label = QInputDialog::getText(this, tr("Marker"), tr("Marker label (shown in presenter mode and on slides):"),
+                                                QLineEdit::Normal, Qs(m->label), &ok);
+    if (ok && _ctl.Doc().RenameMarker(marker_id, Us(label.trimmed())))
+    {
+        _ctl.Changed(false);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Painting
 // ---------------------------------------------------------------------------
+
+void TimelineWidget::_PaintMarkers(QPainter &p, int h)
+{
+    const auto &markers = _ctl.GetModel().scenario.markers;
+    if (markers.empty())
+    {
+        return;
+    }
+    const Color c = Ui().warning;
+    QFont       f = font();
+    f.setPixelSize(11);
+    p.setFont(f);
+    for (const auto &m : markers)
+    {
+        const QRectF r = _MarkerRect(m);
+        if (r.right() < 0 || r.left() > viewport()->width())
+        {
+            continue;
+        }
+        const bool hot = m.id == _hover_marker || (_drag.has_value() && _drag->mode == Mode::Marker && _drag->step_id == m.id);
+        // thin line over the lanes
+        p.setPen(QPen(ToQColor(c, hot ? 0.9 : 0.55), 1));
+        p.drawLine(QPointF(r.left() + 0.5, r.bottom()), QPointF(r.left() + 0.5, h));
+        // flag on the ruler: straight left edge at the marker time
+        QPainterPath flag;
+        flag.moveTo(r.left(), r.top());
+        flag.lineTo(r.right() - 3, r.top());
+        flag.quadTo(r.right(), r.top(), r.right(), r.top() + 3);
+        flag.lineTo(r.right(), r.bottom() - 3);
+        flag.quadTo(r.right(), r.bottom(), r.right() - 3, r.bottom());
+        flag.lineTo(r.left(), r.bottom());
+        flag.closeSubpath();
+        p.fillPath(flag, ToQColor(c.Mix(Ui().base, hot ? 0.45 : 0.68)));
+        p.setPen(QPen(ToQColor(c), 1));
+        p.drawPath(flag);
+        p.fillRect(QRectF(r.left(), r.top(), 2, r.height()), ToQColor(c));
+        const QString text = _MarkerText(m);
+        if (!text.isEmpty())
+        {
+            p.setPen(ToQColor(Ui().text));
+            p.drawText(r.adjusted(6, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft, text);
+        }
+    }
+}
 
 void TimelineWidget::paintEvent(QPaintEvent * /*e*/)
 {
@@ -185,6 +306,8 @@ void TimelineWidget::paintEvent(QPaintEvent * /*e*/)
         p.drawText(QPointF(x + 4, 15), tr("%1s").arg(Qs(FormatTick(sec, step))));
     }
 
+    _PaintMarkers(p, h);
+
     // end of the scene
     const double end_x = _TimeToX(_ctl.Duration()) - sx;
     QPen         end_pen(ToQColor(Ui().danger, 0.5), 2, Qt::DashLine);
@@ -214,6 +337,15 @@ void TimelineWidget::mousePressEvent(QMouseEvent *e)
         return;
     }
     const QPointF pos = e->position();
+    if (const std::string marker = _MarkerAt(pos); !marker.empty())
+    {
+        const Marker *m = _ctl.GetModel().FindMarker(marker);
+        _ctl.Pause();
+        _ctl.Seek(m->time);
+        _drag = DragState{.mode = Mode::Marker, .step_id = marker, .press_x = pos.x(), .orig_start = m->time};
+        viewport()->update();
+        return;
+    }
     if (pos.y() < kRuler)
     {
         _ctl.Pause();
@@ -248,7 +380,18 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent *e)
     const QPointF pos = e->position();
     if (!_drag.has_value())
     {
-        // cursor hint over the bar edges
+        // cursor hint over markers and the bar edges
+        const std::string marker = _MarkerAt(pos);
+        if (marker != _hover_marker)
+        {
+            _hover_marker = marker;
+            viewport()->update();
+        }
+        if (!marker.empty())
+        {
+            viewport()->setCursor(Qt::SizeHorCursor);
+            return;
+        }
         Qt::CursorShape shape = Qt::ArrowCursor;
         for (const auto &s : _ctl.GetModel().scenario.steps)
         {
@@ -266,6 +409,23 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent *e)
     if (_drag->mode == Mode::Scrub)
     {
         _ctl.Seek(_XToTime(pos.x() + horizontalScrollBar()->value()));
+        return;
+    }
+    if (_drag->mode == Mode::Marker)
+    {
+        const Marker *m = _ctl.GetModel().FindMarker(_drag->step_id);
+        if (m == nullptr)
+        {
+            return;
+        }
+        const double t = std::clamp(SnapTime(_drag->orig_start + _XToTime(pos.x() - _drag->press_x)), 0.0, _ctl.Duration());
+        // one undo step for the whole drag; a time taken by another marker is skipped
+        if (std::abs(t - m->time) >= kMarkerEpsilon && _ctl.Doc().MoveMarker(_drag->step_id, t, "timeline:marker-drag"))
+        {
+            _drag->edited = true;
+            _ctl.Changed(false);
+            _ctl.Seek(t);
+        }
         return;
     }
     if (_ctl.GetModel().FindStep(_drag->step_id) == nullptr)
@@ -295,6 +455,7 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent *e)
         break;
     }
     case Mode::Scrub:
+    case Mode::Marker:
         break;
     }
     _ctl.Changed(false);
@@ -303,13 +464,80 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent *e)
 void TimelineWidget::mouseReleaseEvent(QMouseEvent * /*e*/)
 {
     const bool edited = _drag.has_value() && _drag->edited;
+    const bool marker = _drag.has_value() && _drag->mode == Mode::Marker;
     _drag.reset();
+    if (marker)
+    {
+        _ctl.Doc().BreakMerge();
+        viewport()->update();
+        return;
+    }
     if (edited)
     {
         _ctl.Doc().SortSteps();
         _ctl.Doc().UpdateDuration();
         _ctl.Doc().BreakMerge();
         _ctl.Changed(true);
+    }
+}
+
+void TimelineWidget::mouseDoubleClickEvent(QMouseEvent *e)
+{
+    if (e->button() != Qt::LeftButton)
+    {
+        return;
+    }
+    if (const std::string marker = _MarkerAt(e->position()); !marker.empty())
+    {
+        _drag.reset();
+        RenameMarker(marker);
+    }
+}
+
+void TimelineWidget::contextMenuEvent(QContextMenuEvent *e)
+{
+    const QPointF     pos    = e->pos();
+    const std::string marker = _MarkerAt(pos);
+    if (marker.empty() && pos.y() >= kRuler)
+    {
+        return;
+    }
+    const double t = std::clamp(SnapTime(_XToTime(pos.x() + horizontalScrollBar()->value())), 0.0, _ctl.Duration());
+    QMenu        menu(this);
+    QAction     *add = menu.addAction(tr("Add marker here (%1)").arg(Qs(FormatTime(t))));
+    add->setEnabled(marker.empty() && MarkerAt(_ctl.GetModel().scenario, t) == nullptr);
+    connect(add, &QAction::triggered, this,
+            [this, t]
+            {
+                AddMarkerAt(t);
+            });
+    if (!marker.empty())
+    {
+        menu.addAction(tr("Rename marker…"), this,
+                       [this, marker]
+                       {
+                           RenameMarker(marker);
+                       });
+        menu.addAction(tr("Delete marker"), this,
+                       [this, marker]
+                       {
+                           if (_ctl.Doc().RemoveMarker(marker))
+                           {
+                               _hover_marker.clear();
+                               _ctl.Changed(false);
+                           }
+                       });
+    }
+    menu.exec(e->globalPos());
+}
+
+void TimelineWidget::leaveEvent(QEvent *e)
+{
+    QAbstractScrollArea::leaveEvent(e);
+    if (!_hover_marker.empty())
+    {
+        _hover_marker.clear();
+        viewport()->update();
     }
 }
 

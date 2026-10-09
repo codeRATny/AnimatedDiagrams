@@ -347,7 +347,7 @@ Please attach it to your bug report.</source>
 <context>
     <name>ad::ui::Controller</name>
     <message>
-        <location filename="../UI/Controller.cpp" line="+281"/>
+        <location filename="../UI/Controller.cpp" line="+282"/>
         <source>Imported — nodes: %1, edges: %2, notes: %3; skipped: %4</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1723,7 +1723,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>ad::ui::MainWindow</name>
     <message>
-        <location filename="../UI/MainWindow.cpp" line="+104"/>
+        <location filename="../UI/MainWindow.cpp" line="+105"/>
         <source>New tab (Ctrl+N)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1783,7 +1783,17 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+5"/>
+        <source>▶ Present</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Present the diagram full screen, chapter by chapter (F5)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
         <source>Background exports</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1944,12 +1954,12 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+6"/>
-        <location line="+373"/>
+        <location line="+385"/>
         <source>Language</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-367"/>
+        <location line="-379"/>
         <source>Lock Panels</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1970,6 +1980,11 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+8"/>
+        <source>Present</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
         <source>Full Screen</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1996,6 +2011,11 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     <message>
         <location line="+6"/>
         <source>Go to End</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Add Marker at Playhead</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2065,12 +2085,12 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+5"/>
-        <location line="+937"/>
+        <location line="+960"/>
         <source>About</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-772"/>
+        <location line="-795"/>
         <source>Not saved</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2239,7 +2259,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="+67"/>
         <source>Add some nodes to the diagram first</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2451,6 +2471,14 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
 </context>
 <context>
+    <name>ad::ui::PresenterWindow</name>
+    <message>
+        <location filename="../UI/PresenterWindow.cpp" line="+35"/>
+        <source>Presenting: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>ad::ui::PreviewWidget</name>
     <message>
         <location filename="../UI/PreviewWidget.cpp" line="+174"/>
@@ -2511,7 +2539,27 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+9"/>
+        <source>Stop at markers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Pause playback when it reaches a marker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>⚑ Marker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Add a marker at the playhead (M). Markers split the scenario into chapters for presenting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>＋ Add step</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2526,7 +2574,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+37"/>
         <source>Add an edge between nodes first</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2539,13 +2587,43 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>ad::ui::TimelineWidget</name>
     <message>
-        <location filename="../UI/TimelineWidget.cpp" line="+26"/>
-        <source>Ctrl + wheel — zoom the timeline</source>
+        <location filename="../UI/TimelineWidget.cpp" line="+30"/>
+        <source>Ctrl + wheel — zoom the timeline. Right-click the ruler to add a marker</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+159"/>
+        <location line="+135"/>
+        <source>There already is a marker at %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Marker</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Marker label (shown in presenter mode and on slides):</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+126"/>
         <source>%1s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Add marker here (%1)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Rename marker…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Delete marker</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2864,12 +2942,12 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/Io/JsonIo.cpp" line="+29"/>
+        <location filename="../src/Io/JsonIo.cpp" line="+30"/>
         <source>Untitled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+97"/>
+        <location line="+103"/>
         <source>The file is not valid JSON</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2879,7 +2957,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/Model/Document.cpp" line="+404"/>
+        <location filename="../src/Model/Document.cpp" line="+410"/>
         <location line="+97"/>
         <source>Note</source>
         <translation type="unfinished"></translation>

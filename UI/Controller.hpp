@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "Model/Document.hpp"
@@ -88,19 +89,26 @@ public:
     [[nodiscard]] bool   IsPlaying() const { return _playing; }
     [[nodiscard]] double Speed() const { return _speed; }
     [[nodiscard]] bool   Loop() const { return _loop; }
-    void                 Play();
-    void                 Pause();
-    void                 TogglePlay();
-    void                 Stop();
-    void                 Seek(double t);
-    void                 SetSpeed(double s) { _speed = s; }
-    void                 SetLoop(bool l) { _loop = l; }
+    /// Playback pauses when it reaches a marker (see Model/Markers.hpp).
+    [[nodiscard]] bool StopAtMarkers() const { return _stop_at_markers; }
+    void               Play();
+    /// Play from the current time and pause exactly at `until` (presenter mode: the next
+    /// marker or the end); looping and "stop at markers" do not apply. No-op when `until` <= Time().
+    void PlayUntil(double until);
+    void Pause();
+    void TogglePlay();
+    void Stop();
+    void Seek(double t);
+    void SetSpeed(double s) { _speed = s; }
+    void SetLoop(bool l) { _loop = l; }
+    void SetStopAtMarkers(bool on);
 
 Q_SIGNALS:
     void ModelChanged(bool structural);
     void SelectionChanged();
     void TimeChanged(double t);
     void PlayingChanged(bool playing);
+    void StopAtMarkersChanged(bool on);
     /// Name, path, modified flag, undo / redo availability.
     void DocumentStateChanged();
     /// Plugins or the registry changed (palette and library lists must be refreshed).
@@ -110,6 +118,7 @@ private:
     friend class AppDocumentHost;
 
     void _Tick();
+    void _StartClock();
     void _ValidateSelection();
     void _ScheduleAutosave();
     void _WriteAutosave();
@@ -122,14 +131,16 @@ private:
     QString     _path;
     bool        _modified = false;
 
-    double        _time    = 0;
-    bool          _playing = false;
-    double        _speed   = 1;
-    bool          _loop    = true;
-    QTimer        _frame_timer;
-    QElapsedTimer _clock;
-    qint64        _last_ms = 0;
-    QTimer        _autosave_timer;
+    double                _time            = 0;
+    bool                  _playing         = false;
+    double                _speed           = 1;
+    bool                  _loop            = true;
+    bool                  _stop_at_markers = false;
+    std::optional<double> _play_until; // PlayUntil() target
+    QTimer                _frame_timer;
+    QElapsedTimer         _clock;
+    qint64                _last_ms = 0;
+    QTimer                _autosave_timer;
 };
 
 } // namespace ad::ui

@@ -87,6 +87,19 @@ public:
     void UpdateDuration();
 
     // -----------------------------------------------------------------------
+    // Markers (chapters). Times are clamped to [0, duration]; two markers never share a time.
+    // -----------------------------------------------------------------------
+    /// New marker (id "m_..."); nullptr when there already is a marker at that time.
+    Marker *AddMarker(double time, std::string label = {});
+    /// Move a marker; false when it is missing or another marker is at the new time.
+    /// Moves with the same non-empty merge key in a row are one undo step (dragging).
+    bool MoveMarker(std::string_view id, double time, std::string_view merge_key = {});
+    /// false when the marker is missing.
+    bool RenameMarker(std::string_view id, std::string label);
+    /// false when the marker is missing.
+    bool RemoveMarker(std::string_view id);
+
+    // -----------------------------------------------------------------------
     // Document library
     // -----------------------------------------------------------------------
     void UpsertElement(const ElementType &e);

@@ -21,6 +21,7 @@ add_executable(ad_core_tests
     JsonIoTest.cpp
     LayoutTest.cpp
     LibraryTest.cpp
+    MarkersTest.cpp
     McpServerTest.cpp
     PathTest.cpp
     PptxTest.cpp

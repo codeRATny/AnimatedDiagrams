@@ -96,12 +96,23 @@ struct SceneSettings
     friend bool operator==(const SceneSettings &, const SceneSettings &) = default;
 };
 
+/// Chapter mark on the timeline: splits the scenario into segments (presenter mode
+/// stops at markers, exporters produce one clip / slide per segment, see Markers.hpp).
+struct Marker
+{
+    std::string id;
+    double      time = 0; // ms, within [0, scenario duration]
+    std::string label;
+    friend bool operator==(const Marker &, const Marker &) = default;
+};
+
 struct Scenario
 {
-    double            duration      = 12000; // ms -- end of the scene
-    bool              user_duration = false; // set by the user (never shrink automatically)
-    std::vector<Step> steps;
-    friend bool       operator==(const Scenario &, const Scenario &) = default;
+    double              duration      = 12000; // ms -- end of the scene
+    bool                user_duration = false; // set by the user (never shrink automatically)
+    std::vector<Step>   steps;
+    std::vector<Marker> markers; // sorted by time, unique times (NormalizeMarkers)
+    friend bool         operator==(const Scenario &, const Scenario &) = default;
 };
 
 struct Model
@@ -116,12 +127,14 @@ struct Model
     LibrarySet        library;       // definitions created in / embedded into this document
     std::string       design_system; // active design system id (empty -- none)
 
-    [[nodiscard]] const Node *FindNode(std::string_view id) const;
-    [[nodiscard]] Node       *FindNode(std::string_view id);
-    [[nodiscard]] const Edge *FindEdge(std::string_view id) const;
-    [[nodiscard]] Edge       *FindEdge(std::string_view id);
-    [[nodiscard]] const Step *FindStep(std::string_view id) const;
-    [[nodiscard]] Step       *FindStep(std::string_view id);
+    [[nodiscard]] const Node   *FindNode(std::string_view id) const;
+    [[nodiscard]] Node         *FindNode(std::string_view id);
+    [[nodiscard]] const Edge   *FindEdge(std::string_view id) const;
+    [[nodiscard]] Edge         *FindEdge(std::string_view id);
+    [[nodiscard]] const Step   *FindStep(std::string_view id) const;
+    [[nodiscard]] Step         *FindStep(std::string_view id);
+    [[nodiscard]] const Marker *FindMarker(std::string_view id) const;
+    [[nodiscard]] Marker       *FindMarker(std::string_view id);
     /// Any edge between a and b (either direction).
     [[nodiscard]] const Edge *EdgeBetween(std::string_view a, std::string_view b) const;
     [[nodiscard]] const Port *FindPort(std::string_view node_id, std::string_view port_id) const;

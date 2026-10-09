@@ -259,6 +259,20 @@ std::optional<Step> StepFromJson(const Json &j)
     return s;
 }
 
+std::optional<Marker> MarkerFromJson(const Json &j)
+{
+    if (!j.is_object())
+    {
+        return std::nullopt;
+    }
+    const auto time = OptNum(j, "time");
+    if (!time.has_value())
+    {
+        return std::nullopt;
+    }
+    return Marker{.id = Str(j, "id"), .time = std::clamp(*time, 0.0, kMaxTimeMs), .label = Str(j, "label")};
+}
+
 std::optional<ElementType> ElementFromJson(const Json &j, Warnings *warnings)
 {
     if (!j.is_object() || Str(j, "id").empty())
@@ -477,6 +491,13 @@ Model ModelFromJson(const Json &j)
         if (auto step = StepFromJson(s); step.has_value())
         {
             m.scenario.steps.push_back(std::move(*step));
+        }
+    }
+    for (const auto &mk : Arr(sc, "markers"))
+    {
+        if (auto marker = MarkerFromJson(mk); marker.has_value())
+        {
+            m.scenario.markers.push_back(std::move(*marker));
         }
     }
     m.library       = LibraryFromJson(Obj(j, "library"));
@@ -809,6 +830,8 @@ OrderedJson ToJson(const LibrarySet &l)
     return j;
 }
 
+OrderedJson ToJson(const Marker &m) { return OrderedJson{{"id", m.id}, {"time", m.time}, {"label", m.label}}; }
+
 OrderedJson ToJson(const Model &m)
 {
     OrderedJson j;
@@ -845,6 +868,15 @@ OrderedJson ToJson(const Model &m)
     if (m.scenario.user_duration)
     {
         j["scenario"]["userDuration"] = true;
+    }
+    if (!m.scenario.markers.empty())
+    {
+        OrderedJson markers = OrderedJson::array();
+        for (const auto &mk : m.scenario.markers)
+        {
+            markers.push_back(ToJson(mk));
+        }
+        j["scenario"]["markers"] = std::move(markers);
     }
     PutStr(j, "designSystem", m.design_system);
     if (!m.library.Empty())

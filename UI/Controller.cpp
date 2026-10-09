@@ -14,6 +14,7 @@
 #include "AppContext.hpp"
 #include "Import/DrawioImporter.hpp"
 #include "Io/JsonIo.hpp"
+#include "Model/Markers.hpp"
 #include "Model/Sample.hpp"
 #include "QtRender.hpp"
 
@@ -353,6 +354,25 @@ void Controller::Play()
     {
         _time = 0;
     }
+    _StartClock();
+}
+
+void Controller::PlayUntil(double until)
+{
+    until = std::clamp(until, 0.0, Duration());
+    if (until <= _time)
+    {
+        return;
+    }
+    _play_until = until;
+    if (!_playing)
+    {
+        _StartClock();
+    }
+}
+
+void Controller::_StartClock()
+{
     _playing = true;
     _clock.start();
     _last_ms = 0;
@@ -362,6 +382,7 @@ void Controller::Play()
 
 void Controller::Pause()
 {
+    _play_until.reset();
     if (!_playing)
     {
         return;
@@ -369,6 +390,16 @@ void Controller::Pause()
     _playing = false;
     _frame_timer.stop();
     Q_EMIT PlayingChanged(false);
+}
+
+void Controller::SetStopAtMarkers(bool on)
+{
+    if (on == _stop_at_markers)
+    {
+        return;
+    }
+    _stop_at_markers = on;
+    Q_EMIT StopAtMarkersChanged(on);
 }
 
 void Controller::TogglePlay()
@@ -391,18 +422,32 @@ void Controller::Stop()
 
 void Controller::Seek(double t)
 {
+    _play_until.reset(); // a jump cancels PlayUntil (playback continues normally)
     _time = std::clamp(t, 0.0, Duration());
     Q_EMIT TimeChanged(_time);
 }
 
 void Controller::_Tick()
 {
-    const qint64 now = _clock.elapsed();
+    const qint64 now  = _clock.elapsed();
+    const double prev = _time;
     _time += static_cast<double>(now - _last_ms) * _speed;
     _last_ms = now;
-    if (_time >= Duration())
+    if (_play_until.has_value() && _time >= *_play_until)
     {
-        if (_loop)
+        _time = *_play_until;
+        Pause();
+    }
+    else if (const auto marker =
+                 _stop_at_markers && !_play_until.has_value() ? MarkerCrossed(GetModel().scenario, prev, _time) : std::nullopt;
+             marker.has_value())
+    {
+        _time = *marker;
+        Pause();
+    }
+    else if (_time >= Duration())
+    {
+        if (_loop && !_play_until.has_value())
         {
             _time = 0;
         }
