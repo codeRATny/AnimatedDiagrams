@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPointer>
 #include <QPushButton>
 #include <QSlider>
 #include <QVBoxLayout>
@@ -18,6 +19,7 @@
 #include "Engine/Shapes.hpp"
 #include "Model/Easing.hpp"
 #include "QtRender.hpp"
+#include "Theme.hpp"
 
 namespace ad::ui::fields
 {
@@ -27,14 +29,50 @@ namespace
 
 QString TextColorFor(const QColor &bg) { return bg.lightness() > 140 ? QStringLiteral("#0b1220") : QStringLiteral("#ffffff"); }
 
-void PaintColorButton(QPushButton *b, const QString &hex, bool dimmed)
+/// Color value as shown by the editors: "$token" resolved with the current design system.
+std::optional<Color> ResolveColor(const QString &value) { return Color::Parse(ResolveColorToken(Us(value), Theme::Instance().Design())); }
+
+QColor PickerStart(const QString &value)
 {
-    const QColor c(hex);
-    b->setText(hex);
-    b->setToolTip(dimmed ? QObject::tr("Наследуется (авто)") : QString());
+    const auto c = ResolveColor(value);
+    return c.has_value() ? ToQColor(*c) : QColor(Qt::gray);
+}
+
+/// Color dialog for an editor button. The dialog runs an event loop: an editor rebuild
+/// (e.g. after an MCP agent changed the model) may delete the button meanwhile, so the
+/// dialog belongs to the window and nothing is returned when the button is gone.
+std::optional<QColor> PickColor(QPushButton *b, const QString &value)
+{
+    const QPointer<QPushButton> guard(b);
+    const QColor                picked = QColorDialog::getColor(PickerStart(value), b->window(), QObject::tr("Цвет"));
+    if (guard == nullptr || !picked.isValid())
+    {
+        return std::nullopt;
+    }
+    return picked;
+}
+
+void PaintColorButton(QPushButton *b, const QString &value, bool dimmed)
+{
+    const auto c = ResolveColor(value);
+    b->setText(value);
+    QString tip = dimmed ? QObject::tr("Наследуется (авто)") : QString();
+    if (value.startsWith(QLatin1Char('$')))
+    {
+        tip += (tip.isEmpty() ? QString() : QStringLiteral("\n")) +
+               QObject::tr("Токен дизайн-системы: %1").arg(c.has_value() ? Qs(c->Hex()) : QObject::tr("не определён"));
+    }
+    b->setToolTip(tip);
     b->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    if (!c.has_value())
+    {
+        b->setStyleSheet(QString()); // not a color: the regular button look
+        return;
+    }
+    // only valid CSS reaches the style sheet (tokens and #rrggbbaa are resolved above)
     b->setStyleSheet(QStringLiteral("QPushButton#colorButton { background: %1; color: %2; %3 }")
-                         .arg(hex, TextColorFor(c), dimmed ? QStringLiteral("border-style: dashed; font-style: italic;") : QString()));
+                         .arg(Qs(c->Hex()), TextColorFor(ToQColor(*c)),
+                              dimmed ? QStringLiteral("border-style: dashed; font-style: italic;") : QString()));
 }
 
 void MakeShrinkable(QComboBox *c)
@@ -237,10 +275,11 @@ QWidget *ColorButton(const QString &hex, std::function<void(const QString &)> on
     QObject::connect(b, &QPushButton::clicked, b,
                      [b, hex, f = std::move(on_change)]
                      {
-                         const QColor picked = QColorDialog::getColor(QColor(hex), b, QObject::tr("Цвет"));
-                         if (picked.isValid())
+                         const auto fn     = f; // the lambda dies with the button
+                         const auto picked = PickColor(b, hex);
+                         if (picked.has_value())
                          {
-                             f(picked.name());
+                             fn(picked->name());
                          }
                      });
     return b;
@@ -267,10 +306,12 @@ QWidget *OptColor(const std::optional<std::string> &value, const QString &fallba
     QObject::connect(b, &QPushButton::clicked, b,
                      [b, hex, f]
                      {
-                         const QColor picked = QColorDialog::getColor(QColor(hex), b, QObject::tr("Цвет"), QColorDialog::ShowAlphaChannel);
-                         if (picked.isValid())
+                         const auto fn = f; // the lambda dies with the button
+                         // no alpha: the renderer uses opaque colors (opacity is a separate style property)
+                         const auto picked = PickColor(b, hex);
+                         if (picked.has_value())
                          {
-                             (*f)(Us(picked.alpha() == 255 ? picked.name() : picked.name(QColor::HexArgb)));
+                             (*fn)(Us(picked->name()));
                          }
                      });
     QObject::connect(reset, &QPushButton::clicked, reset,

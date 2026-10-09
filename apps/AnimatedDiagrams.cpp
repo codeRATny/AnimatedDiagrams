@@ -12,6 +12,7 @@
 #include <QFileInfo>
 #include <QLibraryInfo>
 #include <QLocale>
+#include <QTimer>
 #include <QTranslator>
 
 #include <algorithm>
@@ -34,6 +35,7 @@
 
 #include "AppContext.hpp"
 #include "Controller.hpp"
+#include "CrashReports.hpp"
 #include "Exporter.hpp"
 #include "Import/DrawioImporter.hpp"
 #include "Io/JsonIo.hpp"
@@ -232,6 +234,7 @@ int main(int argc, char **argv)
     QApplication::setApplicationDisplayName(QStringLiteral("Animated Diagrams"));
     QApplication::setApplicationVersion(QStringLiteral(AD_VERSION_STRING));
     QApplication::setDesktopFileName(QStringLiteral("animated-diagrams"));
+    InstallCrashReporting(); // reports go to <app data>/crashes (GUI and headless modes)
 
     QCommandLineParser cli;
     cli.setApplicationDescription(QStringLiteral("Animated diagram editor: request flows, timers, retries, effects"));
@@ -312,7 +315,7 @@ int main(int argc, char **argv)
         QApplication::installTranslator(&qt_translator);
     }
 
-    ApplyTheme(app);
+    ApplyTheme();
     AppContext ctx;
     MainWindow window(ctx);
     window.RestoreSession(files.isEmpty()); // all tabs of the previous session
@@ -322,5 +325,10 @@ int main(int argc, char **argv)
     }
     window.StartMcpOnLaunch(mcp_port);
     window.show();
+    QTimer::singleShot(0, &window,
+                       [&window]
+                       {
+                           NotifyAboutCrashReports(&window); // a report left by the previous session
+                       });
     return QApplication::exec();
 }

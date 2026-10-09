@@ -7,6 +7,7 @@ qt_add_library(ad_ui STATIC
     ApplyTemplateDialog.cpp ApplyTemplateDialog.hpp
     CanvasWidget.cpp CanvasWidget.hpp
     Controller.cpp Controller.hpp
+    CrashReports.cpp CrashReports.hpp
     ExportDialog.cpp ExportDialog.hpp
     ExportManager.cpp ExportManager.hpp
     ExportsPanel.cpp ExportsPanel.hpp

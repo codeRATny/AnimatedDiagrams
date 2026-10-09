@@ -14,6 +14,7 @@
 
 #include "AppContext.hpp"
 #include "QtRender.hpp"
+#include "Theme.hpp"
 #include "Utils/File.hpp"
 
 namespace ad::ui
@@ -57,7 +58,7 @@ PluginsDialog::PluginsDialog(AppContext &ctx, QWidget *parent) : QDialog(parent)
     _details->setTextInteractionFlags(Qt::TextSelectableByMouse);
     _errors = new QLabel;
     _errors->setWordWrap(true);
-    _errors->setStyleSheet(QStringLiteral("color: #fca5a5;"));
+    _errors->setObjectName(QStringLiteral("errorText"));
     _errors->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
     auto *install_button = new QPushButton(tr("Установить из файла…"));
@@ -159,7 +160,7 @@ void PluginsDialog::_UpdateButtons()
     text += QStringLiteral("<br><small>%1</small>").arg(QDir::toNativeSeparators(Qs(PathToUtf8(rec->path))).toHtmlEscaped());
     for (const auto &w : rec->warnings)
     {
-        text += QStringLiteral("<br><span style='color:#fbbf24'>⚠ %1</span>").arg(Qs(w).toHtmlEscaped());
+        text += QStringLiteral("<br><span style='color:%1'>⚠ %2</span>").arg(Qs(Ui().warning.Hex()), Qs(w).toHtmlEscaped());
     }
     _details->setText(text);
 }

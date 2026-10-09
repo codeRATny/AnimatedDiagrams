@@ -15,6 +15,7 @@
 #include "Interaction/HitTest.hpp"
 #include "PaletteWidget.hpp"
 #include "QtRender.hpp"
+#include "Theme.hpp"
 
 namespace ad::ui
 {
@@ -206,10 +207,10 @@ void CanvasWidget::paintEvent(QPaintEvent * /*e*/)
         const QString      text = fm.elidedText(_hint, Qt::ElideRight, std::max(50, width() - 40));
         const QRectF       box(10, height() - 34, fm.horizontalAdvance(text) + 20, 24);
         p.setRenderHint(QPainter::Antialiasing);
-        p.setPen(QPen(QColor(0x22, 0x31, 0x4f), 1));
-        p.setBrush(QColor(0x0b, 0x12, 0x20, 220));
+        p.setPen(QPen(ToQColor(Ui().border), 1));
+        p.setBrush(ToQColor(Ui().base, 0.86));
         p.drawRoundedRect(box, 7, 7);
-        p.setPen(QColor(0x85, 0x98, 0xb8));
+        p.setPen(ToQColor(Ui().muted));
         p.drawText(box, Qt::AlignCenter, text);
     }
 }
@@ -428,17 +429,22 @@ void CanvasWidget::mouseDoubleClickEvent(QMouseEvent *e)
     }
     case Hit::Kind::Node:
     {
-        _drag              = Drag::None;
-        const Node   *n    = _ctl.GetModel().FindNode(hit.id);
-        bool          ok   = false;
-        const QString name = QInputDialog::getText(this, tr("Узел"), tr("Название узла:"), QLineEdit::Normal, Qs(n->label), &ok);
-        if (ok)
+        _drag                  = Drag::None;
+        const std::string id   = hit.id;
+        const Node       *n    = _ctl.GetModel().FindNode(id);
+        bool              ok   = false;
+        const QString     old  = n != nullptr ? Qs(n->label) : QString();
+        const QString     name = QInputDialog::getText(this, tr("Узел"), tr("Название узла:"), QLineEdit::Normal, old, &ok);
+        // the node may be gone after the dialog (undo, an MCP agent)
+        if (ok && _ctl.GetModel().FindNode(id) != nullptr)
         {
-            const std::string id = hit.id;
             _ctl.Edit({},
                       [&](Model &mm)
                       {
-                          mm.FindNode(id)->label = Us(name);
+                          if (Node *node = mm.FindNode(id); node != nullptr)
+                          {
+                              node->label = Us(name);
+                          }
                       });
         }
         break;

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "Utils/CrashHandler.hpp"
+
 namespace ad::mcp
 {
 
@@ -141,6 +143,7 @@ Json McpServer::_HandleOne(const Json &msg)
     {
         if (method == "initialize")
         {
+            crash::Breadcrumb("MCP > initialize " + params.value("clientInfo", Json::object()).dump().substr(0, 120));
             return ResultResponse(id, _Initialize(params));
         }
         if (method == "ping")
@@ -167,7 +170,11 @@ Json McpServer::_HandleOne(const Json &msg)
             {
                 return ErrorResponse(id, kInvalidParams, "Unknown tool: " + name);
             }
-            return ResultResponse(id, _ToolsCall(params));
+            // crash reports show what the agent was doing
+            crash::Breadcrumb("MCP > " + name + " " + params.value("arguments", Json::object()).dump().substr(0, 160));
+            Json result = _ToolsCall(params);
+            crash::Breadcrumb("MCP < " + name + (result.value("isError", false) ? " error" : " ok"));
+            return ResultResponse(id, std::move(result));
         }
         if (method == "resources/list")
         {
@@ -181,6 +188,7 @@ Json McpServer::_HandleOne(const Json &msg)
     }
     catch (const std::exception &e)
     {
+        crash::Breadcrumb("MCP ! " + method + ": " + e.what());
         return ErrorResponse(id, kInternalError, e.what());
     }
 }

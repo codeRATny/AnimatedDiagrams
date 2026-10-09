@@ -12,6 +12,7 @@
 class QAction;
 class QDockWidget;
 class QLabel;
+class QMenu;
 class QProgressBar;
 class QStackedWidget;
 class QTabWidget;
@@ -75,7 +76,7 @@ private:
 
     Tab                      *_AddTab();
     void                      _CloseTab(int index);
-    bool                      _ConfirmClose(Tab &tab);
+    bool                      _ConfirmClose(Controller *ctl);
     void                      _OnCurrentTabChanged(int index);
     void                      _UpdateTabText(Controller *ctl);
     [[nodiscard]] Tab        *_TabOf(Controller *ctl);
@@ -95,6 +96,9 @@ private:
     void _UpdateTitle();
     void _UpdateMcpState();
     void _UpdateExportsIndicator();
+    /// Apply the UI theme: the chosen design system or the one of the active document.
+    void _UpdateUiTheme();
+    void _FillThemeMenu(QMenu *menu);
 
     void _NewDiagram();
     void _OpenDiagram();

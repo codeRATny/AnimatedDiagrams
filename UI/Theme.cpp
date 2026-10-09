@@ -3,71 +3,149 @@
 #include <QApplication>
 #include <QPalette>
 #include <QStyleFactory>
+#include <QWidget>
+
+#include <utility>
+
+#include "QtRender.hpp"
 
 namespace ad::ui
 {
 
-void ApplyTheme(QApplication &app)
+namespace
 {
-    QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
 
-    const QColor bg(0x0b, 0x12, 0x20);
-    const QColor bg2(0x0f, 0x1a, 0x2e);
-    const QColor panel(0x13, 0x1f, 0x38);
-    const QColor panel2(0x18, 0x26, 0x42);
-    const QColor text(0xdb, 0xe6, 0xfb);
-    const QColor muted(0x85, 0x98, 0xb8);
-    const QColor accent(0x4f, 0x8c, 0xff);
+QString Css(Color c) { return QString::fromStdString(c.Hex()); }
 
-    QPalette p;
-    p.setColor(QPalette::Window, bg2);
-    p.setColor(QPalette::WindowText, text);
-    p.setColor(QPalette::Base, bg);
-    p.setColor(QPalette::AlternateBase, panel);
-    p.setColor(QPalette::ToolTipBase, panel2);
-    p.setColor(QPalette::ToolTipText, text);
-    p.setColor(QPalette::PlaceholderText, muted);
-    p.setColor(QPalette::Text, text);
-    p.setColor(QPalette::Button, panel);
-    p.setColor(QPalette::ButtonText, text);
-    p.setColor(QPalette::BrightText, Qt::white);
-    p.setColor(QPalette::Highlight, accent);
-    p.setColor(QPalette::HighlightedText, Qt::white);
-    p.setColor(QPalette::Link, accent);
-    p.setColor(QPalette::Mid, QColor(0x22, 0x31, 0x4f));
-    p.setColor(QPalette::Disabled, QPalette::Text, muted.darker(130));
-    p.setColor(QPalette::Disabled, QPalette::ButtonText, muted.darker(130));
-    p.setColor(QPalette::Disabled, QPalette::WindowText, muted.darker(130));
-    QApplication::setPalette(p);
+QPalette MakePalette(const UiPalette &u)
+{
+    const QColor disabled = ToQColor(u.faint);
+    QPalette     p;
+    p.setColor(QPalette::Window, ToQColor(u.window));
+    p.setColor(QPalette::WindowText, ToQColor(u.text));
+    p.setColor(QPalette::Base, ToQColor(u.base));
+    p.setColor(QPalette::AlternateBase, ToQColor(u.panel));
+    p.setColor(QPalette::ToolTipBase, ToQColor(u.hover));
+    p.setColor(QPalette::ToolTipText, ToQColor(u.text));
+    p.setColor(QPalette::PlaceholderText, ToQColor(u.muted));
+    p.setColor(QPalette::Text, ToQColor(u.text));
+    p.setColor(QPalette::Button, ToQColor(u.panel));
+    p.setColor(QPalette::ButtonText, ToQColor(u.text));
+    p.setColor(QPalette::BrightText, ToQColor(u.accent_text));
+    p.setColor(QPalette::Highlight, ToQColor(u.accent));
+    p.setColor(QPalette::HighlightedText, ToQColor(u.accent_text));
+    p.setColor(QPalette::Link, ToQColor(u.accent));
+    p.setColor(QPalette::LinkVisited, ToQColor(u.accent));
+    p.setColor(QPalette::Light, ToQColor(u.hover));
+    p.setColor(QPalette::Midlight, ToQColor(u.panel));
+    p.setColor(QPalette::Mid, ToQColor(u.border));
+    p.setColor(QPalette::Dark, ToQColor(u.base));
+    p.setColor(QPalette::Shadow, ToQColor(u.light ? Color::Rgb(0x94a3b8) : Color::Rgb(0x000000)));
+    p.setColor(QPalette::Disabled, QPalette::Text, disabled);
+    p.setColor(QPalette::Disabled, QPalette::ButtonText, disabled);
+    p.setColor(QPalette::Disabled, QPalette::WindowText, disabled);
+    return p;
+}
 
-    app.setStyleSheet(QStringLiteral(R"(
-        QToolTip { border: 1px solid #22314f; padding: 4px; }
+QString MakeStyleSheet(const UiPalette &u)
+{
+    QString                              css    = QStringLiteral(R"(
+        QToolTip { color: {text}; background: {hover}; border: 1px solid {border}; padding: 4px; }
         QLabel#inspectorTitle { font-size: 15px; font-weight: 600; padding-bottom: 4px; }
         QLabel#inspectorSection, QLabel#panelTitle {
-            color: #8598b8; font-size: 11px; font-weight: 600; padding-top: 6px;
+            color: {muted}; font-size: 11px; font-weight: 600; padding-top: 6px;
         }
-        QLabel#fieldLabel { color: #8598b8; font-size: 12px; }
-        QLabel#hint { color: #8598b8; font-size: 12px; }
-        QLabel#readout { font-family: monospace; padding: 2px 8px; background: #0b1220;
-                         border: 1px solid #22314f; border-radius: 6px; }
-        QPushButton { padding: 5px 10px; border: 1px solid #22314f; border-radius: 6px; background: #131f38; }
-        QPushButton:hover { background: #182642; }
-        QPushButton:checked { background: #1d3a73; border-color: #4f8cff; }
-        QPushButton:disabled { color: #56688a; }
-        QPushButton#dangerButton { border-color: #7f1d1d; color: #fca5a5; }
-        QPushButton#dangerButton:hover { background: #3b1219; }
-        QPushButton#primaryButton { background: #2b5fd9; border-color: #4f8cff; color: white; }
-        QPushButton#primaryButton:hover { background: #3a6ee6; }
+        QLabel#fieldLabel { color: {muted}; font-size: 12px; }
+        QLabel#hint { color: {muted}; font-size: 12px; }
+        QLabel#errorText { color: {danger}; }
+        QLabel#readout { font-family: monospace; padding: 2px 8px; background: {base};
+                         border: 1px solid {border}; border-radius: 6px; }
+        QWidget#jobCard { background: {panel}; border: 1px solid {border}; border-radius: 6px; }
+        QPushButton { padding: 5px 10px; border: 1px solid {border}; border-radius: 6px; background: {panel}; color: {text}; }
+        QPushButton:hover { background: {hover}; }
+        QPushButton:checked { background: {selected}; border-color: {accent}; }
+        QPushButton:disabled { color: {faint}; }
+        QPushButton#dangerButton { border-color: {danger}; color: {danger}; }
+        QPushButton#dangerButton:hover { background: {danger_bg}; }
+        QPushButton#primaryButton { background: {accent}; border-color: {accent}; color: {accent_text}; }
+        QPushButton#primaryButton:hover { background: {accent_hover}; }
         QToolButton { padding: 4px 8px; border: 1px solid transparent; border-radius: 6px; }
-        QToolButton:hover { background: #182642; border-color: #22314f; }
-        QToolButton:checked { background: #1d3a73; border-color: #4f8cff; }
-        QListWidget, QTreeWidget, QTableWidget { border: 1px solid #22314f; border-radius: 6px; }
-        QTabWidget::pane { border: 1px solid #22314f; border-radius: 6px; }
-        QTabBar::tab { padding: 6px 14px; background: #131f38; border: 1px solid #22314f; }
-        QTabBar::tab:selected { background: #1d3a73; border-color: #4f8cff; }
-        QSplitter::handle { background: #22314f; }
-        QStatusBar { color: #8598b8; }
-    )"));
+        QToolButton:hover { background: {hover}; border-color: {border}; }
+        QToolButton:checked { background: {selected}; border-color: {accent}; }
+        QCheckBox::indicator { width: 12px; height: 12px; border: 1px solid {muted}; border-radius: 3px; background: {base}; }
+        QCheckBox::indicator:checked { background: {accent}; border-color: {accent}; }
+        QCheckBox::indicator:disabled { border-color: {faint}; }
+        QListWidget, QTreeWidget, QTableWidget { border: 1px solid {border}; border-radius: 6px; }
+        QTabWidget::pane { border: 1px solid {border}; border-radius: 6px; }
+        QTabBar::tab { padding: 6px 14px; background: {panel}; border: 1px solid {border}; color: {muted}; }
+        QTabBar::tab:selected { background: {selected}; border-color: {accent}; color: {text}; }
+        QTabBar::tab:hover { color: {text}; }
+        QDockWidget::title { background: {panel}; padding: 4px 8px; }
+        QMenu { background: {window}; border: 1px solid {border}; }
+        QMenu::item:selected { background: {selected}; }
+        QMenu::separator { height: 1px; background: {border}; margin: 4px 8px; }
+        QProgressBar { border: 1px solid {border}; border-radius: 4px; background: {base}; text-align: center; }
+        QProgressBar::chunk { background: {accent}; border-radius: 3px; }
+        QSplitter::handle { background: {border}; }
+        QStatusBar { color: {muted}; }
+    )");
+    const std::pair<const char *, Color> vars[] = {
+        {"{text}", u.text},
+        {"{muted}", u.muted},
+        {"{faint}", u.faint},
+        {"{base}", u.base},
+        {"{window}", u.window},
+        {"{panel}", u.panel},
+        {"{hover}", u.hover},
+        {"{border}", u.border},
+        {"{selected}", u.selected},
+        {"{accent_text}", u.accent_text},
+        {"{accent_hover}", u.accent.Mix(u.accent_text, 0.12)},
+        {"{accent}", u.accent},
+        {"{danger_bg}", u.panel.Mix(u.danger, 0.18)},
+        {"{danger}", u.danger},
+    };
+    for (const auto &[name, color] : vars)
+    {
+        css.replace(QLatin1String(name), Css(color));
+    }
+    return css;
+}
+
+} // namespace
+
+Theme &Theme::Instance()
+{
+    static Theme theme;
+    return theme;
+}
+
+void Theme::Apply(const DesignSystem *ds)
+{
+    UiPalette colors = DeriveUiPalette(ds);
+    _design          = ds != nullptr ? std::optional<DesignSystem>(*ds) : std::nullopt;
+    if (_applied && colors == _colors)
+    {
+        return;
+    }
+    _colors  = colors;
+    _applied = true;
+    QApplication::setPalette(MakePalette(_colors));
+    if (auto *app = qobject_cast<QApplication *>(QCoreApplication::instance()); app != nullptr)
+    {
+        app->setStyleSheet(MakeStyleSheet(_colors)); // re-polishes every widget
+    }
+    Q_EMIT Changed();
+    for (QWidget *w : QApplication::allWidgets())
+    {
+        w->update(); // custom-painted widgets read Ui() while painting
+    }
+}
+
+void ApplyTheme()
+{
+    QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
+    Theme::Instance().Apply(nullptr);
 }
 
 } // namespace ad::ui

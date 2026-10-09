@@ -338,7 +338,7 @@ public:
                  }
                  if (a.contains("durationMs") && a["durationMs"].is_number())
                  {
-                     m.scenario.duration      = std::max(1000.0, a["durationMs"].get<double>());
+                     m.scenario.duration      = std::clamp(a["durationMs"].get<double>(), 1000.0, 24.0 * 3600 * 1000);
                      m.scenario.user_duration = true;
                  }
                  auto color = [&](const char *key, std::string &dst)

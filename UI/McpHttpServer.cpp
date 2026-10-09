@@ -1,8 +1,10 @@
 #include "McpHttpServer.hpp"
 
+#include <QApplication>
 #include <QHostAddress>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QTimer>
 #include <QUrl>
 
 #include "Mcp/McpServer.hpp"
@@ -41,7 +43,13 @@ bool IsLocalOrigin(const QByteArray &origin)
 
 } // namespace
 
-McpHttpServer::McpHttpServer(mcp::McpServer &server, QObject *parent) : QObject(parent), _server(server) {}
+McpHttpServer::McpHttpServer(mcp::McpServer &server, QObject *parent) : QObject(parent), _server(server)
+{
+    _retry = new QTimer(this);
+    _retry->setSingleShot(true);
+    _retry->setInterval(100);
+    connect(_retry, &QTimer::timeout, this, &McpHttpServer::_ProcessQueue);
+}
 
 McpHttpServer::~McpHttpServer() { Stop(); }
 
@@ -71,12 +79,16 @@ void McpHttpServer::Stop()
         delete _tcp;
         _tcp = nullptr;
     }
-    for (auto it = _buffers.begin(); it != _buffers.end(); ++it)
-    {
-        it.key()->abort();
-        it.key()->deleteLater();
-    }
+    // abort() emits disconnected() synchronously and its handler edits _buffers: iterate a copy
+    const QList<QTcpSocket *> sockets = _buffers.keys();
     _buffers.clear();
+    _queue.clear();
+    for (QTcpSocket *socket : sockets)
+    {
+        socket->disconnect(this);
+        socket->abort();
+        socket->deleteLater();
+    }
 }
 
 bool    McpHttpServer::IsRunning() const { return _tcp != nullptr && _tcp->isListening(); }
@@ -150,10 +162,41 @@ void McpHttpServer::_OnReadyRead(QTcpSocket *socket)
     {
         return; // wait for the body
     }
-    const QByteArray body = buf.mid(header_end + 4, length);
+    Request request{socket, start[0], start[1], std::move(headers), buf.mid(header_end + 4, length)};
     buf.clear();
-    socket->write(HandleRequest(start[0], start[1], headers, body));
-    socket->disconnectFromHost();
+    _queue.enqueue(std::move(request));
+    // not from here: this runs inside the socket's readyRead emission and a request may
+    // spin an event loop that deletes the socket (client timeout) under that emission
+    QMetaObject::invokeMethod(this, &McpHttpServer::_ProcessQueue, Qt::QueuedConnection);
+}
+
+void McpHttpServer::_ProcessQueue()
+{
+    if (_busy)
+    {
+        return; // the running request picks the rest up when it is done
+    }
+    _busy = true;
+    while (!_queue.isEmpty())
+    {
+        if (QApplication::activeModalWidget() != nullptr || QApplication::activePopupWidget() != nullptr)
+        {
+            _retry->start(); // the user is in a dialog or a menu: wait until it closes
+            break;
+        }
+        const Request r = _queue.dequeue();
+        if (r.socket == nullptr)
+        {
+            continue; // the client went away while waiting
+        }
+        const QByteArray response = HandleRequest(r.method, r.path, r.headers, r.body);
+        if (r.socket != nullptr && r.socket->state() == QAbstractSocket::ConnectedState)
+        {
+            r.socket->write(response);
+            r.socket->disconnectFromHost();
+        }
+    }
+    _busy = false;
 }
 
 QByteArray McpHttpServer::HandleRequest(const QByteArray &method, const QByteArray &path, const QHash<QByteArray, QByteArray> &headers,

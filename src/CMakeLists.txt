@@ -33,6 +33,7 @@ add_library(ad_core STATIC
     Plugins/Plugin.cpp
     Plugins/PluginManager.cpp
     Timeline/TimelineLayout.cpp
+    Utils/CrashHandler.cpp
     Utils/File.cpp
     Utils/Text.cpp
 )
@@ -47,5 +48,8 @@ if(WITH_LIBAV)
 endif()
 if(MSVC)
     target_compile_options(ad_core PUBLIC /utf-8)
+endif()
+if(WIN32)
+    target_link_libraries(ad_core PRIVATE dbghelp) # crash reports: symbols and minidumps
 endif()
 ad_set_warnings(ad_core)

@@ -11,22 +11,11 @@
 
 #include "Controller.hpp"
 #include "QtRender.hpp"
+#include "Theme.hpp"
 #include "Timeline/TimelineLayout.hpp"
 
 namespace ad::ui
 {
-
-namespace
-{
-
-const QColor kBg(0x0f, 0x1a, 0x2e);
-const QColor kRulerBg(0x13, 0x1f, 0x38);
-const QColor kBorder(0x22, 0x31, 0x4f);
-const QColor kMuted(0x85, 0x98, 0xb8);
-const QColor kPlayhead(0xff, 0x54, 0x70);
-const Color  kBarBase = Color::Rgb(0x0c1526);
-
-} // namespace
 
 TimelineWidget::TimelineWidget(Controller &ctl, QWidget *parent) : QAbstractScrollArea(parent), _ctl(ctl)
 {
@@ -73,7 +62,10 @@ void TimelineWidget::_Relayout()
     _UpdateScrollRange();
 }
 
-int TimelineWidget::_ContentWidth() const { return static_cast<int>(std::ceil(_TimeToX(ContentEnd(_ctl.GetModel())))) + 40; }
+int TimelineWidget::_ContentWidth() const
+{
+    return static_cast<int>(std::min(1e8, std::ceil(_TimeToX(ContentEnd(_ctl.GetModel()))))) + 40; // stays in int range
+}
 
 int TimelineWidget::_ContentHeight() const { return kRuler + kTopPad + std::max(3, _lane_count) * kRowH + 12; }
 
@@ -128,7 +120,7 @@ void TimelineWidget::paintEvent(QPaintEvent * /*e*/)
     const int   sx = horizontalScrollBar()->value();
     const int   w  = viewport()->width();
     const int   h  = viewport()->height();
-    p.fillRect(viewport()->rect(), kBg);
+    p.fillRect(viewport()->rect(), ToQColor(Ui().window));
 
     // bars
     QFont bar_font = font();
@@ -147,7 +139,7 @@ void TimelineWidget::paintEvent(QPaintEvent * /*e*/)
         const QColor qc = ToQColor(c);
         QPainterPath path;
         path.addRoundedRect(r, 6, 6);
-        p.fillPath(path, ToQColor(c.Mix(kBarBase, 0.74)));
+        p.fillPath(path, ToQColor(c.Mix(Ui().base, Ui().light ? 0.82 : 0.74)));
         p.save();
         p.setClipPath(path);
         p.fillRect(QRectF(r.left(), r.top(), 4, r.height()), qc);
@@ -156,13 +148,13 @@ void TimelineWidget::paintEvent(QPaintEvent * /*e*/)
         p.drawPath(path);
         if (_ctl.GetSelection().Is(Selection::Kind::Step, s.id))
         {
-            p.setPen(QPen(Qt::white, 2));
+            p.setPen(QPen(ToQColor(Ui().text), 2));
             p.drawRoundedRect(r.adjusted(-1, -1, 1, 1), 7, 7);
         }
         const QRectF text_rect = r.adjusted(10, 0, -6, 0);
         if (text_rect.width() > 8)
         {
-            p.setPen(QColor(0xea, 0xf1, 0xff));
+            p.setPen(ToQColor(Ui().text));
             p.drawText(text_rect, Qt::AlignVCenter | Qt::AlignLeft,
                        p.fontMetrics().elidedText(Qs(StepTitle(m, s, _ctl.Reg())), Qt::ElideRight, static_cast<int>(text_rect.width())));
         }
@@ -170,8 +162,8 @@ void TimelineWidget::paintEvent(QPaintEvent * /*e*/)
     p.restore();
 
     // ruler (sticks to the top)
-    p.fillRect(QRect(0, 0, w, kRuler), kRulerBg);
-    p.setPen(kBorder);
+    p.fillRect(QRect(0, 0, w, kRuler), ToQColor(Ui().panel));
+    p.setPen(ToQColor(Ui().border));
     p.drawLine(0, kRuler - 1, w, kRuler - 1);
     const double total_sec = ContentEnd(m) / 1000.0;
     const double full_w    = _TimeToX(ContentEnd(m));
@@ -187,28 +179,28 @@ void TimelineWidget::paintEvent(QPaintEvent * /*e*/)
         {
             continue;
         }
-        p.setPen(QColor(120, 145, 190, 56));
+        p.setPen(ToQColor(Ui().border, 0.45));
         p.drawLine(QPointF(x, 0), QPointF(x, kRuler));
-        p.setPen(kMuted);
+        p.setPen(ToQColor(Ui().muted));
         p.drawText(QPointF(x + 4, 15), Qs(FormatTick(sec, step)) + tr("с"));
     }
 
     // end of the scene
     const double end_x = _TimeToX(_ctl.Duration()) - sx;
-    QPen         end_pen(QColor(0xff, 0x54, 0x70, 128), 2, Qt::DashLine);
+    QPen         end_pen(ToQColor(Ui().danger, 0.5), 2, Qt::DashLine);
     p.setPen(end_pen);
     p.drawLine(QPointF(end_x, 0), QPointF(end_x, h));
 
     // playhead
     const double px = _TimeToX(_ctl.Time()) - sx;
-    p.setPen(QPen(kPlayhead, 2));
+    p.setPen(QPen(ToQColor(Ui().danger), 2));
     p.drawLine(QPointF(px, 0), QPointF(px, h));
     QPainterPath tri;
     tri.moveTo(px - 6, 0);
     tri.lineTo(px + 6, 0);
     tri.lineTo(px, 7);
     tri.closeSubpath();
-    p.fillPath(tri, kPlayhead);
+    p.fillPath(tri, ToQColor(Ui().danger));
 }
 
 // ---------------------------------------------------------------------------

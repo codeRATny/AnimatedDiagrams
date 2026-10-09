@@ -34,6 +34,7 @@
 #include "ApplyTemplateDialog.hpp"
 #include "CanvasWidget.hpp"
 #include "Controller.hpp"
+#include "CrashReports.hpp"
 #include "ExportDialog.hpp"
 #include "ExportManager.hpp"
 #include "ExportsPanel.hpp"
@@ -45,7 +46,9 @@
 #include "PaletteWidget.hpp"
 #include "PluginsDialog.hpp"
 #include "QtRender.hpp"
+#include "Theme.hpp"
 #include "TimelinePanel.hpp"
+#include "Utils/CrashHandler.hpp"
 #include "Utils/File.hpp"
 
 namespace ad::ui
@@ -62,6 +65,7 @@ constexpr auto    kSessionTabsKey = "session/tabs";
 constexpr auto    kSessionCurrent = "session/current";
 constexpr auto    kMcpPortKey     = "mcp/port";
 constexpr auto    kMcpAutostart   = "mcp/autostart";
+constexpr auto    kUiThemeKey     = "ui/designSystem"; // empty -- follow the active document
 constexpr quint16 kDefaultMcpPort = 8765;
 constexpr int     kStateVersion   = 3;
 
@@ -102,6 +106,7 @@ MainWindow::MainWindow(AppContext &ctx, QWidget *parent) : QMainWindow(parent), 
     _BuildStatusBar();
 
     connect(&_ctx, &AppContext::McpStateChanged, this, &MainWindow::_UpdateMcpState);
+    connect(&_ctx, &AppContext::LibraryChanged, this, &MainWindow::_UpdateUiTheme);
     connect(&_ctx, &AppContext::McpActivity, this,
             [this](const QString &text)
             {
@@ -490,6 +495,13 @@ void MainWindow::_BuildMenus()
         panels->addAction(d->toggleViewAction());
     }
     panels->addAction(_tools_bar->toggleViewAction());
+    QMenu *theme = view->addMenu(tr("Тема интерфейса"));
+    theme->setToolTip(tr("Дизайн-система, в цветах которой показан редактор"));
+    connect(theme, &QMenu::aboutToShow, this,
+            [this, theme]
+            {
+                _FillThemeMenu(theme);
+            });
     _lock_act = view->addAction(tr("Закрепить панели"));
     _lock_act->setCheckable(true);
     connect(_lock_act, &QAction::toggled, this, &MainWindow::_SetLocked);
@@ -598,6 +610,11 @@ void MainWindow::_BuildMenus()
         });
 
     QMenu *help = menuBar()->addMenu(tr("&Справка"));
+    act(help, tr("Отчёты о сбоях…"), {},
+        []
+        {
+            OpenCrashReportDir();
+        });
     act(help, tr("О программе"), {},
         [this]
         {
@@ -707,6 +724,14 @@ MainWindow::Tab *MainWindow::_AddTab()
                     OpenPath(f);
                 }
             });
+    connect(ctl, &Controller::ModelChanged, this,
+            [this, ctl]
+            {
+                if (ctl == _Ctl())
+                {
+                    _UpdateUiTheme(); // the design system of the document may have changed
+                }
+            });
     connect(ctl, &Controller::DocumentStateChanged, this,
             [this, ctl]
             {
@@ -758,8 +783,9 @@ void MainWindow::_UpdateTabText(Controller *ctl)
     _doc_tabs->setTabToolTip(index, ctl->FilePath().isEmpty() ? tr("Не сохранён") : QDir::toNativeSeparators(ctl->FilePath()));
 }
 
-void MainWindow::_OnCurrentTabChanged(int /*index*/)
+void MainWindow::_OnCurrentTabChanged(int index)
 {
+    crash::Breadcrumb("UI: tab " + std::to_string(index));
     if (_closing)
     {
         return;
@@ -785,40 +811,91 @@ void MainWindow::_OnCurrentTabChanged(int /*index*/)
         _library_dialog->SetController(t->ctl);
     }
     _tool_acts[static_cast<int>(t->canvas->GetTool())]->setChecked(true);
+    _UpdateUiTheme();
     _UpdateTitle();
     _SaveSession();
 }
 
-bool MainWindow::_ConfirmClose(Tab &tab)
+void MainWindow::_UpdateUiTheme()
 {
-    if (!tab.ctl->IsModified())
+    Controller   *ctl    = _Ctl();
+    const QString choice = QSettings().value(kUiThemeKey).toString();
+    const auto   *doc    = ctl != nullptr ? &ctl->GetModel() : nullptr;
+    const auto   *ds     = choice.isEmpty() ? (doc != nullptr ? _ctx.Reg().DesignOf(*doc) : nullptr)
+                                            : _ctx.Reg().FindDesignSystem(Us(choice), doc != nullptr ? &doc->library : nullptr);
+    Theme::Instance().Apply(ds);
+}
+
+void MainWindow::_FillThemeMenu(QMenu *menu)
+{
+    menu->clear();
+    const QString current = QSettings().value(kUiThemeKey).toString();
+    auto         *group   = new QActionGroup(menu);
+    auto          add     = [&](const QString &label, const QString &id)
+    {
+        QAction *a = menu->addAction(label);
+        a->setCheckable(true);
+        a->setChecked(id == current);
+        group->addAction(a);
+        connect(a, &QAction::triggered, this,
+                [this, id]
+                {
+                    QSettings().setValue(kUiThemeKey, id);
+                    _UpdateUiTheme();
+                });
+    };
+    add(tr("Как у документа"), {});
+    menu->addSeparator();
+    Controller *ctl = _Ctl();
+    for (const auto &e : _ctx.Reg().DesignSystems(ctl != nullptr ? &ctl->GetModel().library : nullptr))
+    {
+        add(Qs(e.def->label), Qs(e.def->id));
+    }
+}
+
+bool MainWindow::_ConfirmClose(Controller *ctl)
+{
+    // dialogs below run event loops: tabs may be added meanwhile (MCP new_document), so no
+    // references into _tabs are held across them
+    if (!ctl->IsModified())
     {
         return true;
     }
-    _doc_tabs->setCurrentWidget(tab.canvas);
+    Activate(ctl);
     const auto r =
-        QMessageBox::question(this, tr("Несохранённые изменения"), tr("Сохранить изменения в «%1»?").arg(Qs(tab.ctl->GetModel().meta.name)),
+        QMessageBox::question(this, tr("Несохранённые изменения"), tr("Сохранить изменения в «%1»?").arg(Qs(ctl->GetModel().meta.name)),
                               QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
     if (r == QMessageBox::Save)
     {
-        return _Save(tab.ctl);
+        return _TabOf(ctl) != nullptr && _Save(ctl);
     }
     return r == QMessageBox::Discard;
 }
 
 void MainWindow::_CloseTab(int index)
 {
+    crash::Breadcrumb("UI: close tab " + std::to_string(index));
     QWidget   *page = _doc_tabs->widget(index);
     const auto it   = std::ranges::find_if(_tabs,
                                            [page](const Tab &t)
                                            {
                                              return t.canvas == page;
                                          });
-    if (it == _tabs.end() || !_ConfirmClose(*it))
+    if (it == _tabs.end())
     {
         return;
     }
-    const Tab tab = *it;
+    Controller *ctl = it->ctl;
+    if (!_ConfirmClose(ctl))
+    {
+        return;
+    }
+    const Tab *found = _TabOf(ctl); // _tabs may have been reallocated while the dialog was open
+    if (found == nullptr)
+    {
+        return;
+    }
+    const Tab tab = *found;
     if (_doc_tabs->count() == 1)
     {
         NewDocumentTab(); // there is always a document
@@ -1004,6 +1081,7 @@ void MainWindow::_NewDiagram() { NewDocumentTab(); }
 
 bool MainWindow::OpenPath(const QString &path)
 {
+    crash::Breadcrumb("UI: open " + Us(QFileInfo(path).fileName()));
     if (IsDrawio(path))
     {
         return ImportDrawioPath(path);
@@ -1108,6 +1186,7 @@ bool MainWindow::ImportDrawioPath(const QString &path)
 
 bool MainWindow::_Save(Controller *ctl)
 {
+    crash::Breadcrumb("UI: save");
     if (ctl == nullptr)
     {
         return false;

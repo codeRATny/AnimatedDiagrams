@@ -141,3 +141,14 @@ TEST(JsonIoTest, ToleratesWrongTypes)
     EXPECT_EQ(m->nodes[0].label, "5");
     EXPECT_TRUE(m->nodes[0].style.Empty());
 }
+
+TEST(JsonIoTest, HugeNumbersAreClamped)
+{
+    const auto s = json::StepFromJson(
+        json::Json::parse(R"({"id": "s", "type": "message", "start": 1e308, "duration": -5, "packetCount": 1e308, "repeat": -1e308})"));
+    ASSERT_TRUE(s.has_value());
+    EXPECT_LE(s->start, 24.0 * 3600 * 1000);
+    EXPECT_EQ(s->duration, 0);
+    EXPECT_EQ(s->packet_count, 1000);
+    EXPECT_EQ(s->repeat, 0);
+}

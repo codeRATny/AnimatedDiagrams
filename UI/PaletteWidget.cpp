@@ -16,6 +16,7 @@
 #include "AppContext.hpp"
 #include "Controller.hpp"
 #include "QtRender.hpp"
+#include "Theme.hpp"
 
 namespace ad::ui
 {
@@ -102,6 +103,7 @@ PaletteWidget::PaletteWidget(AppContext &ctx, QWidget *parent) : QWidget(parent)
 
     connect(&_ctx, &AppContext::LibraryChanged, this, &PaletteWidget::_RequestRebuild);
     connect(&_ctx, &AppContext::FavoritesChanged, this, &PaletteWidget::_RequestRebuild);
+    connect(&Theme::Instance(), &Theme::Changed, this, &PaletteWidget::_RequestRebuild); // item colors
     _Rebuild();
 }
 
@@ -176,7 +178,7 @@ QTreeWidgetItem *PaletteWidget::_AddElement(QTreeWidgetItem *parent, const Eleme
     item->setText(1, fav ? kStarOn : kStarOff);
     item->setToolTip(1, fav ? tr("Убрать из избранного") : tr("В избранное"));
     item->setTextAlignment(1, Qt::AlignCenter);
-    item->setForeground(1, fav ? QColor(0xfb, 0xbf, 0x24) : QColor(0x56, 0x68, 0x8a));
+    item->setForeground(1, ToQColor(fav ? Ui().warning : Ui().faint));
     item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled);
     if (id == _current)
     {
@@ -213,7 +215,7 @@ void PaletteWidget::_Rebuild()
         f.setBold(true);
         f.setPointSizeF(f.pointSizeF() * 0.92);
         g->setFont(0, f);
-        g->setForeground(0, QColor(0x85, 0x98, 0xb8));
+        g->setForeground(0, ToQColor(Ui().muted));
         g->setExpanded(!filter.isEmpty() || !_collapsed.contains(key));
         return g;
     };
@@ -252,7 +254,7 @@ void PaletteWidget::_Rebuild()
             auto *hint = new QTreeWidgetItem(fav);
             hint->setText(0, tr("Нажмите ☆ у элемента"));
             hint->setFlags(Qt::ItemIsEnabled);
-            hint->setForeground(0, QColor(0x56, 0x68, 0x8a));
+            hint->setForeground(0, ToQColor(Ui().faint));
         }
         else
         {
@@ -300,7 +302,7 @@ void PaletteWidget::_Rebuild()
                 parent->setData(0, kGroupRole, ckey);
                 parent->setFlags(Qt::ItemIsEnabled);
                 parent->setFirstColumnSpanned(true);
-                parent->setForeground(0, QColor(0x85, 0x98, 0xb8));
+                parent->setForeground(0, ToQColor(Ui().muted));
                 parent->setExpanded(!filter.isEmpty() || !_collapsed.contains(ckey));
             }
             for (const ElementType *d : defs)

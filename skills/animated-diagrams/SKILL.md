@@ -21,7 +21,10 @@ Prefer the MCP server; fall back to the CLI only for one-shot conversions/export
 In the live window the editor has several documents in tabs: tools work on the **active tab**;
 `list_documents` / `select_document {index}` switch it, and `new_document` / `open_document` /
 `import_drawio` open a new tab instead of replacing the user's work. `export_animation` runs as a
-background job there (the user keeps working) and returns when the file is written.
+background job there (the user keeps working) and returns when the file is written. Calls are
+serialized and wait while the user has a dialog or menu open, so a slow response usually means the
+user is in a dialog — use a generous client timeout instead of retrying. The design system of the
+active document (`set_scene {designSystem}`) also recolors the editor UI.
 
 If no MCP tools named `get_summary`, `add_node`, … are available, use the CLI (section 6) or ask the
 user to connect the server. Never edit the user's open document over HTTP without being asked.

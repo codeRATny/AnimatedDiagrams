@@ -10,6 +10,7 @@ TEST(ColorTest, ParsesLongAndShortHex)
     EXPECT_EQ(Color::Parse("#4F8CFF"), Color::Rgb(0x4f8cff));
     EXPECT_EQ(Color::Parse("#fff"), Color::Rgb(0xffffff));
     EXPECT_EQ(Color::Parse(" #000000 "), Color::Rgb(0));
+    EXPECT_EQ(Color::Parse("#4f8cff80"), Color::Rgb(0x4f8cff)); // alpha ignored
 }
 
 TEST(ColorTest, RejectsInvalid)
@@ -18,6 +19,8 @@ TEST(ColorTest, RejectsInvalid)
     EXPECT_FALSE(Color::Parse("4f8cff").has_value());
     EXPECT_FALSE(Color::Parse("#4f8cf").has_value());
     EXPECT_FALSE(Color::Parse("#zzzzzz").has_value());
+    EXPECT_FALSE(Color::Parse("#4f8cffzz").has_value());
+    EXPECT_FALSE(Color::Parse("$primary").has_value());
     EXPECT_EQ(Color::Parse("bad", Color::Rgb(0x123456)), Color::Rgb(0x123456));
 }
 

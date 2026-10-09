@@ -4,10 +4,13 @@
 #include <QByteArray>
 #include <QHash>
 #include <QObject>
+#include <QPointer>
+#include <QQueue>
 #include <QString>
+#include <QTcpSocket>
 
 class QTcpServer;
-class QTcpSocket;
+class QTimer;
 
 /// @file McpHttpServer.hpp
 /// @brief MCP "Streamable HTTP" transport on localhost (POST /mcp -> JSON response).
@@ -47,12 +50,29 @@ Q_SIGNALS:
     void RequestHandled(const QString &summary);
 
 private:
+    struct Request
+    {
+        QPointer<QTcpSocket>          socket; // may go away while the request waits or runs
+        QByteArray                    method;
+        QByteArray                    path;
+        QHash<QByteArray, QByteArray> headers;
+        QByteArray                    body;
+    };
+
     void _OnNewConnection();
     void _OnReadyRead(QTcpSocket *socket);
+    /// Handle queued requests one by one. Requests never run inside another event loop:
+    /// a tool may run one (export waits for its background job) and so do modal dialogs
+    /// and menus, whose code holds pointers into the model. Requests arriving meanwhile
+    /// wait in the queue and run when the loop is over.
+    void _ProcessQueue();
 
     mcp::McpServer                 &_server;
     QTcpServer                     *_tcp = nullptr;
     QHash<QTcpSocket *, QByteArray> _buffers;
+    QQueue<Request>                 _queue;
+    bool                            _busy  = false;
+    QTimer                         *_retry = nullptr; // re-check after a modal dialog / menu
     QString                         _token;
 };
 

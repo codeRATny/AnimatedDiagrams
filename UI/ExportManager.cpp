@@ -3,6 +3,9 @@
 #include <QEventLoop>
 
 #include <algorithm>
+#include <string>
+
+#include "Utils/CrashHandler.hpp"
 
 namespace ad::ui
 {
@@ -51,6 +54,7 @@ int ExportManager::Start(const QString &title, Model model, Registry registry, E
     job->registry    = std::move(registry);
     job->options     = std::move(options);
     const int id     = job->info.id;
+    crash::Breadcrumb("export #" + std::to_string(id) + " queued: " + title.toStdString());
     _jobs.push_back(std::move(job));
     Q_EMIT JobsChanged();
     _Pump();
@@ -142,6 +146,7 @@ void ExportManager::_OnFinished(int id, const std::expected<ExportResult, QStrin
         j->info.message = result.error();
     }
     j->model = {}; // free the snapshot
+    crash::Breadcrumb("export #" + std::to_string(id) + " finished: " + j->info.message.toStdString());
     Q_EMIT JobFinished(id);
     Q_EMIT JobsChanged();
     _Pump();

@@ -26,6 +26,13 @@ std::optional<double> OptNum(const Json &j, const char *key)
 
 double Num(const Json &j, const char *key, double def) { return OptNum(j, key).value_or(def); }
 
+/// Number limited to [lo, hi] (documents and MCP agents may pass anything, e.g. 1e308).
+double Num(const Json &j, const char *key, double def, double lo, double hi) { return std::clamp(Num(j, key, def), lo, hi); }
+
+int Int(const Json &j, const char *key, int def, int lo, int hi) { return static_cast<int>(std::lround(Num(j, key, def, lo, hi))); }
+
+constexpr double kMaxTimeMs = 24.0 * 3600 * 1000; // a day: far beyond any animation
+
 std::optional<std::string> OptStr(const Json &j, const char *key)
 {
     const auto it = j.find(key);
@@ -222,15 +229,15 @@ std::optional<Step> StepFromJson(const Json &j)
     Step s;
     s.type         = *type;
     s.id           = Str(j, "id");
-    s.start        = Num(j, "start", 0);
-    s.duration     = Num(j, "duration", 1200);
+    s.start        = Num(j, "start", 0, 0, kMaxTimeMs);
+    s.duration     = Num(j, "duration", 1200, 0, kMaxTimeMs);
     s.from         = Str(j, "from");
     s.to           = Str(j, "to");
     s.edge_id      = Str(j, "edgeId");
     s.variant      = Str(j, "variant", "request");
     s.packet       = Str(j, "packet", "capsule");
     s.packet_size  = Num(j, "packetSize", 1);
-    s.packet_count = static_cast<int>(Num(j, "packetCount", 1));
+    s.packet_count = Int(j, "packetCount", 1, 1, 1000);
     s.easing       = EasingFromString(Str(j, "easing", "ease-in-out")).value_or(Easing::EaseInOut);
     s.trail        = Bool(j, "trail", true);
     s.node_id      = Str(j, "nodeId");
@@ -248,7 +255,7 @@ std::optional<Step> StepFromJson(const Json &j)
     s.anim         = Str(j, "anim", "flow");
     s.effect       = Str(j, "effect", "pulse");
     s.intensity    = Num(j, "intensity", 1);
-    s.repeat       = static_cast<int>(Num(j, "repeat", 0));
+    s.repeat       = Int(j, "repeat", 0, 0, 1000);
     return s;
 }
 
@@ -285,7 +292,7 @@ std::optional<EffectDef> EffectFromJson(const Json &j, Warnings *warnings)
     e.category    = Str(j, "category", e.category);
     e.description = Str(j, "description");
     e.color       = Str(j, "color", e.color);
-    e.repeat      = std::clamp(static_cast<int>(Num(j, "repeat", 1)), 1, 100);
+    e.repeat      = Int(j, "repeat", 1, 1, 100);
     for (const auto &t : Arr(j, "tracks"))
     {
         const auto prop = EffectPropertyFromString(Str(t, "property"));
@@ -463,7 +470,7 @@ Model ModelFromJson(const Json &j)
         }
     }
     const Json &sc           = Obj(j, "scenario");
-    m.scenario.duration      = Num(sc, "duration", 0);
+    m.scenario.duration      = Num(sc, "duration", 0, 0, kMaxTimeMs);
     m.scenario.user_duration = Bool(sc, "userDuration");
     for (const auto &s : Arr(sc, "steps"))
     {

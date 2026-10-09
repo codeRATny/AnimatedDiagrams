@@ -182,3 +182,29 @@ TEST(DesignSystemTest, JsonRoundTripAndPlugins)
     EXPECT_EQ(reg.EmbedUsedDefinitions(doc), 1);
     EXPECT_NE(doc.library.Design("sunset"), nullptr);
 }
+
+TEST(DesignSystemTest, UiPaletteIsReadableForEveryDesignSystem)
+{
+    std::vector<const DesignSystem *> all{nullptr};
+    for (const auto &ds : Registry::Default().DesignSystems())
+    {
+        all.push_back(ds.def);
+    }
+    DesignSystem odd;
+    odd.background = "#808080";
+    odd.colors     = {{"text", "#7f7f7f"}, {"muted", "#888888"}, {"surface", "$surface"}};
+    all.push_back(&odd);
+    for (const DesignSystem *ds : all)
+    {
+        const UiPalette p = DeriveUiPalette(ds);
+        SCOPED_TRACE(ds != nullptr ? ds->id : "default");
+        EXPECT_GE(ContrastRatio(p.text, p.panel), 4.5);
+        EXPECT_GE(ContrastRatio(p.text, p.base), 4.5);
+        EXPECT_GE(ContrastRatio(p.muted, p.window), 3.0);
+        EXPECT_GE(ContrastRatio(p.accent_text, p.accent), 3.0);
+    }
+    EXPECT_FALSE(DeriveUiPalette(nullptr).light);
+    EXPECT_TRUE(DeriveUiPalette(Registry::Default().FindDesignSystem("light")).light);
+    EXPECT_EQ(DeriveUiPalette(nullptr).accent, Color::Rgb(0x4f8cff));
+    EXPECT_NE(DeriveUiPalette(nullptr), DeriveUiPalette(Registry::Default().FindDesignSystem("blueprint")));
+}

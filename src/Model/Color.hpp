@@ -22,7 +22,7 @@ struct Color
     {
         return {static_cast<uint8_t>((hex >> 16U) & 0xffU), static_cast<uint8_t>((hex >> 8U) & 0xffU), static_cast<uint8_t>(hex & 0xffU)};
     }
-    /// "#rrggbb" or "#rgb" (case-insensitive, surrounding spaces allowed).
+    /// "#rrggbb", "#rgb" or "#rrggbbaa" (alpha ignored; case-insensitive, surrounding spaces allowed).
     static std::optional<Color> Parse(std::string_view s);
     /// Parse() or the fallback color.
     static Color Parse(std::string_view s, Color fallback);

@@ -587,17 +587,25 @@ void Inspector::_BuildNode(QVBoxLayout *box, const std::string &id)
         true));
 }
 
-void Inspector::_SaveNodeAsType(const std::string &node_id)
+void Inspector::_SaveNodeAsType(const std::string &node_id_ref)
 {
-    const auto &m = _ctl.GetModel();
-    const Node *n = m.FindNode(node_id);
-    if (n == nullptr)
+    // the dialog runs an event loop: the calling button (and the string it owns) may be
+    // deleted by an inspector rebuild and the model may change (e.g. an MCP agent edits it)
+    const std::string node_id = node_id_ref;
+    QString           label;
+    if (const Node *n = _ctl.GetModel().FindNode(node_id); n != nullptr)
+    {
+        label = Qs(n->label);
+    }
+    else
     {
         return;
     }
     bool          ok   = false;
-    const QString name = QInputDialog::getText(this, tr("Новый тип элемента"), tr("Название типа:"), QLineEdit::Normal, Qs(n->label), &ok);
-    if (!ok || name.trimmed().isEmpty())
+    const QString name = QInputDialog::getText(window(), tr("Новый тип элемента"), tr("Название типа:"), QLineEdit::Normal, label, &ok);
+    const auto   &m    = _ctl.GetModel();
+    const Node   *n    = m.FindNode(node_id); // look up again after the dialog
+    if (!ok || name.trimmed().isEmpty() || n == nullptr)
     {
         return;
     }

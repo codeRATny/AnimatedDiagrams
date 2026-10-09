@@ -2,6 +2,7 @@ include(GoogleTest)
 
 add_executable(ad_core_tests
     CatalogTest.cpp
+    CrashHandlerTest.cpp
     ColorTest.cpp
     DesignSystemTest.cpp
     DocumentTest.cpp

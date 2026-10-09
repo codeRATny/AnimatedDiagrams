@@ -46,6 +46,14 @@ std::optional<Color> Color::Parse(std::string_view s)
         return std::nullopt;
     }
     s.remove_prefix(1);
+    if (s.size() == 8)
+    {
+        s.remove_suffix(2); // #rrggbbaa: no alpha in the renderer, the color is used as is
+        if (!HexDigit(s.data()[6]).has_value() || !HexDigit(s.data()[7]).has_value())
+        {
+            return std::nullopt;
+        }
+    }
     if (s.size() != 3 && s.size() != 6)
     {
         return std::nullopt;

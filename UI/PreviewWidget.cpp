@@ -11,6 +11,7 @@
 #include "Engine/Templates.hpp"
 #include "Model/Document.hpp"
 #include "QtRender.hpp"
+#include "Theme.hpp"
 
 namespace ad::ui
 {
@@ -223,11 +224,11 @@ void PreviewWidget::paintEvent(QPaintEvent * /*e*/)
 {
     QPainter p(this);
     p.fillRect(rect(), _has_scene ? ToQColor(Color::Parse(_model.scene.background, palette::kCanvasBg)) : ToQColor(palette::kCanvasBg));
-    p.setPen(QPen(QColor(0x22, 0x31, 0x4f), 1));
+    p.setPen(QPen(ToQColor(Ui().border), 1));
     p.drawRect(rect().adjusted(0, 0, -1, -1));
     if (!_has_scene)
     {
-        p.setPen(QColor(0x85, 0x98, 0xb8));
+        p.setPen(ToQColor(Ui().muted));
         p.drawText(rect(), Qt::AlignCenter, tr("Нет предпросмотра"));
         return;
     }
