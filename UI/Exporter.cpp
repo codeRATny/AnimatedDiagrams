@@ -5,13 +5,11 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QPainter>
-#include <QSaveFile>
 
 #include <algorithm>
 #include <span>
 
 #include "Engine/Scene.hpp"
-#include "Export/GifEncoder.hpp"
 #include "Export/VideoEncoder.hpp"
 #include "QtRender.hpp"
 #include "Utils/File.hpp"
@@ -27,34 +25,6 @@ std::span<const uint8_t> Pixels(const QImage &img) { return {img.constBits(), st
 QString Cancelled() { return QObject::tr("Export cancelled"); }
 
 using Result = std::expected<ExportResult, QString>;
-
-Result ExportGif(const Model &m, const ExportOptions &o, const Registry &reg, const ExportGeometry &g, const std::vector<double> &times,
-                 const std::stop_token &stop, const ProgressFn &progress)
-{
-    gif::GifEncoder enc(g.px_w, g.px_h, o.loop);
-    const auto      delays = gif::FrameDelaysCs(static_cast<int>(times.size()), o.fps);
-    for (size_t i = 0; i < times.size(); ++i)
-    {
-        if (stop.stop_requested())
-        {
-            return std::unexpected(Cancelled());
-        }
-        const QImage img = RenderExportFrame(m, times[i], g, o.background, reg);
-        enc.AddFrame(Pixels(img), delays[i]);
-        if (progress)
-        {
-            progress(static_cast<int>(i + 1), static_cast<int>(times.size()));
-        }
-    }
-    const auto &bytes = enc.Finish();
-    QSaveFile   f(o.output_path);
-    if (!f.open(QIODevice::WriteOnly) || f.write(reinterpret_cast<const char *>(bytes.data()), static_cast<qint64>(bytes.size())) < 0 ||
-        !f.commit())
-    {
-        return std::unexpected(QObject::tr("Could not write %1: %2").arg(o.output_path, f.errorString()));
-    }
-    return ExportResult{o.output_path, static_cast<int>(times.size()), static_cast<qint64>(bytes.size()), {}};
-}
 
 Result ExportPng(const Model &m, const ExportOptions &o, const Registry &reg, const ExportGeometry &g, const std::vector<double> &times,
                  const std::stop_token &stop, const ProgressFn &progress)
@@ -84,43 +54,76 @@ Result ExportPng(const Model &m, const ExportOptions &o, const Registry &reg, co
     return ExportResult{base + QStringLiteral("_*.png"), static_cast<int>(times.size()), total, {}};
 }
 
-Result ExportVideo(const Model &m, const ExportOptions &o, const Registry &reg, const ExportGeometry &g, const std::vector<double> &times,
-                   const std::stop_token &stop, const ProgressFn &progress)
+video::Container ContainerOf(ExportFormat f)
 {
+    switch (f)
+    {
+    case ExportFormat::Gif:
+        return video::Container::Gif;
+    case ExportFormat::WebM:
+        return video::Container::WebM;
+    case ExportFormat::Mp4:
+    case ExportFormat::Png:
+        break;
+    }
+    return video::Container::Mp4;
+}
+
+/// GIF / WebM / MP4 through libav. GIF renders the frames twice (palette, then encoding)
+/// instead of keeping them in memory.
+Result ExportEncoded(const Model &m, const ExportOptions &o, const Registry &reg, const ExportGeometry &g, const std::vector<double> &times,
+                     const std::stop_token &stop, const ProgressFn &progress)
+{
+    const QString       prefix = o.format == ExportFormat::Gif ? QObject::tr("GIF: %1") : QObject::tr("Video: %1");
     video::VideoEncoder enc;
     video::VideoOptions vo;
     vo.width        = g.px_w;
     vo.height       = g.px_h;
     vo.fps          = o.fps;
-    vo.container    = o.format == ExportFormat::WebM ? video::Container::WebM : video::Container::Mp4;
+    vo.container    = ContainerOf(o.format);
     vo.quality      = o.quality;
+    vo.loop         = o.loop;
     const auto path = PathFromUtf8(Us(o.output_path));
     if (auto r = enc.Open(path, vo); !r.has_value())
     {
-        return std::unexpected(QObject::tr("Video: %1").arg(Qs(r.error())));
+        return std::unexpected(prefix.arg(Qs(r.error())));
     }
-    for (size_t i = 0; i < times.size(); ++i)
+    const int passes = video::PassCount(vo.container);
+    const int total  = static_cast<int>(times.size()) * passes;
+    for (int pass = 0; pass < passes; ++pass)
     {
-        if (stop.stop_requested())
+        if (pass > 0)
         {
-            enc.Abort();
-            QFile::remove(o.output_path);
-            return std::unexpected(Cancelled());
+            if (auto r = enc.NextPass(); !r.has_value())
+            {
+                enc.Abort();
+                QFile::remove(o.output_path);
+                return std::unexpected(prefix.arg(Qs(r.error())));
+            }
         }
-        const QImage img = RenderExportFrame(m, times[i], g, o.background, reg);
-        if (auto r = enc.AddFrame(Pixels(img)); !r.has_value())
+        for (size_t i = 0; i < times.size(); ++i)
         {
-            enc.Abort();
-            return std::unexpected(QObject::tr("Video: %1").arg(Qs(r.error())));
-        }
-        if (progress)
-        {
-            progress(static_cast<int>(i + 1), static_cast<int>(times.size()));
+            if (stop.stop_requested())
+            {
+                enc.Abort();
+                QFile::remove(o.output_path);
+                return std::unexpected(Cancelled());
+            }
+            const QImage img = RenderExportFrame(m, times[i], g, o.background, reg);
+            if (auto r = enc.AddFrame(Pixels(img)); !r.has_value())
+            {
+                enc.Abort();
+                return std::unexpected(prefix.arg(Qs(r.error())));
+            }
+            if (progress)
+            {
+                progress(pass * static_cast<int>(times.size()) + static_cast<int>(i + 1), total);
+            }
         }
     }
     if (auto r = enc.Finish(); !r.has_value())
     {
-        return std::unexpected(QObject::tr("Video: %1").arg(Qs(r.error())));
+        return std::unexpected(prefix.arg(Qs(r.error())));
     }
     return ExportResult{o.output_path, static_cast<int>(times.size()), QFileInfo(o.output_path).size(), Qs(enc.EncoderName())};
 }
@@ -157,13 +160,13 @@ std::optional<ExportFormat> FormatFromId(const QString &id)
 
 bool IsVideo(ExportFormat f) { return f == ExportFormat::WebM || f == ExportFormat::Mp4; }
 
-QString VideoEncoderFor(ExportFormat f)
+QString EncoderFor(ExportFormat f)
 {
-    if (!IsVideo(f))
+    if (f == ExportFormat::Png)
     {
-        return {};
+        return QStringLiteral("png"); // Qt image writer, always available
     }
-    const auto encoders = video::EncodersFor(f == ExportFormat::WebM ? video::Container::WebM : video::Container::Mp4);
+    const auto encoders = video::EncodersFor(ContainerOf(f));
     return encoders.empty() ? QString() : Qs(encoders.front());
 }
 
@@ -222,13 +225,12 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
     const auto           times = ExportFrameTimes(m.scenario.duration, o.fps);
     switch (o.format)
     {
-    case ExportFormat::Gif:
-        return ExportGif(m, o, reg, g, times, stop, progress);
     case ExportFormat::Png:
         return ExportPng(m, o, reg, g, times, stop, progress);
+    case ExportFormat::Gif:
     case ExportFormat::WebM:
     case ExportFormat::Mp4:
-        return ExportVideo(m, o, reg, g, times, stop, progress);
+        return ExportEncoded(m, o, reg, g, times, stop, progress);
     }
     return std::unexpected(QObject::tr("Unknown format"));
 }

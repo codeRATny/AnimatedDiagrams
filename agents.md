@@ -12,7 +12,10 @@
 - `plugins/` bundled plugins (generated from code with the core API — keep them valid, see
   `PluginTest.BundledTemplatesReferenceKnownDefinitions`), `skills/` agent skill, `docs/` user docs,
   `samples/` example documents.
-- Video export: `src/Export/VideoEncoder` (libav, optional via `WITH_LIBAV`).
+- GIF / video export: `src/Export/VideoEncoder` (libav, optional via `WITH_LIBAV`; GIF uses the
+  palettegen / paletteuse filters in two passes).
+- Third-party parsers / codecs only (no own implementations): XML — pugixml, DEFLATE — zlib,
+  SVG path data — nanosvg, GIF / video — libav (`cmake/Dependencies.cmake`, Windows: `vcpkg.json`).
 
 ## Build
 

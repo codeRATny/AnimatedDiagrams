@@ -119,6 +119,53 @@ TEST(DrawioImporterTest, ImportsCompressedPage)
     EXPECT_EQ(m->FindEdge("e")->label, "SQL");
 }
 
+TEST(DrawioImporterTest, XmlEntitiesAndCData)
+{
+    // numeric / named entities in attributes, CDATA and comments around the compressed payload
+    constexpr std::string_view kFile =
+        R"(<?xml version="1.0" encoding="UTF-8"?>
+<!-- exported -->
+<mxfile><diagram name="&#1057;&#x445;&#1077;&#1084;&#1072; &amp; co">
+  <mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="n" value="A &amp; B &#8594; C" style="rounded=0;" vertex="1" parent="1"><mxGeometry x="1" y="2" width="30" height="40" as="geometry"/></mxCell>
+  </root></mxGraphModel></diagram>
+<diagram name="cdata"><![CDATA[)"
+        "rVPLboMwEPwa3w1WK6480lzSQ5UvcPEGIxmMFpPA39fYTigi6UPKAbQ7u7PrGTBheTPukXfyXQtQhO0Iy1Fr46NmzEEpEtNaEFaQOKb2IfHbg2rkqrTjCK35C4F7wpmrAT"
+        "xCCkrSaH5nL6SISEJd7PAscYjdQlNP7M2kAhH10AqY50aEZadaqVwrja7IBIfkVFo87AM0MD48s4PCgfegGzA42ZYrwUuik0+DQnqphZGh44pJqCsZhr4GjPc+"
+        "r26DF39sECy6b9fnxq4i2xjRS97NYTmp2jqC7DmyGf1Vd3JHdvIE2bCRffw4bHSDqOAYUo1G6kq3XO0WNINWpIj6Mjd00N58mZk/"
+        "u2IX6QFLWP21hmMF5tuX2XqHoLipz+vp/7DCpstldLXVXf0C"
+        R"(]]></diagram></mxfile>)";
+    EXPECT_EQ(DrawioPageNames(kFile), (std::vector<std::string>{"Схема & co", "cdata"}));
+    const auto m = ImportDrawio(kFile);
+    ASSERT_TRUE(m.has_value()) << m.error();
+    EXPECT_EQ(m->meta.name, "Схема & co");
+    ASSERT_NE(m->FindNode("n"), nullptr);
+    EXPECT_EQ(m->FindNode("n")->label, "A & B → C");
+    EXPECT_DOUBLE_EQ(m->FindNode("n")->h, 40);
+
+    DrawioImportOptions opt;
+    opt.page        = 1; // compressed page inside CDATA
+    const auto page = ImportDrawio(kFile, opt);
+    ASSERT_TRUE(page.has_value()) << page.error();
+    EXPECT_EQ(page->FindNode("a")->label, "Сервис A");
+}
+
+TEST(DrawioImporterTest, CompressedPageErrorsAndSizeLimit)
+{
+    DrawioImportOptions opt;
+    opt.max_inflated_size = 100; // the page inflates to several hundred bytes
+    const auto limited    = ImportDrawio(kCompressed, opt);
+    ASSERT_FALSE(limited.has_value());
+    EXPECT_NE(limited.error().find("larger than 100 bytes"), std::string::npos) << limited.error();
+
+    // valid base64, but not a DEFLATE stream / a truncated one
+    EXPECT_FALSE(ImportDrawio("<mxfile><diagram>/////////w==</diagram></mxfile>").has_value());
+    const std::string payload(kCompressed.substr(kCompressed.find("rVPL"), 40));
+    const auto        truncated = ImportDrawio("<mxfile><diagram>" + payload + "</diagram></mxfile>");
+    ASSERT_FALSE(truncated.has_value());
+    EXPECT_NE(truncated.error().find("compressed page"), std::string::npos) << truncated.error();
+}
+
 TEST(DrawioImporterTest, OptionsAndErrors)
 {
     DrawioImportOptions opt;
@@ -134,4 +181,7 @@ TEST(DrawioImporterTest, OptionsAndErrors)
     EXPECT_FALSE(ImportDrawio("<svg/>").has_value());
     EXPECT_FALSE(ImportDrawio("not xml").has_value());
     EXPECT_FALSE(ImportDrawio("<mxfile><diagram>!!!</diagram></mxfile>").has_value());
+    EXPECT_FALSE(ImportDrawio("<mxfile><diagram><mxGraphModel></diagram></mxfile>").has_value()); // mismatched tags
+    EXPECT_FALSE(ImportDrawio("").has_value());
+    EXPECT_FALSE(ImportDrawio("<mxfile/>").has_value()); // no pages
 }

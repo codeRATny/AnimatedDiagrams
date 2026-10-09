@@ -72,8 +72,8 @@ jobs:
           apt-get install -y --no-install-recommends \
             ca-certificates git cmake ninja-build pkg-config ${{ matrix.packages }} \
             qt6-base-dev qt6-qpa-plugins libgl-dev qt6-tools-dev qt6-l10n-tools \
-            libgtest-dev nlohmann-json3-dev \
-            libavcodec-dev libavformat-dev libswscale-dev \
+            libgtest-dev nlohmann-json3-dev libpugixml-dev libnanosvg-dev zlib1g-dev \
+            libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev \
             dpkg-dev file fonts-dejavu-core
 
       - name: Install dependencies (dnf)
@@ -82,8 +82,8 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False \
             git cmake ninja-build pkgconf-pkg-config ${{ matrix.packages }} \
             qt6-qtbase-devel mesa-libGL-devel qt6-qttools-devel qt6-linguist \
-            gtest-devel json-devel \
-            libavcodec-free-devel libavformat-free-devel libavutil-free-devel libswscale-free-devel \
+            gtest-devel json-devel pugixml-devel nanosvg-devel zlib-ng-compat-devel \
+            libavcodec-free-devel libavformat-free-devel libavfilter-free-devel libavutil-free-devel libswscale-free-devel \
             rpm-build dejavu-sans-fonts dejavu-sans-mono-fonts
 
       - uses: actions/checkout@v5
@@ -134,7 +134,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ninja-build pkg-config clang-19 libclang-rt-19-dev libgtest-dev nlohmann-json3-dev \
-            libavcodec-dev libavformat-dev libswscale-dev
+            libpugixml-dev libnanosvg-dev zlib1g-dev \
+            libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev
       - uses: actions/checkout@v5
       - name: Configure
         run: >
@@ -161,7 +162,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             ninja-build pkg-config clang-19 clang-format-19 clang-tidy-19 \
             qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev \
-            libavcodec-dev libavformat-dev libswscale-dev
+            libpugixml-dev libnanosvg-dev zlib1g-dev \
+            libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev
       - uses: actions/checkout@v5
       - name: clang-format
         run: |
@@ -192,12 +194,28 @@ jobs:
           arch: win64_msvc2022_64
           cache: true
 
+      - name: vcpkg binary cache location
+        shell: bash
+        run: |
+          cache="$(cygpath -m "$RUNNER_TEMP")/vcpkg-cache"
+          mkdir -p "$cache"
+          echo "VCPKG_BINARY_SOURCES=clear;files,$cache,readwrite" >> "$GITHUB_ENV"
+          echo "VCPKG_ROOT=$(cygpath -m "$VCPKG_INSTALLATION_ROOT")" >> "$GITHUB_ENV"
+
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-
+
       - name: Install FFmpeg libraries (LGPL, shared)
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # newest release-branch build (n7.1, n8.0, ...) of BtbN/FFmpeg-Builds: include/, lib/ (import libs), bin/ (DLLs)
+          # newest release-branch build (n7.1, n8.0, ...) of BtbN/FFmpeg-Builds: include/, lib/ (import libs), bin/ (DLLs);
+          # includes libavfilter (GIF palettes)
           url=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest \
                 | grep -o '"browser_download_url": *"[^"]*-win64-lgpl-shared-[0-9.]*\.zip"' \
                 | sed 's/.*"\(https[^"]*\)"/\1/' | sort -V | tail -1)
@@ -220,6 +238,7 @@ jobs:
         shell: bash
         run: >
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
           -DBUILD_TESTS=ON
           -DREQUIRE_TRANSLATIONS=ON
           ${AD_VERSION_ARG:-}

@@ -1,10 +1,13 @@
 #include "Path.hpp"
 
+#include <nanosvg.h>
+
 #include <algorithm>
-#include <cctype>
-#include <charconv>
+#include <cmath>
 #include <limits>
+#include <memory>
 #include <numbers>
+#include <ranges>
 #include <string>
 
 #include "Common/Exceptions.hpp"
@@ -280,159 +283,97 @@ Path Path::Polygon(std::span<const Vec2> pts)
 }
 
 // ---------------------------------------------------------------------------
-// SVG path parser
+// SVG path data (nanosvg)
 // ---------------------------------------------------------------------------
 
 namespace
 {
 
-class SvgPathParser
+/// nanosvg turns every segment into a cubic; a straight segment has its control points
+/// at 1/3 and 2/3 of the chord (nsvg__lineTo).
+bool IsLineCubic(Vec2 from, Vec2 c1, Vec2 c2, Vec2 to)
 {
-public:
-    explicit SvgPathParser(std::string_view s) : _s(s) {}
+    const Vec2   d     = to - from;
+    const double scale = std::max({1.0, std::abs(from.x), std::abs(from.y), std::abs(to.x), std::abs(to.y)});
+    const double eps   = 1e-5 * scale; // float precision of nanosvg
+    return Length(c1 - (from + d / 3)) <= eps && Length(c2 - (to - d / 3)) <= eps;
+}
 
-    Path Parse()
+void AppendNsvgPath(Path &out, const NSVGpath &p)
+{
+    auto at = [&p](int i)
     {
-        char cmd = 0;
-        while (true)
-        {
-            _SkipSeparators();
-            if (_pos >= _s.size())
-            {
-                break;
-            }
-            const char c = _s[_pos];
-            if (std::isalpha(static_cast<unsigned char>(c)) != 0)
-            {
-                cmd = c;
-                ++_pos;
-            }
-            else if (cmd == 0)
-            {
-                throw ParseError("SVG path must start with a command");
-            }
-            _Execute(cmd);
-            // after M/m implicit repeats become L/l
-            if (cmd == 'M')
-            {
-                cmd = 'L';
-            }
-            else if (cmd == 'm')
-            {
-                cmd = 'l';
-            }
-        }
-        return std::move(_path);
+        return Vec2{p.pts[2 * i], p.pts[2 * i + 1]};
+    };
+    // a closed path ends with nanosvg's line back to the start point: it becomes Close()
+    int last = p.npts - 1;
+    if (p.closed != 0 && last >= 3 && IsLineCubic(at(last - 3), at(last - 2), at(last - 1), at(last)))
+    {
+        last -= 3;
     }
-
-private:
-    void _SkipSeparators()
+    out.MoveTo(at(0));
+    for (int i = 0; i + 3 <= last; i += 3)
     {
-        while (_pos < _s.size() && (std::isspace(static_cast<unsigned char>(_s[_pos])) != 0 || _s[_pos] == ','))
+        const Vec2 from = at(i);
+        const Vec2 c1   = at(i + 1);
+        const Vec2 c2   = at(i + 2);
+        const Vec2 to   = at(i + 3);
+        if (IsLineCubic(from, c1, c2, to))
         {
-            ++_pos;
+            out.LineTo(to);
+        }
+        else
+        {
+            out.CubicTo(c1, c2, to);
         }
     }
-
-    double _Number()
+    if (p.closed != 0)
     {
-        _SkipSeparators();
-        size_t end = _pos;
-        if (end < _s.size() && (_s[end] == '-' || _s[end] == '+'))
-        {
-            ++end;
-        }
-        while (end < _s.size() && (std::isdigit(static_cast<unsigned char>(_s[end])) != 0 || _s[end] == '.' || _s[end] == 'e' ||
-                                   _s[end] == 'E' || ((_s[end] == '-' || _s[end] == '+') && (_s[end - 1] == 'e' || _s[end - 1] == 'E'))))
-        {
-            ++end;
-        }
-        std::string tok(_s.substr(_pos, end - _pos));
-        if (!tok.empty() && tok.front() == '+')
-        {
-            tok.erase(0, 1);
-        }
-        double value         = 0;
-        const auto [ptr, ec] = std::from_chars(tok.data(), tok.data() + tok.size(), value);
-        if (tok.empty() || ec != std::errc{} || ptr != tok.data() + tok.size())
-        {
-            throw ParseError("SVG path: expected a number at position " + std::to_string(_pos));
-        }
-        _pos = end;
-        return value;
+        out.Close();
     }
-
-    Vec2 _Point(bool relative)
-    {
-        const double x = _Number();
-        const double y = _Number();
-        return relative ? _cur + Vec2{x, y} : Vec2{x, y};
-    }
-
-    void _Execute(char cmd)
-    {
-        const bool rel = std::islower(static_cast<unsigned char>(cmd)) != 0;
-        switch (std::toupper(static_cast<unsigned char>(cmd)))
-        {
-        case 'M':
-            _cur   = _Point(rel);
-            _start = _cur;
-            _path.MoveTo(_cur);
-            break;
-        case 'L':
-            _cur = _Point(rel);
-            _path.LineTo(_cur);
-            break;
-        case 'H':
-        {
-            const double x = _Number();
-            _cur           = {rel ? _cur.x + x : x, _cur.y};
-            _path.LineTo(_cur);
-            break;
-        }
-        case 'V':
-        {
-            const double y = _Number();
-            _cur           = {_cur.x, rel ? _cur.y + y : y};
-            _path.LineTo(_cur);
-            break;
-        }
-        case 'C':
-        {
-            const Vec2 c1 = _Point(rel);
-            const Vec2 c2 = _Point(rel);
-            const Vec2 to = _Point(rel);
-            _path.CubicTo(c1, c2, to);
-            _cur = to;
-            break;
-        }
-        case 'Q':
-        {
-            const Vec2 c  = _Point(rel);
-            const Vec2 to = _Point(rel);
-            _path.QuadTo(c, to);
-            _cur = to;
-            break;
-        }
-        case 'Z':
-            _path.Close();
-            _cur = _start;
-            break;
-        default:
-            throw ParseError(std::string("SVG path: unsupported command '") + cmd + "'");
-        }
-    }
-
-    std::string_view _s;
-    size_t           _pos = 0;
-    Path             _path;
-    Vec2             _cur;
-    Vec2             _start;
-};
+}
 
 } // namespace
 
-Path ParseSvgPath(std::string_view data) { return SvgPathParser(data).Parse(); }
+Path ParseSvgPath(std::string_view data)
+{
+    if (data.find_first_not_of(" \t\r\n") == std::string_view::npos)
+    {
+        return {};
+    }
+    // path data never contains XML markup characters: reject them instead of escaping
+    if (data.find_first_of("<>&\"'") != std::string_view::npos)
+    {
+        throw ParseError("SVG path: invalid character");
+    }
+    // identity viewport: without a viewBox nanosvg would move the content to the origin
+    std::string doc = R"(<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"><path d=")";
+    doc.append(data);
+    doc += R"("/></svg>)";
+    const std::unique_ptr<NSVGimage, void (*)(NSVGimage *)> image(nsvgParse(doc.data(), "px", 96.0F), nsvgDelete);
+    if (image == nullptr)
+    {
+        throw ParseError("SVG path: cannot parse");
+    }
+    Path path;
+    for (const NSVGshape *shape = image->shapes; shape != nullptr; shape = shape->next)
+    {
+        std::vector<const NSVGpath *> subpaths; // nanosvg lists the sub-paths in reverse order
+        for (const NSVGpath *p = shape->paths; p != nullptr; p = p->next)
+        {
+            subpaths.push_back(p);
+        }
+        for (const NSVGpath *p : std::views::reverse(subpaths))
+        {
+            AppendNsvgPath(path, *p);
+        }
+    }
+    if (path.Segments().empty())
+    {
+        throw ParseError("SVG path: no drawable segments in '" + std::string(data.substr(0, 40)) + "'");
+    }
+    return path;
+}
 
 // ---------------------------------------------------------------------------
 // FlatPath

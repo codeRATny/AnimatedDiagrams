@@ -44,29 +44,27 @@ Please attach it to your bug report.</source>
         <translation>%1 МБ</translation>
     </message>
     <message>
-        <location filename="../UI/Exporter.cpp" line="+27"/>
+        <location filename="../UI/Exporter.cpp" line="+25"/>
         <source>Export cancelled</source>
         <translation>Экспорт прерван</translation>
     </message>
     <message>
-        <location line="+27"/>
-        <source>Could not write %1: %2</source>
-        <translation>Не удалось записать %1: %2</translation>
-    </message>
-    <message>
-        <location line="+22"/>
+        <location line="+21"/>
         <source>Could not write %1</source>
         <translation>Не удалось записать %1</translation>
     </message>
     <message>
-        <location line="+24"/>
-        <location line="+14"/>
-        <location line="+9"/>
+        <location line="+31"/>
         <source>Video: %1</source>
         <translation>Видео: %1</translation>
     </message>
     <message>
-        <location line="+87"/>
+        <location line="+0"/>
+        <source>GIF: %1</source>
+        <translation>GIF: %1</translation>
+    </message>
+    <message>
+        <location line="+136"/>
         <source>No output file specified</source>
         <translation>Не указан файл для сохранения</translation>
     </message>
@@ -81,7 +79,7 @@ Please attach it to your bug report.</source>
         <translation>Нет доступа к каталогу %1</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+13"/>
         <source>Unknown format</source>
         <translation>Неизвестный формат</translation>
     </message>
@@ -360,7 +358,7 @@ Please attach it to your bug report.</source>
         <translation>PNG — последовательность кадров</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+12"/>
         <source>No suitable codec in libav</source>
         <translation>Нет подходящего кодека в libav</translation>
     </message>
@@ -370,7 +368,7 @@ Please attach it to your bug report.</source>
         <translation>Кодек: %1</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+10"/>
         <source>%1 fps</source>
         <translation>%1 кадр/с</translation>
     </message>
@@ -2754,7 +2752,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>document</name>
     <message>
-        <location filename="../src/Import/DrawioImporter.cpp" line="+254"/>
+        <location filename="../src/Import/DrawioImporter.cpp" line="+336"/>
         <source>draw.io import</source>
         <translation>Импорт draw.io</translation>
     </message>

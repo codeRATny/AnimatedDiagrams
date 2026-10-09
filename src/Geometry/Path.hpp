@@ -9,7 +9,7 @@
 
 /// @file Path.hpp
 /// @brief Vector paths (line / quadratic / cubic segments), Catmull-Rom curves,
-///        an SVG path-data parser and arc-length parametrisation (FlatPath).
+///        SVG path data (parsed by nanosvg) and arc-length parametrisation (FlatPath).
 
 namespace ad
 {
@@ -68,8 +68,9 @@ private:
     std::vector<Segment> _segs;
 };
 
-/// Parse SVG path data (commands M L H V C Q Z, absolute and relative).
-/// Throws ad::ParseError on malformed input.
+/// Parse SVG path data (all commands: M L H V C S Q T A Z, absolute and relative) with nanosvg.
+/// Straight segments become lines, curves and arcs cubic segments, `Z` closes the sub-path.
+/// Blank data gives an empty path; data without any drawable segment throws ad::ParseError.
 Path ParseSvgPath(std::string_view data);
 
 /// Path flattened into a polyline with cumulative arc length.

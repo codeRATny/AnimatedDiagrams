@@ -1,5 +1,5 @@
 # ad_core -- all logic without Qt: model, JSON, geometry, engine, scene, timeline,
-# plugins, draw.io import, GIF encoder, MCP server.
+# plugins, draw.io import, GIF / video encoding (libav), MCP server.
 add_library(ad_core STATIC
     Engine/Design.cpp
     Engine/Effects.cpp
@@ -9,13 +9,10 @@ add_library(ad_core STATIC
     Engine/Shapes.cpp
     Engine/Templates.cpp
     Export/ExportPlan.cpp
-    Export/GifEncoder.cpp
     Export/VideoEncoder.cpp
     Geometry/Geometry.cpp
     Geometry/Path.cpp
     Import/DrawioImporter.cpp
-    Import/Inflate.cpp
-    Import/XmlReader.cpp
     Interaction/HitTest.cpp
     Io/JsonCodec.cpp
     Io/JsonIo.cpp
@@ -43,6 +40,8 @@ add_library(ad::core ALIAS ad_core)
 target_include_directories(ad_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(ad_core PUBLIC cxx_std_23)
 target_link_libraries(ad_core PUBLIC nlohmann_json::nlohmann_json)
+# XML, DEFLATE and SVG path data come from libraries (draw.io import, custom shapes)
+target_link_libraries(ad_core PRIVATE pugixml::pugixml ZLIB::ZLIB nanosvg::nanosvg)
 if(WITH_LIBAV)
     target_link_libraries(ad_core PRIVATE LibAV::LibAV)
     target_compile_definitions(ad_core PRIVATE AD_HAVE_LIBAV)
