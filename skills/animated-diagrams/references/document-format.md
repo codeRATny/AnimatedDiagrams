@@ -23,6 +23,9 @@
       { "id": "s3", "type": "message", "start": 1600, "duration": 900, "from": "db", "to": "api",
         "edgeId": "e1", "variant": "success", "label": "OK" },
       { "id": "s4", "type": "effect", "start": 2500, "duration": 600, "nodeId": "api", "effect": "pop" }
+    ],
+    "markers": [
+      { "id": "m1", "time": 1600, "label": "Commit done" }
     ]
   }
 }
@@ -40,6 +43,9 @@ Rules:
   `cylinder` `queue` `document` `cloud` `note` `custom`), `customPath` (SVG path in the unit square),
   `fill`, `stroke`, `strokeWidth`, `strokeStyle`, `cornerRadius`, `textColor`, `fontSize`, `opacity`,
   `shadow`, `showIcon`.
+- Optional `scenario.markers: [{id, time, label}]` — chapters (sorted by time, clamped to the duration,
+  no two at the same time). Markers inside (0, duration) split the scenario into segments: presenter
+  mode stops at each one, presentation exports produce one slide / clip per segment.
 - Step fields per type are listed in SKILL.md §3. Message easing: `linear` `ease-in` `ease-out`
   `ease-in-out` `cubic-in` `cubic-out` `cubic-in-out` `back-out` `elastic-out` `bounce-out` `step`.
 - Optional `"library": {"elements": [], "effects": [], "animations": []}` holds document definitions

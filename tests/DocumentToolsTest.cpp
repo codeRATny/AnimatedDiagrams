@@ -58,6 +58,9 @@ TEST_F(ToolsFixture, RegistersAllTools)
                              "add_step",
                              "update_step",
                              "remove_step",
+                             "add_marker",
+                             "update_marker",
+                             "remove_marker",
                              "apply_animation",
                              "upsert_library_item",
                              "remove_library_item",
@@ -237,4 +240,39 @@ TEST_F(ToolsFixture, SingleDocumentHostListsOneDocument)
     EXPECT_TRUE(docs[0]["active"].get<bool>());
     Ok("select_document", {{"index", 0}});
     EXPECT_TRUE(server.CallTool("select_document", {{"index", 3}}).is_error);
+}
+
+TEST_F(ToolsFixture, Markers)
+{
+    Ok("set_scene", {{"durationMs", 10000}});
+    const std::string a = Ok("add_marker", {{"time", 3000}, {"label", "Request"}}).structured["id"].get<std::string>();
+    const std::string b = Ok("add_marker", {{"time", 6000}}).structured["id"].get<std::string>();
+    ASSERT_EQ(M().scenario.markers.size(), 2U);
+    EXPECT_EQ(M().FindMarker(a)->label, "Request");
+    EXPECT_TRUE(server.CallTool("add_marker", {{"time", 3000}}).is_error); // occupied
+    EXPECT_TRUE(server.CallTool("add_marker", {{"label", "no time"}}).is_error);
+
+    // listed in the summary and the document
+    const std::string summary = Ok("get_summary").content[0].text;
+    EXPECT_NE(summary.find("Markers (2)"), std::string::npos);
+    EXPECT_NE(summary.find("Request"), std::string::npos);
+    EXPECT_NE(summary.find("Segments (3)"), std::string::npos);
+    const Json doc = Ok("get_document").structured;
+    ASSERT_EQ(doc["scenario"]["markers"].size(), 2U);
+    EXPECT_EQ(doc["scenario"]["markers"][0]["id"], a);
+
+    // move past b: the list stays sorted; one undo step for time + label
+    Ok("update_marker", {{"id", a}, {"time", 8000}, {"label", "Late"}});
+    EXPECT_EQ(M().scenario.markers[0].id, b);
+    EXPECT_EQ(M().scenario.markers[1].label, "Late");
+    EXPECT_TRUE(server.CallTool("update_marker", {{"id", a}, {"time", 6000}}).is_error); // b is there
+    EXPECT_TRUE(server.CallTool("update_marker", {{"id", a}}).is_error);                 // nothing to change
+    EXPECT_TRUE(server.CallTool("update_marker", {{"id", "m_ghost"}, {"label", "x"}}).is_error);
+    Ok("undo");
+    EXPECT_DOUBLE_EQ(M().FindMarker(a)->time, 3000);
+    EXPECT_EQ(M().FindMarker(a)->label, "Request");
+
+    Ok("remove_marker", {{"id", b}});
+    EXPECT_EQ(M().FindMarker(b), nullptr);
+    EXPECT_TRUE(server.CallTool("remove_marker", {{"id", b}}).is_error);
 }

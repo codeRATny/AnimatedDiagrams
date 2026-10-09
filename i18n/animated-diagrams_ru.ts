@@ -327,7 +327,7 @@ Please attach it to your bug report.</source>
 <context>
     <name>ad::ui::Controller</name>
     <message>
-        <location filename="../UI/Controller.cpp" line="+281"/>
+        <location filename="../UI/Controller.cpp" line="+282"/>
         <source>Imported — nodes: %1, edges: %2, notes: %3; skipped: %4</source>
         <translation>Импортировано: узлов %1, связей %2, заметок %3; пропущено %4</translation>
     </message>
@@ -1613,7 +1613,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>ad::ui::MainWindow</name>
     <message>
-        <location filename="../UI/MainWindow.cpp" line="+104"/>
+        <location filename="../UI/MainWindow.cpp" line="+105"/>
         <source>New tab (Ctrl+N)</source>
         <translation>Новая вкладка (Ctrl+N)</translation>
     </message>
@@ -1673,7 +1673,17 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation>Экспорт</translation>
     </message>
     <message>
-        <location line="+15"/>
+        <location line="+5"/>
+        <source>▶ Present</source>
+        <translation>▶ Показ</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Present the diagram full screen, chapter by chapter (F5)</source>
+        <translation>Показать диаграмму на весь экран по главам (F5)</translation>
+    </message>
+    <message>
+        <location line="+11"/>
         <source>Background exports</source>
         <translation>Фоновые экспорты</translation>
     </message>
@@ -1834,12 +1844,12 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+6"/>
-        <location line="+373"/>
+        <location line="+385"/>
         <source>Language</source>
         <translation>Язык (Language)</translation>
     </message>
     <message>
-        <location line="-367"/>
+        <location line="-379"/>
         <source>Lock Panels</source>
         <translation>Закрепить панели</translation>
     </message>
@@ -1860,6 +1870,11 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+8"/>
+        <source>Present</source>
+        <translation>Показ презентации</translation>
+    </message>
+    <message>
+        <location line="+5"/>
         <source>Full Screen</source>
         <translation>Полный экран</translation>
     </message>
@@ -1887,6 +1902,11 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <location line="+6"/>
         <source>Go to End</source>
         <translation>В конец</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Add Marker at Playhead</source>
+        <translation>Добавить маркер в позиции воспроизведения</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -1955,12 +1975,12 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+5"/>
-        <location line="+937"/>
+        <location line="+960"/>
         <source>About</source>
         <translation>О программе</translation>
     </message>
     <message>
-        <location line="-772"/>
+        <location line="-795"/>
         <source>Not saved</source>
         <translation>Не сохранён</translation>
     </message>
@@ -2132,7 +2152,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation>Экспорт запущен в фоне — можно продолжать работу</translation>
     </message>
     <message>
-        <location line="+44"/>
+        <location line="+67"/>
         <source>Add some nodes to the diagram first</source>
         <translation>Сначала добавьте узлы на диаграмму</translation>
     </message>
@@ -2346,6 +2366,14 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
 </context>
 <context>
+    <name>ad::ui::PresenterWindow</name>
+    <message>
+        <location filename="../UI/PresenterWindow.cpp" line="+35"/>
+        <source>Presenting: %1</source>
+        <translation>Показ: %1</translation>
+    </message>
+</context>
+<context>
     <name>ad::ui::PreviewWidget</name>
     <message>
         <location filename="../UI/PreviewWidget.cpp" line="+174"/>
@@ -2406,7 +2434,27 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation>Повтор</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+9"/>
+        <source>Stop at markers</source>
+        <translation>Останавливаться на маркерах</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Pause playback when it reaches a marker</source>
+        <translation>Ставить воспроизведение на паузу, когда оно доходит до маркера</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>⚑ Marker</source>
+        <translation>⚑ Маркер</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Add a marker at the playhead (M). Markers split the scenario into chapters for presenting</source>
+        <translation>Добавить маркер в позиции воспроизведения (M). Маркеры делят сценарий на главы для показа</translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>＋ Add step</source>
         <translation>＋ Добавить шаг</translation>
     </message>
@@ -2421,7 +2469,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation>Вставить готовую анимацию (шаблон из библиотеки)</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="+37"/>
         <source>Add an edge between nodes first</source>
         <translation>Сначала добавьте связь между узлами</translation>
     </message>
@@ -2434,14 +2482,44 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>ad::ui::TimelineWidget</name>
     <message>
-        <location filename="../UI/TimelineWidget.cpp" line="+26"/>
-        <source>Ctrl + wheel — zoom the timeline</source>
-        <translation>Ctrl + колесо — масштаб таймлайна</translation>
+        <location filename="../UI/TimelineWidget.cpp" line="+30"/>
+        <source>Ctrl + wheel — zoom the timeline. Right-click the ruler to add a marker</source>
+        <translation>Ctrl + колесо — масштаб таймлайна. Правый клик по линейке — добавить маркер</translation>
     </message>
     <message>
-        <location line="+159"/>
+        <location line="+135"/>
+        <source>There already is a marker at %1</source>
+        <translation>В позиции %1 уже есть маркер</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Marker</source>
+        <translation>Маркер</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Marker label (shown in presenter mode and on slides):</source>
+        <translation>Подпись маркера (видна в режиме показа и на слайдах):</translation>
+    </message>
+    <message>
+        <location line="+126"/>
         <source>%1s</source>
         <translation>%1с</translation>
+    </message>
+    <message>
+        <location line="+201"/>
+        <source>Add marker here (%1)</source>
+        <translation>Добавить маркер здесь (%1)</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Rename marker…</source>
+        <translation>Переименовать маркер…</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Delete marker</source>
+        <translation>Удалить маркер</translation>
     </message>
 </context>
 <context>
@@ -2759,12 +2837,12 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation>Импорт draw.io</translation>
     </message>
     <message>
-        <location filename="../src/Io/JsonIo.cpp" line="+29"/>
+        <location filename="../src/Io/JsonIo.cpp" line="+30"/>
         <source>Untitled</source>
         <translation>Без названия</translation>
     </message>
     <message>
-        <location line="+97"/>
+        <location line="+103"/>
         <source>The file is not valid JSON</source>
         <translation>Файл не является корректным JSON</translation>
     </message>
@@ -2774,7 +2852,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation>Некорректный формат файла: нет nodes/scenario</translation>
     </message>
     <message>
-        <location filename="../src/Model/Document.cpp" line="+404"/>
+        <location filename="../src/Model/Document.cpp" line="+410"/>
         <location line="+97"/>
         <source>Note</source>
         <translation>Заметка</translation>

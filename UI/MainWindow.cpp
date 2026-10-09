@@ -52,6 +52,7 @@
 #include "Model/Sample.hpp"
 #include "PaletteWidget.hpp"
 #include "PluginsDialog.hpp"
+#include "PresenterWindow.hpp"
 #include "QtRender.hpp"
 #include "Theme.hpp"
 #include "TimelinePanel.hpp"
@@ -250,6 +251,12 @@ void MainWindow::_BuildToolBar()
                           {
                               _ExportMedia();
                           });
+    QAction *present = _tools_bar->addAction(tr("▶ Present"),
+                                             [this]
+                                             {
+                                                 _Present();
+                                             });
+    present->setToolTip(tr("Present the diagram full screen, chapter by chapter (F5)"));
 }
 
 void MainWindow::_BuildStatusBar()
@@ -559,6 +566,11 @@ void MainWindow::_BuildMenus()
                 _doc_tabs->setCurrentIndex((_doc_tabs->currentIndex() + _doc_tabs->count() - 1) % _doc_tabs->count());
             }
         });
+    act(view, tr("Present"), QKeySequence(Qt::Key_F5),
+        [this]
+        {
+            _Present();
+        });
     act(view, tr("Full Screen"), QKeySequence(Qt::Key_F11),
         [this]
         {
@@ -589,6 +601,13 @@ void MainWindow::_BuildMenus()
             [](Tab &t)
             {
                 t.ctl->Seek(t.ctl->Duration());
+            }));
+    play->addSeparator();
+    act(play, tr("Add Marker at Playhead"), QKeySequence(Qt::Key_M),
+        with_tab(
+            [](Tab &t)
+            {
+                t.timeline->AddMarker();
             }));
 
     QMenu *lib = _menu_bar->addMenu(tr("&Library"));
@@ -1460,6 +1479,29 @@ void MainWindow::_ExportMedia()
         _exports_dock->show();
         _exports_dock->raise();
     }
+}
+
+void MainWindow::_Present()
+{
+    if (_presenter != nullptr)
+    {
+        _presenter->raise();
+        _presenter->activateWindow();
+        return;
+    }
+    Tab *t = _Current();
+    if (t == nullptr)
+    {
+        return;
+    }
+    t->canvas->CancelInteraction();
+    _presenter = new PresenterWindow(*t->ctl, this);
+    connect(_presenter, &PresenterWindow::Closed, this,
+            [this]
+            {
+                activateWindow();
+            });
+    _presenter->Start(screen()); // the screen of the main window
 }
 
 // ---------------------------------------------------------------------------

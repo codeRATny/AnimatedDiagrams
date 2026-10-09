@@ -103,7 +103,22 @@ TimelinePanel::TimelinePanel(Controller &ctl, QWidget *parent) : QWidget(parent)
             });
     l->addWidget(_loop);
 
+    _stop_at = new QCheckBox(tr("Stop at markers"));
+    _stop_at->setToolTip(tr("Pause playback when it reaches a marker"));
+    _stop_at->setChecked(_ctl.StopAtMarkers());
+    connect(_stop_at, &QCheckBox::toggled, this,
+            [this](bool v)
+            {
+                _ctl.SetStopAtMarkers(v);
+            });
+    connect(&_ctl, &Controller::StopAtMarkersChanged, _stop_at, &QCheckBox::setChecked);
+    l->addWidget(_stop_at);
+
     l->addStretch(1);
+    auto *marker = new QPushButton(tr("⚑ Marker"));
+    marker->setToolTip(tr("Add a marker at the playhead (M). Markers split the scenario into chapters for presenting"));
+    connect(marker, &QPushButton::clicked, this, &TimelinePanel::AddMarker);
+    l->addWidget(marker);
     _step_type = new QComboBox;
     for (const auto &t : StepTypes())
     {
@@ -119,7 +134,8 @@ TimelinePanel::TimelinePanel(Controller &ctl, QWidget *parent) : QWidget(parent)
     connect(anim, &QPushButton::clicked, this, &TimelinePanel::AnimationRequested);
     l->addWidget(anim);
 
-    _timeline    = new TimelineWidget(_ctl);
+    _timeline = new TimelineWidget(_ctl);
+    connect(_timeline, &TimelineWidget::StatusMessage, this, &TimelinePanel::StatusMessage);
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -142,6 +158,8 @@ void TimelinePanel::_Update()
         _duration->setValue(_ctl.Duration() / 1000);
     }
 }
+
+void TimelinePanel::AddMarker() { _timeline->AddMarkerAt(_ctl.Time()); }
 
 void TimelinePanel::AddStep()
 {

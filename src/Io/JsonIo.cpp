@@ -5,6 +5,7 @@
 
 #include "Io/JsonCodec.hpp"
 #include "Model/Document.hpp"
+#include "Model/Markers.hpp"
 #include "Utils/I18n.hpp"
 
 namespace ad
@@ -115,6 +116,12 @@ void NormalizeModel(Model &m)
     if (!(m.scenario.duration >= 1000))
     {
         m.scenario.duration = AutoDuration(m.scenario);
+    }
+
+    NormalizeMarkers(m.scenario);
+    for (auto &mk : m.scenario.markers)
+    {
+        unique_id(mk.id, "m");
     }
 }
 

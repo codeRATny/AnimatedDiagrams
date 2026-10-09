@@ -12,6 +12,7 @@
 #include "Import/DrawioImporter.hpp"
 #include "Io/JsonCodec.hpp"
 #include "Io/JsonIo.hpp"
+#include "Model/Markers.hpp"
 #include "Model/Sample.hpp"
 #include "Timeline/TimelineLayout.hpp"
 #include "Utils/File.hpp"
@@ -292,6 +293,7 @@ public:
         _RegisterNodeTools();
         _RegisterEdgeTools();
         _RegisterStepTools();
+        _RegisterMarkerTools();
         _RegisterLibraryTools();
 
         _Add("set_scene", "Scene settings",
@@ -771,6 +773,85 @@ private:
              });
     }
 
+    // -----------------------------------------------------------------------
+    // Markers
+    // -----------------------------------------------------------------------
+    void _RegisterMarkerTools()
+    {
+        _Add("add_marker", "Add marker",
+             "Add a marker (chapter) on the timeline. Markers split the scenario into segments: presenter mode stops at each "
+             "marker, presentation exports produce one slide per segment. Returns its id.",
+             Schema({{"time", Prop("number", "Time, ms (clamped to the scene duration)")}, {"label", Prop("string", "Chapter title")}},
+                    {"time"}),
+             false,
+             [this](const Json &a)
+             {
+                 if (!a.contains("time") || !a["time"].is_number())
+                 {
+                     throw ToolError("argument 'time' (number) is required");
+                 }
+                 const double  time = a["time"].get<double>();
+                 const Marker *m    = _host.Doc().AddMarker(time, a.value("label", std::string{}));
+                 if (m == nullptr)
+                 {
+                     throw ToolError(std::format("there already is a marker at {:.0f} ms", time));
+                 }
+                 const std::string id = m->id;
+                 _host.Changed(false);
+                 return ToolResult::FromJson(Json{{"id", id}, {"time", m->time}});
+             });
+
+        _Add("update_marker", "Update marker", "Move a marker and / or change its label.",
+             Schema({{"id", Prop("string", "Marker id")}, {"time", Prop("number", "New time, ms")}, {"label", Prop("string", "New label")}},
+                    {"id"}),
+             false,
+             [this](const Json &a)
+             {
+                 const std::string id = RequireString(a, "id");
+                 const Marker     *m  = _M().FindMarker(id);
+                 if (m == nullptr)
+                 {
+                     throw ToolError("marker '" + id + "' not found");
+                 }
+                 const bool has_time  = a.contains("time") && a["time"].is_number();
+                 const bool has_label = a.contains("label") && a["label"].is_string();
+                 if (!has_time && !has_label)
+                 {
+                     throw ToolError("nothing to change: pass 'time' and / or 'label'");
+                 }
+                 const double time = has_time ? a["time"].get<double>() : m->time;
+                 if (const Marker *other = MarkerAt(_M().scenario, std::clamp(time, 0.0, _M().scenario.duration));
+                     other != nullptr && other->id != id)
+                 {
+                     throw ToolError("marker '" + other->id + "' is already at that time");
+                 }
+                 // one undo step for both changes
+                 _host.Doc().Checkpoint();
+                 Model  &model = _host.Doc().Mutable();
+                 Marker &mk    = *model.FindMarker(id);
+                 mk.time       = std::clamp(time, 0.0, model.scenario.duration);
+                 if (has_label)
+                 {
+                     mk.label = a["label"].get<std::string>();
+                 }
+                 NormalizeMarkers(model.scenario);
+                 _host.Changed(false);
+                 return ToolResult::Text("Marker " + id + " updated");
+             });
+
+        _Add("remove_marker", "Remove marker", "Remove a timeline marker.", Schema({{"id", Prop("string", "Marker id")}}, {"id"}), false,
+             [this](const Json &a)
+             {
+                 const std::string id = RequireString(a, "id");
+                 if (!_host.Doc().RemoveMarker(id))
+                 {
+                     throw ToolError("marker '" + id + "' not found");
+                 }
+                 _host.Changed(false);
+                 return ToolResult::Text("Marker " + id + " removed");
+             });
+    }
+
     void _ValidateStep(const Step &s)
     {
         const Model &m = _M();
@@ -1004,6 +1085,21 @@ std::string DocumentSummary(const Model &m, const Registry &reg)
     {
         out += std::format("- {} [{}] {:.2f}-{:.2f} s: {}\n", s.id, ToString(s.type), s.start / 1000, s.End() / 1000, StepTitle(m, s, reg));
     }
+    if (!m.scenario.markers.empty())
+    {
+        out += std::format("\nMarkers ({}):\n", m.scenario.markers.size());
+        for (const auto &mk : m.scenario.markers)
+        {
+            out += std::format("- {} at {:.2f} s{}\n", mk.id, mk.time / 1000, mk.label.empty() ? "" : " \"" + mk.label + "\"");
+        }
+        const auto segments = ScenarioSegments(m);
+        out += std::format("Segments ({}):", segments.size());
+        for (const auto &seg : segments)
+        {
+            out += std::format(" [{:.2f}-{:.2f} s)", seg.start / 1000, seg.end / 1000);
+        }
+        out += "\n";
+    }
     out += std::format("\nDocument library: {} elements, {} effects, {} animations, {} design systems\n", m.library.elements.size(),
                        m.library.effects.size(), m.library.animations.size(), m.library.design_systems.size());
     if (const DesignSystem *ds = reg.DesignOf(m); ds != nullptr)
@@ -1020,7 +1116,8 @@ std::string DefaultInstructions()
     return "Animated Diagrams: an editor of animated architecture diagrams. A document has nodes (services, databases, queues...), "
            "edges between them and a scenario -- timed steps: messages flying along edges, timers, state changes (e.g. down), "
            "actions, link animations, notes and keyframe effects. Workflow: get_summary -> list_library -> add_node / add_edge -> "
-           "add_step or apply_animation -> render_frame at several times to verify -> save_document / export_animation. "
+           "add_step or apply_animation -> optional add_marker (chapters for presenting) -> render_frame at several times to verify -> "
+           "save_document / export_animation. "
            "Times are in milliseconds. Use node ids returned by add_node.";
 }
 

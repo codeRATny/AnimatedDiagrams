@@ -34,6 +34,7 @@ class Inspector;
 class LibraryDialog;
 class PaletteWidget;
 class PluginsDialog;
+class PresenterWindow;
 class TimelinePanel;
 class TitleBar;
 
@@ -121,6 +122,8 @@ private:
     bool _SaveAs(Controller *ctl);
     void _RenameDiagram();
     void _ExportMedia();
+    /// Presenter mode for the active document on the screen of this window.
+    void _Present();
     void _ShowLibrary(const QString &item_id = {});
     void _ShowPlugins();
     void _ApplyAnimation(const QString &template_id = {});
@@ -158,8 +161,9 @@ private:
     bool          _closing      = false;
     bool          _restoring    = false; // RestoreSession() is adding tabs: do not overwrite the saved session
 
-    QPointer<LibraryDialog> _library_dialog;
-    QPointer<PluginsDialog> _plugins_dialog;
+    QPointer<LibraryDialog>   _library_dialog;
+    QPointer<PluginsDialog>   _plugins_dialog;
+    QPointer<PresenterWindow> _presenter;
 };
 
 } // namespace ad::ui

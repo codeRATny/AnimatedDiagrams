@@ -21,11 +21,13 @@ using OrderedJson = nlohmann::ordered_json;
 using Warnings    = std::vector<std::string>;
 
 // ---- readers ---------------------------------------------------------------
-NodeStyle                        NodeStyleFromJson(const Json &j);
-EdgeStyle                        EdgeStyleFromJson(const Json &j);
-Node                             NodeFromJson(const Json &j);
-Edge                             EdgeFromJson(const Json &j);
-std::optional<Step>              StepFromJson(const Json &j);
+NodeStyle           NodeStyleFromJson(const Json &j);
+EdgeStyle           EdgeStyleFromJson(const Json &j);
+Node                NodeFromJson(const Json &j);
+Edge                EdgeFromJson(const Json &j);
+std::optional<Step> StepFromJson(const Json &j);
+/// nullopt when `j` is not an object with a numeric "time".
+std::optional<Marker>            MarkerFromJson(const Json &j);
 std::optional<ElementType>       ElementFromJson(const Json &j, Warnings *warnings = nullptr);
 std::optional<EffectDef>         EffectFromJson(const Json &j, Warnings *warnings = nullptr);
 std::optional<AnimationTemplate> AnimationFromJson(const Json &j, Warnings *warnings = nullptr);
@@ -40,6 +42,7 @@ OrderedJson ToJson(const EdgeStyle &s);
 OrderedJson ToJson(const Node &n);
 OrderedJson ToJson(const Edge &e);
 OrderedJson ToJson(const Step &s);
+OrderedJson ToJson(const Marker &m);
 OrderedJson ToJson(const ElementType &e);
 OrderedJson ToJson(const EffectDef &e);
 OrderedJson ToJson(const AnimationTemplate &a);

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Model/Markers.hpp"
 #include "Utils/I18n.hpp"
 
 namespace ad
@@ -28,6 +29,7 @@ std::string IdGenerator::Next(std::string_view prefix, const Model &model)
             id += kAlphabet[dist(_rng)];
         }
         const bool taken = model.FindNode(id) != nullptr || model.FindEdge(id) != nullptr || model.FindStep(id) != nullptr ||
+                           model.FindMarker(id) != nullptr ||
                            std::ranges::any_of(model.nodes,
                                                [&](const Node &n)
                                                {
@@ -52,6 +54,10 @@ double AutoDuration(const Scenario &s)
         max_end = std::max(max_end, st.End());
     }
     double d = std::max(4000.0, std::ceil((max_end + 1200) / 500) * 500);
+    for (const auto &m : s.markers)
+    {
+        d = std::max(d, m.time); // never cut off a marker
+    }
     if (s.user_duration)
     {
         d = std::max(d, s.duration);
@@ -514,11 +520,74 @@ void Document::SetDuration(double ms)
     Checkpoint("scenario:duration");
     _model.scenario.duration      = std::max(1000.0, ms);
     _model.scenario.user_duration = true;
+    NormalizeMarkers(_model.scenario); // markers after the new end move to it
 }
 
 void Document::SortSteps() { std::ranges::stable_sort(_model.scenario.steps, {}, &Step::start); }
 
 void Document::UpdateDuration() { _model.scenario.duration = AutoDuration(_model.scenario); }
+
+// ---------------------------------------------------------------------------
+// Markers
+// ---------------------------------------------------------------------------
+
+Marker *Document::AddMarker(double time, std::string label)
+{
+    time = std::clamp(time, 0.0, _model.scenario.duration);
+    if (MarkerAt(_model.scenario, time) != nullptr)
+    {
+        return nullptr;
+    }
+    Checkpoint();
+    Marker            m{.id = NewId("m"), .time = time, .label = std::move(label)};
+    const std::string id = m.id;
+    _model.scenario.markers.push_back(std::move(m));
+    NormalizeMarkers(_model.scenario);
+    return _model.FindMarker(id);
+}
+
+bool Document::MoveMarker(std::string_view id, double time, std::string_view merge_key)
+{
+    if (_model.FindMarker(id) == nullptr)
+    {
+        return false;
+    }
+    time = std::clamp(time, 0.0, _model.scenario.duration);
+    if (const Marker *other = MarkerAt(_model.scenario, time); other != nullptr && other->id != id)
+    {
+        return false;
+    }
+    Checkpoint(merge_key);
+    _model.FindMarker(id)->time = time;
+    NormalizeMarkers(_model.scenario);
+    return true;
+}
+
+bool Document::RenameMarker(std::string_view id, std::string label)
+{
+    if (_model.FindMarker(id) == nullptr)
+    {
+        return false;
+    }
+    Checkpoint();
+    _model.FindMarker(id)->label = std::move(label);
+    return true;
+}
+
+bool Document::RemoveMarker(std::string_view id)
+{
+    if (_model.FindMarker(id) == nullptr)
+    {
+        return false;
+    }
+    Checkpoint();
+    std::erase_if(_model.scenario.markers,
+                  [id](const Marker &m)
+                  {
+                      return m.id == id;
+                  });
+    return true;
+}
 
 // ---------------------------------------------------------------------------
 // Library
