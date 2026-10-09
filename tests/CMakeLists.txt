@@ -93,9 +93,9 @@ if(TARGET animated_diagrams)
     if(Python3_FOUND)
         execute_process(COMMAND ${Python3_EXECUTABLE} -c "import pptx, lxml" RESULT_VARIABLE ad_no_pptx OUTPUT_QUIET ERROR_QUIET)
         if(ad_no_pptx EQUAL 0)
-            set(pptx_modes gif animated morph)
+            set(pptx_modes animated morph)
             if(WITH_LIBAV)
-                list(PREPEND pptx_modes video)
+                list(PREPEND pptx_modes video gif) # rendered clips need libav
             endif()
             list(JOIN pptx_modes "," pptx_modes_arg)
             add_test(NAME AppPptxSmoke

@@ -112,6 +112,17 @@ jobs:
             libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev \
             dpkg-dev file fonts-dejavu-core
 
+      - name: python-pptx (PowerPoint smoke test reads the exported files back)
+        if: matrix.name == 'Ubuntu 24.04 (deb)'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get install -y --no-install-recommends python3-venv
+          python3 -m venv /opt/pptx-venv
+          /opt/pptx-venv/bin/pip install --quiet python-pptx==1.0.2
+          echo "VIRTUAL_ENV=/opt/pptx-venv" >> "$GITHUB_ENV"
+          echo "/opt/pptx-venv/bin" >> "$GITHUB_PATH"
+
       - name: Install dependencies (dnf)
         if: matrix.family == 'fedora'
         run: |
