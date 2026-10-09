@@ -268,7 +268,7 @@ Please attach it to your bug report.</source>
         <translation>элементов: %1 · эффектов: %2 · анимаций: %3</translation>
     </message>
     <message>
-        <location filename="../UI/PresentationExport.cpp" line="+31"/>
+        <location filename="../UI/PresentationExport.cpp" line="+40"/>
         <source>Presentation not found: %1</source>
         <translation>Презентация не найдена: %1</translation>
     </message>

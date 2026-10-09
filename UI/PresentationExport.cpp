@@ -5,6 +5,7 @@
 
 #include "Common/Exceptions.hpp"
 #include "Export/Pptx.hpp"
+#include "Model/Markers.hpp"
 #include "QtRender.hpp"
 #include "Utils/File.hpp"
 
@@ -13,8 +14,16 @@ namespace ad::ui
 
 std::vector<std::pair<double, double>> PresentationSegments(const Model &m, bool by_markers)
 {
-    (void)by_markers;
-    return {{0.0, std::max(1.0, m.scenario.duration)}};
+    if (!by_markers)
+    {
+        return {{0.0, std::max(1.0, m.scenario.duration)}};
+    }
+    std::vector<std::pair<double, double>> out;
+    for (const Segment &s : ScenarioSegments(m))
+    {
+        out.emplace_back(s.start, std::max(s.start + 1, s.end));
+    }
+    return out;
 }
 
 std::expected<ExportResult, QString> ExportPresentation(const Model &m, const ExportOptions &o, const Registry &reg, std::stop_token stop,

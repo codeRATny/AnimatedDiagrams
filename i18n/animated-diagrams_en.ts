@@ -263,7 +263,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../UI/PresentationExport.cpp" line="+31"/>
+        <location filename="../UI/PresentationExport.cpp" line="+40"/>
         <source>Presentation not found: %1</source>
         <translation type="unfinished"></translation>
     </message>
