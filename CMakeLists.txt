@@ -4,7 +4,7 @@ set(AD_VERSION "2.1.0" CACHE STRING "Project version (x.y.z); CI takes it from t
 
 project(AnimatedDiagrams
     VERSION ${AD_VERSION}
-    DESCRIPTION "Animated architecture diagram editor: request flows, timers, retries; GIF/WebM/MP4 export"
+    DESCRIPTION "Animated architecture diagram editor: request flows, timers, retries; GIF / WebM / MP4 / PowerPoint / HTML export"
     HOMEPAGE_URL "https://github.com/coderatny/animateddiagrams"
     LANGUAGES CXX)
 
