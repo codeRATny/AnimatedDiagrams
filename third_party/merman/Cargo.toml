@@ -1,0 +1,22 @@
+# Mermaid parser for the Mermaid import: merman (https://github.com/Latias94/merman, MIT OR Apache-2.0),
+# a headless Rust implementation of Mermaid. Its C ABI (merman-ffi, include/merman.h of the same
+# release) is built as a static library by Corrosion (cmake/Dependencies.cmake, WITH_MERMAID).
+# Update: bump the version below, `cargo update -p merman-ffi`, copy include/merman.h of that release.
+[package]
+name = "ad-merman"
+version = "0.8.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+path = "lib.rs"
+crate-type = ["staticlib"]
+
+[dependencies]
+# flowchart + sequenceDiagram parsers; "svg" adds the layout engine (layout-json: node positions)
+merman-ffi = { version = "=0.8.0", default-features = false, features = ["diagram-flowchart", "diagram-sequence", "svg"] }
+
+[profile.release]
+opt-level = "s"
+lto = "thin"

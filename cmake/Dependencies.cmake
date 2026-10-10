@@ -97,4 +97,29 @@ if(NOT EMSCRIPTEN)
     if(NOT TARGET libzip::zip)
         message(FATAL_ERROR "libzip not found. Install libzip-dev (Debian/Ubuntu), libzip-devel (Fedora) or use vcpkg (Windows).")
     endif()
+
+    # Mermaid import: merman (Rust) through its C ABI, built by Corrosion from third_party/merman
+    if(WITH_MERMAID)
+        find_program(AD_CARGO cargo HINTS "$ENV{CARGO_HOME}/bin" "$ENV{HOME}/.cargo/bin" "$ENV{USERPROFILE}/.cargo/bin")
+        if(NOT AD_CARGO)
+            message(FATAL_ERROR
+                "Mermaid import needs Rust 1.95+ (cargo not found). Install it with rustup (https://rustup.rs) "
+                "or configure with -DWITH_MERMAID=OFF (Mermaid export only).")
+        endif()
+        find_package(Corrosion 0.5 QUIET)
+        if(NOT Corrosion_FOUND)
+            FetchContent_Declare(Corrosion
+                GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+                GIT_TAG 1499b14e4906a2890f5cee1547c8848db261753d) # v0.6.1
+            FetchContent_MakeAvailable(Corrosion)
+        endif()
+        if(Rust_VERSION VERSION_LESS 1.95)
+            message(FATAL_ERROR "Mermaid import needs Rust 1.95+ (found ${Rust_VERSION}): rustup update, or -DWITH_MERMAID=OFF.")
+        endif()
+        corrosion_import_crate(MANIFEST_PATH "${PROJECT_SOURCE_DIR}/third_party/merman/Cargo.toml" LOCKED)
+        add_library(merman::merman INTERFACE IMPORTED)
+        target_link_libraries(merman::merman INTERFACE ad_merman)
+        target_include_directories(merman::merman SYSTEM INTERFACE "${PROJECT_SOURCE_DIR}/third_party/merman/include")
+        message(STATUS "merman (Rust ${Rust_VERSION}): Mermaid import enabled")
+    endif()
 endif()

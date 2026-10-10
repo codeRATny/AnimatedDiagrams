@@ -106,7 +106,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates git cmake ninja-build pkg-config ${{ matrix.packages }} \
+            ca-certificates curl gcc git cmake ninja-build pkg-config ${{ matrix.packages }} \
             qt6-base-dev qt6-qpa-plugins libgl-dev qt6-tools-dev qt6-l10n-tools \
             libgtest-dev nlohmann-json3-dev libpugixml-dev libnanosvg-dev libzip-dev zlib1g-dev \
             libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev \
@@ -127,11 +127,23 @@ jobs:
         if: matrix.family == 'fedora'
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            git cmake ninja-build pkgconf-pkg-config ${{ matrix.packages }} \
+            curl gcc git cmake ninja-build pkgconf-pkg-config ${{ matrix.packages }} \
             qt6-qtbase-devel mesa-libGL-devel qt6-qttools-devel qt6-linguist \
             gtest-devel json-devel pugixml-devel libzip-devel nanosvg-devel zlib-ng-compat-devel \
             libavcodec-free-devel libavformat-free-devel libavfilter-free-devel libavutil-free-devel libswscale-free-devel \
             rpm-build dejavu-sans-fonts dejavu-sans-mono-fonts
+
+      - name: Rust (Mermaid import, merman)
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --no-modify-path
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+          key: cargo-${{ matrix.image }}-${{ hashFiles('third_party/merman/Cargo.lock') }}
 
       - uses: actions/checkout@v5
 
@@ -189,6 +201,9 @@ jobs:
             ninja-build pkg-config clang-19 libclang-rt-19-dev libgtest-dev nlohmann-json3-dev \
             libpugixml-dev libnanosvg-dev libzip-dev zlib1g-dev \
             libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev
+      - name: Rust (Mermaid import, merman)
+        shell: bash
+        run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
       - uses: actions/checkout@v5
       - name: Configure
         run: >
@@ -217,6 +232,9 @@ jobs:
             qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev \
             libpugixml-dev libnanosvg-dev libzip-dev zlib1g-dev \
             libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev
+      - name: Rust (Mermaid import, merman)
+        shell: bash
+        run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
       - uses: actions/checkout@v5
       - name: clang-format
         run: |
@@ -284,6 +302,10 @@ jobs:
           root="$RUNNER_TEMP/$(basename "$url" .zip)"
           echo "FFMPEG_ROOT=$(cygpath -m "$root")" >> "$GITHUB_ENV"
           cygpath -w "$root/bin" >> "$GITHUB_PATH"
+
+      - name: Rust (Mermaid import, merman)
+        shell: bash
+        run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
 
       - name: Ensure Inno Setup
         shell: bash

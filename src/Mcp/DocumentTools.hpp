@@ -32,6 +32,8 @@ struct ExportRequest
     std::string insert_into;          // existing presentation to add the slides to
     int         insert_after = -1;    // 1-based slide number, -1 -- at the end
     bool        by_markers   = true;  // a slide per scenario segment
+    // mermaid
+    std::string mermaid_kind; // flowchart | sequence | markdown (empty -- by extension)
 };
 
 /// One open document (a GUI tab).

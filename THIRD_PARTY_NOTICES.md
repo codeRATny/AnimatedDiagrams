@@ -27,3 +27,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
+
+## third_party/merman (Mermaid import)
+
+[merman](https://github.com/Latias94/merman) 0.8.0, a Rust implementation of Mermaid (MIT OR Apache-2.0),
+built from crates.io and linked statically through its C ABI (`merman-ffi`; the headers in
+`third_party/merman/include` come from that release). Used under the MIT license
+(`third_party/merman/LICENSE-MIT`). Its Rust dependencies (MIT, Apache-2.0, Unicode-3.0, BSD-3-Clause, Zlib,
+BSL-1.0 and, unmodified, MPL-2.0) are listed with their licenses in `CRATES.md` (installed to `merman/` next to this file).

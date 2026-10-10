@@ -13,10 +13,12 @@
 
 #include "AppContext.hpp"
 #include "Import/DrawioImporter.hpp"
+#include "Import/MermaidImporter.hpp"
 #include "Io/JsonIo.hpp"
 #include "Model/Markers.hpp"
 #include "Model/Sample.hpp"
 #include "QtRender.hpp"
+#include "Utils/I18n.hpp"
 
 namespace ad::ui
 {
@@ -280,6 +282,42 @@ bool Controller::ImportDrawio(const QString &path, int page, bool keep_colors, Q
     {
         *report =
             tr("Imported — nodes: %1, edges: %2, notes: %3; skipped: %4").arg(rep.nodes).arg(rep.edges).arg(rep.notes).arg(rep.skipped);
+    }
+    return true;
+}
+
+bool Controller::ImportMermaid(const QString &text, const QString &name, bool keep_colors, QString *error, QString *report)
+{
+    MermaidImportOptions opt;
+    opt.keep_colors = keep_colors;
+    MermaidImportReport rep;
+    auto                model = ad::ImportMermaid(Us(text), opt, &rep);
+    if (!model.has_value())
+    {
+        if (error != nullptr)
+        {
+            *error = Qs(model.error());
+        }
+        return false;
+    }
+    if (!name.isEmpty() && model->meta.name == Tr("document", "Mermaid import"))
+    {
+        model->meta.name = Us(name);
+    }
+    ReplaceModel(std::move(*model), {}, true);
+    if (report != nullptr)
+    {
+        *report = tr("Imported Mermaid %1 — nodes: %2, edges: %3, steps: %4, markers: %5; skipped: %6")
+                      .arg(Qs(rep.kinds))
+                      .arg(rep.nodes)
+                      .arg(rep.edges)
+                      .arg(rep.steps)
+                      .arg(rep.markers)
+                      .arg(rep.skipped);
+        for (const auto &w : rep.warnings)
+        {
+            *report += QStringLiteral("\n") + Qs(w);
+        }
     }
     return true;
 }

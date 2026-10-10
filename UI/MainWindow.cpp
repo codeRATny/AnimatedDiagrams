@@ -13,6 +13,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFontDatabase>
 #include <QFormLayout>
 #include <QInputDialog>
 #include <QLabel>
@@ -20,8 +21,10 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPlainTextEdit>
 #include <QProcess>
 #include <QProgressBar>
+#include <QPushButton>
 #include <QRegularExpression>
 #include <QSettings>
 #include <QStackedWidget>
@@ -32,6 +35,7 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QUrl>
+#include <QVBoxLayout>
 #include <QWindow>
 
 #include <algorithm>
@@ -46,6 +50,7 @@
 #include "ExportsPanel.hpp"
 #include "Fields.hpp"
 #include "Import/DrawioImporter.hpp"
+#include "Import/MermaidImporter.hpp"
 #include "Inspector.hpp"
 #include "Language.hpp"
 #include "LibraryDialog.hpp"
@@ -84,6 +89,21 @@ bool IsDrawio(const QString &path)
 {
     const QString suffix = QFileInfo(path).suffix().toLower();
     return suffix == QStringLiteral("drawio") || suffix == QStringLiteral("xml");
+}
+
+bool IsMermaid(const QString &path)
+{
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    return suffix == QStringLiteral("mmd") || suffix == QStringLiteral("mermaid") || suffix == QStringLiteral("md");
+}
+
+/// Text that looks like a Mermaid flowchart / sequence diagram (or Markdown with one).
+bool LooksLikeMermaid(const QString &text)
+{
+    static const QRegularExpression kStart(
+        QStringLiteral(R"(^\s*(```+\s*mermaid|~~~+\s*mermaid|flowchart\b|graph\b|sequenceDiagram\b|---\s*$))"),
+        QRegularExpression::MultilineOption);
+    return kStart.match(text).hasMatch();
 }
 
 } // namespace
@@ -401,6 +421,16 @@ void MainWindow::_BuildMenus()
         {
             _ImportDrawio();
         });
+    QAction *mermaid = act(file, tr("Import from Mermaid…"), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_I),
+                           [this]
+                           {
+                               _ImportMermaid();
+                           });
+    mermaid->setEnabled(MermaidImportAvailable());
+    if (!MermaidImportAvailable())
+    {
+        mermaid->setToolTip(tr("This build has no Mermaid parser (Mermaid export still works)"));
+    }
     act(file, tr("Save"), QKeySequence::Save,
         [this]
         {
@@ -1299,6 +1329,10 @@ bool MainWindow::OpenPath(const QString &path)
     {
         return ImportDrawioPath(path);
     }
+    if (IsMermaid(path))
+    {
+        return ImportMermaidPath(path);
+    }
     // already open: switch to it
     const QString abs = QFileInfo(path).absoluteFilePath();
     for (const Tab &t : _tabs)
@@ -1324,9 +1358,9 @@ bool MainWindow::OpenPath(const QString &path)
 
 void MainWindow::_OpenDiagram()
 {
-    const QString     dir = QSettings().value(kLastDirKey, QDir::homePath()).toString();
-    const QStringList paths =
-        QFileDialog::getOpenFileNames(this, tr("Open Diagrams"), dir, tr("Diagrams (*.json);;draw.io (*.drawio *.xml)"));
+    const QString     dir   = QSettings().value(kLastDirKey, QDir::homePath()).toString();
+    const QStringList paths = QFileDialog::getOpenFileNames(
+        this, tr("Open Diagrams"), dir, tr("Diagrams (*.json);;draw.io (*.drawio *.xml);;Mermaid (*.mmd *.mermaid *.md)"));
     for (const QString &p : paths)
     {
         OpenPath(p);
@@ -1395,6 +1429,94 @@ bool MainWindow::ImportDrawioPath(const QString &path)
     t->canvas->FitView();
     statusBar()->showMessage(report, 8000);
     return true;
+}
+
+void MainWindow::_ImportMermaid() { ImportMermaidPath({}); }
+
+bool MainWindow::ImportMermaidPath(const QString &path)
+{
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Mermaid Import"));
+    dlg.resize(640, 480);
+    auto *text = new QPlainTextEdit;
+    text->setLineWrapMode(QPlainTextEdit::NoWrap);
+    text->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont)); // no ligatures: "->>" stays as typed
+    text->setPlaceholderText(
+        tr("flowchart LR\n  A[Client] -->|REST| B[Service]\n\nor\n\nsequenceDiagram\n  A->>B: request\n  B-->>A: 200 OK"));
+    QString name = QFileInfo(path).completeBaseName();
+    auto    load = [&](const QString &file)
+    {
+        try
+        {
+            text->setPlainText(Qs(ReadFile(PathFromUtf8(Us(file)))));
+            name = QFileInfo(file).completeBaseName();
+            QSettings().setValue(kLastDirKey, QFileInfo(file).absolutePath());
+            return true;
+        }
+        catch (const std::exception &ex)
+        {
+            QMessageBox::warning(this, tr("Mermaid Import"), QString::fromUtf8(ex.what()));
+            return false;
+        }
+    };
+    if (!path.isEmpty())
+    {
+        if (!load(path))
+        {
+            return false;
+        }
+    }
+    else if (const QString clip = QGuiApplication::clipboard()->text(); LooksLikeMermaid(clip))
+    {
+        text->setPlainText(clip); // pasted from a README, an issue, a chat...
+    }
+    auto *open = new QPushButton(tr("Open File…"));
+    connect(open, &QPushButton::clicked, &dlg,
+            [&]
+            {
+                const QString dir = QSettings().value(kLastDirKey, QDir::homePath()).toString();
+                const QString file =
+                    QFileDialog::getOpenFileName(&dlg, tr("Import from Mermaid"), dir, tr("Mermaid (*.mmd *.mermaid *.md);;All Files (*)"));
+                if (!file.isEmpty())
+                {
+                    load(file);
+                }
+            });
+    auto *keep_colors = new QCheckBox(tr("Keep Mermaid colors (style, classDef)"));
+    keep_colors->setChecked(true);
+    auto *note = new QLabel(tr("A flowchart gives nodes and edges (placed as Mermaid lays them out); a sequence diagram becomes "
+                               "an animated scenario: participants, messages, notes, activations, parallel and alternative "
+                               "sections as chapters. Markdown with both blocks gives both. The document opens in a new tab."));
+    note->setObjectName(QStringLiteral("hint"));
+    note->setWordWrap(true);
+    auto *buttons = fields::OkCancelButtons(&dlg);
+    buttons->addButton(open, QDialogButtonBox::ActionRole);
+    auto *layout = new QVBoxLayout(&dlg);
+    layout->addWidget(text, 1);
+    layout->addWidget(keep_colors);
+    layout->addWidget(note);
+    layout->addWidget(buttons);
+    for (;;)
+    {
+        if (dlg.exec() != QDialog::Accepted)
+        {
+            return false;
+        }
+        Tab    *t = _TargetTab();
+        QString err;
+        QString report;
+        if (t->ctl->ImportMermaid(text->toPlainText(), name, keep_colors->isChecked(), &err, &report))
+        {
+            t->canvas->FitView();
+            statusBar()->showMessage(report.section(QLatin1Char('\n'), 0, 0), 8000);
+            if (report.contains(QLatin1Char('\n')))
+            {
+                QMessageBox::information(this, tr("Mermaid Import"), report);
+            }
+            return true;
+        }
+        QMessageBox::warning(this, tr("Mermaid Import"), tr("Could not import the diagram:\n%1").arg(err)); // fix and retry
+    }
 }
 
 bool MainWindow::_Save(Controller *ctl)

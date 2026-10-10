@@ -13,12 +13,14 @@
 #include <stop_token>
 
 #include "Export/ExportPlan.hpp"
+#include "Export/MermaidExporter.hpp"
 #include "Model/Model.hpp"
 #include "Model/Registry.hpp"
 
 /// @file Exporter.hpp
 /// @brief Animation export: GIF / WebM / MP4 (libav, in process), PNG sequence (Qt), PowerPoint
-///        presentations, HTML player (the document in a self-contained page, when the build embeds the player).
+///        presentations, HTML player (the document in a self-contained page, when the build embeds the player),
+///        Mermaid text.
 ///        UI independent -- used by the export dialog, the CLI (--export) and the MCP server.
 
 namespace ad::ui
@@ -30,8 +32,9 @@ enum class ExportFormat
     Png,
     WebM,
     Mp4,
-    Pptx, // PowerPoint presentation (see PresentationExport.hpp)
-    Html  // interactive player page (player/, embedded with -DAD_PLAYER_HTML)
+    Pptx,   // PowerPoint presentation (see PresentationExport.hpp)
+    Html,   // interactive player page (player/, embedded with -DAD_PLAYER_HTML)
+    Mermaid // Mermaid text (.mmd flowchart / sequence, .md both), see Export/MermaidExporter.hpp
 };
 
 /// How a diagram becomes PowerPoint slides.
@@ -74,7 +77,8 @@ struct ExportOptions
     double       start_ms = 0;  // exported time range
     double       end_ms   = -1; // -1 -- the end of the scenario
 
-    PresentationOptions presentation; // ExportFormat::Pptx
+    PresentationOptions        presentation; // ExportFormat::Pptx
+    std::optional<MermaidKind> mermaid;      // ExportFormat::Mermaid; empty -- by extension (.md: markdown, else flowchart)
 };
 
 struct ExportResult
@@ -94,7 +98,7 @@ std::optional<PptxMode>     PptxModeFromId(const QString &id);
 bool                        IsVideo(ExportFormat f);
 /// The build embeds the HTML player (otherwise the HTML format is not offered).
 bool HtmlPlayerAvailable();
-/// Ids of the formats this build can export ("gif", "png", "webm", "mp4", "pptx", "html").
+/// Ids of the formats this build can export ("gif", "png", "webm", "mp4", "pptx", "html", "mermaid").
 QStringList AvailableFormatIds();
 /// Encoder that will be tried first for a format; empty -- the format is unavailable
 /// (GIF / WebM / MP4 need libav with a suitable encoder).

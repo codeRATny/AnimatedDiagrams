@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Draw an architecture diagram, animate how requests flow through it, show it anywhere:</b><br>
-  GIF · WebM · MP4 · PowerPoint · interactive HTML player
+  GIF · WebM · MP4 · PowerPoint · interactive HTML player · Mermaid
 </p>
 
 <p align="center">
@@ -49,6 +49,8 @@ to Service C.
   Slides can also be added to an existing presentation.
 - **Interactive HTML player**: one self-contained page (the engine compiled to WebAssembly) for
   reveal.js, Slidev, Marp or an `<iframe>`.
+- **Mermaid**: a flowchart of the structure, a sequenceDiagram of the scenario, or Markdown with both, ready for
+  GitHub, GitLab, Notion or docs.
 - PNG frame sequences. Every export runs in the background while you keep editing.
 
 **🎤 Present**
@@ -71,7 +73,9 @@ to Service C.
 **🧰 Everyday comfort**
 - Several documents in tabs, with the last session restored.
 - Dockable panels, a palette with favorites, undo/redo.
-- **draw.io import**: compressed and multi-page files.
+- **Import from draw.io** (compressed and multi-page files) and **from Mermaid**: a flowchart becomes the
+  diagram, and a **sequenceDiagram becomes an animated scenario** (messages, notes, activations, `par` / `alt` /
+  `loop` sections as chapters).
 - English and Russian interface; plugins can carry their own translations.
 - A title bar styled like the app, and crash reports with stack traces.
 
@@ -105,20 +109,22 @@ Open the editor, press `N` to add nodes and `E` to connect them, then press **Ad
 You can also start from **File → Open Example**. The command line works without a window:
 
 ```bash
-animated-diagrams diagram.json                              # open (a .drawio file is imported)
+animated-diagrams diagram.json                              # open (.drawio / .mmd / .md are imported)
 animated-diagrams --export flow.gif diagram.json            # export, no display needed
 animated-diagrams --export flow.mp4 --fps 30 --scale 2 diagram.json
 animated-diagrams --export deck.pptx --pptx-mode animated diagram.json   # editable PowerPoint slides
 animated-diagrams --export deck.pptx --pptx-insert talk.pptx --pptx-after 3 diagram.json
 animated-diagrams --export slides/flow.html diagram.json    # HTML player for web slides
 animated-diagrams --convert out.json scheme.drawio --page 1 # draw.io → native document
+animated-diagrams --export flow.gif checkout.mmd            # Mermaid sequenceDiagram → animated GIF
+animated-diagrams --export docs/flow.md diagram.json        # Mermaid flowchart + sequenceDiagram in Markdown
 animated-diagrams --mcp diagram.json                        # MCP server over stdio
 animated-diagrams --mcp-port 8765 diagram.json              # GUI + MCP over HTTP
 ```
 
-The format comes from the extension, or from `--format gif|png|webm|mp4|pptx|html`. Other options:
+The format comes from the extension, or from `--format gif|png|webm|mp4|pptx|html|mermaid`. Other options:
 `--fps`, `--scale`, `--background`, `--no-loop`, `--no-autoplay`, `--pptx-mode video|gif|animated|morph`,
-`--slide-size 16:9|4:3`, `--no-segments` and `--lang en|ru`.
+`--slide-size 16:9|4:3`, `--no-segments`, `--mermaid flowchart|sequence|markdown` and `--lang en|ru`.
 
 <details>
 <summary><b>Editor cheat sheet</b></summary>
@@ -135,8 +141,8 @@ The format comes from the extension, or from `--format gif|png|webm|mp4|pptx|htm
 | Presenter mode | `F5`: full-screen canvas; `Space` / `→` / click plays to the next marker, `←` goes back, `Esc` exits |
 | Library | `Ctrl+L`: elements, effects, animations and design systems; export them to a plugin |
 | Animation template | `Ctrl+T`: map the template roles to nodes |
-| draw.io import | `Ctrl+I` |
-| Export | `Ctrl+E`: GIF / PNG / WebM / MP4 / PowerPoint / HTML, in the background |
+| draw.io / Mermaid import | `Ctrl+I` / `Ctrl+Shift+I` (paste the text or open `.mmd` / `.md`) |
+| Export | `Ctrl+E`: GIF / PNG / WebM / MP4 / PowerPoint / HTML / Mermaid, in the background |
 | Edit | `Ctrl+Z` / `Ctrl+Shift+Z` · `Del` · `Ctrl+D` duplicates a step |
 | Language | *View → Language* (English / Russian), `--lang`; applied after a restart |
 
@@ -149,6 +155,7 @@ minidump on Windows. *Help → Crash Reports…* opens the folder.
 The detailed guides are in Russian for now.
 
 - [Presentations](docs/presentations.md): PowerPoint modes, inserting into a deck, the HTML player
+- [Mermaid](docs/mermaid.md): what is imported and exported, round trips through Markdown
 - [Document format](docs/file-format.md) · [Design systems](docs/design-systems.md) · [Plugins](docs/plugins.md)
 - [MCP server](docs/mcp.md) · [Skill for agents](skills/animated-diagrams/SKILL.md). For Claude Code:
   `cp -r skills/animated-diagrams ~/.claude/skills/`
@@ -162,6 +169,7 @@ Ubuntu 24.04:
 sudo apt install cmake ninja-build pkg-config clang-19 qt6-base-dev qt6-tools-dev qt6-l10n-tools libgl-dev \
                  libgtest-dev nlohmann-json3-dev libpugixml-dev libnanosvg-dev zlib1g-dev libzip-dev \
                  libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev
+curl https://sh.rustup.rs -sSf | sh       # Rust 1.95+ for the Mermaid import (or -DWITH_MERMAID=OFF)
 cmake --workflow --preset release          # configure + build + test → build/release
 ./build/release/apps/animated-diagrams
 ```
@@ -171,10 +179,11 @@ Packages are built with `cpack -G DEB`, `RPM` or `"INNOSETUP;ZIP"`. The last one
 Inno Setup 6.
 
 - **Options**: `BUILD_APP`, `BUILD_TESTS`, `WARNINGS_AS_ERRORS`, `WITH_LIBAV` (OFF leaves only PNG frames and
-  the editable PowerPoint modes) and `AD_PLAYER_HTML` (a prebuilt `player.html`; without it there is no HTML
-  export).
+  the editable PowerPoint modes), `WITH_MERMAID` (Mermaid import through merman, needs Rust; export works
+  without it) and `AD_PLAYER_HTML` (a prebuilt `player.html`; without it there is no HTML export).
 - **Libraries**: formats are handled by established libraries, not by our own code. XML uses pugixml,
-  DEFLATE uses zlib, SVG paths use nanosvg, GIF and video use libav, and the PowerPoint container uses libzip.
+  DEFLATE uses zlib, SVG paths use nanosvg, GIF and video use libav, the PowerPoint container uses libzip, and
+  Mermaid is parsed and laid out by [merman](https://github.com/Latias94/merman) (Rust, built with Corrosion).
 - **Fedora**: install `json-devel gtest-devel pugixml-devel libzip-devel nanosvg-devel zlib-ng-compat-devel`
   and `libav*-free-devel`.
 - **Windows**: the libraries come from `vcpkg.json` (`-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake`),
@@ -192,7 +201,8 @@ Inno Setup 6.
 src/      ad_core: all the logic without Qt, covered by unit tests
             ad_engine: model, JSON, geometry, engine, timeline (STL + nlohmann_json + nanosvg;
                        it also compiles to WebAssembly)
-            Import/  draw.io      Export/  GIF / video (libav), PowerPoint (libzip + pugixml), HTML player
+            Import/  draw.io, Mermaid (merman)
+            Export/  GIF / video (libav), PowerPoint (libzip + pugixml), HTML player, Mermaid
             Mcp/     MCP server   Plugins/ plugin format and manager
 UI/       Qt Widgets: tabs, docks, canvas, timeline, inspector, library, background export
 apps/     entry point: GUI / CLI / MCP

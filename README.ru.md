@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>Нарисуйте диаграмму архитектуры, анимируйте, как по ней идут запросы, и покажите где угодно:</b><br>
-  GIF · WebM · MP4 · PowerPoint · интерактивный HTML-плеер
+  GIF · WebM · MP4 · PowerPoint · интерактивный HTML-плеер · Mermaid
 </p>
 
 <p align="center">
@@ -49,6 +49,8 @@
   Слайды можно добавить и в уже готовую презентацию.
 - **Интерактивный HTML-плеер**: одна самодостаточная страница (движок, скомпилированный в WebAssembly)
   для reveal.js, Slidev, Marp или `<iframe>`.
+- **Mermaid**: flowchart структуры, sequenceDiagram сценария или Markdown с обоими — для GitHub, GitLab,
+  Notion и документации.
 - PNG-кадры. Любой экспорт идёт в фоне, работа не блокируется.
 
 **🎤 Показ**
@@ -71,7 +73,9 @@
 **🧰 Удобство**
 - Несколько документов во вкладках, прошлая сессия восстанавливается.
 - Настраиваемые панели, палитра с «Избранным», undo/redo.
-- **Импорт draw.io**, в том числе сжатых и многостраничных файлов.
+- **Импорт из draw.io** (в том числе сжатых и многостраничных файлов) и **из Mermaid**: flowchart становится
+  диаграммой, а **sequenceDiagram — анимированным сценарием** (сообщения, заметки, активации, секции
+  `par` / `alt` / `loop` — главы).
 - Интерфейс на английском и русском; плагины могут нести свои переводы.
 - Заголовок окна в стиле приложения, отчёты о сбоях со стеком вызовов.
 
@@ -112,6 +116,7 @@ Ubuntu 24.04:
 sudo apt install cmake ninja-build pkg-config clang-19 qt6-base-dev libgl-dev libgtest-dev nlohmann-json3-dev \
                  libpugixml-dev libnanosvg-dev zlib1g-dev libzip-dev \
                  libavcodec-dev libavformat-dev libavfilter-dev libswscale-dev
+curl https://sh.rustup.rs -sSf | sh        # Rust 1.95+ для импорта Mermaid (или -DWITH_MERMAID=OFF)
 cmake --workflow --preset release          # configure + build + test → build/release
 ./build/release/apps/animated-diagrams
 ```
@@ -125,9 +130,11 @@ cd build && cpack -G DEB        # или RPM / "INNOSETUP;ZIP" (CMake 3.27+, Inn
 ```
 
 Опции: `BUILD_APP` (ON), `BUILD_TESTS` (OFF), `WARNINGS_AS_ERRORS` (OFF), `WITH_LIBAV` (ON; OFF — только
-PNG-кадры), `AD_PLAYER_HTML` (путь к собранному `player.html`; пусто — без экспорта в HTML). Форматы
+PNG-кадры), `WITH_MERMAID` (ON; импорт Mermaid через merman, нужен Rust; экспорт работает и без него),
+`AD_PLAYER_HTML` (путь к собранному `player.html`; пусто — без экспорта в HTML). Форматы
 разбирают и кодируют готовые библиотеки: XML — pugixml, DEFLATE — zlib, SVG path — nanosvg, GIF / видео — libav,
-контейнер PowerPoint — libzip. `nlohmann_json`, `GoogleTest`, `pugixml` и `nanosvg` берутся из системы, а если их нет —
+контейнер PowerPoint — libzip, Mermaid — [merman](https://github.com/Latias94/merman) (Rust, собирается
+Corrosion). `nlohmann_json`, `GoogleTest`, `pugixml` и `nanosvg` берутся из системы, а если их нет —
 скачиваются CMake'ом с проверкой SHA256; zlib обязателен. Fedora: `json-devel gtest-devel pugixml-devel
 libzip-devel nanosvg-devel zlib-ng-compat-devel libavcodec-free-devel libavformat-free-devel libavfilter-free-devel
 libswscale-free-devel`. libav ищется через pkg-config; на Windows укажите `-DFFMPEG_ROOT=<FFmpeg shared SDK>`
@@ -145,19 +152,22 @@ cmake -S . -B build/release ... -DAD_PLAYER_HTML=$PWD/build/player/player/player
 ## 🚀 Командная строка
 
 ```bash
-animated-diagrams diagram.json                          # открыть (или .drawio — импорт)
+animated-diagrams diagram.json                          # открыть (.drawio / .mmd / .md — импорт)
 animated-diagrams --export out.gif diagram.json         # экспорт без GUI (дисплей не нужен)
 animated-diagrams --export out.mp4 --fps 30 --scale 2 diagram.json
 animated-diagrams --export deck.pptx --pptx-mode animated diagram.json   # редактируемые слайды PowerPoint
 animated-diagrams --export deck.pptx --pptx-insert talk.pptx --pptx-after 3 diagram.json
 animated-diagrams --export slides/flow.html diagram.json # HTML-плеер для веб-слайдов
 animated-diagrams --convert out.json scheme.drawio --page 1    # draw.io → .json
+animated-diagrams --export flow.gif checkout.mmd        # sequenceDiagram Mermaid → анимированный GIF
+animated-diagrams --export docs/flow.md diagram.json    # flowchart + sequenceDiagram Mermaid в Markdown
 animated-diagrams --mcp [diagram.json]                  # MCP-сервер через stdio
 animated-diagrams --mcp-port 8765 diagram.json          # GUI + MCP по HTTP
 ```
 
-Опции экспорта: `--format gif|png|webm|mp4|pptx|html` (иначе по расширению), `--fps`, `--scale`, `--background`,
-`--no-loop`, `--no-autoplay` (HTML), `--pptx-mode video|gif|animated|morph`, `--slide-size 16:9|4:3`, `--no-segments`.
+Опции экспорта: `--format gif|png|webm|mp4|pptx|html|mermaid` (иначе по расширению), `--fps`, `--scale`, `--background`,
+`--no-loop`, `--no-autoplay` (HTML), `--pptx-mode video|gif|animated|morph`, `--slide-size 16:9|4:3`, `--no-segments`,
+`--mermaid flowchart|sequence|markdown`.
 Несколько файлов в командной строке открываются во вкладках; прошлая сессия (все вкладки) восстанавливается.
 
 ## ⌨️ Работа в редакторе
@@ -181,9 +191,9 @@ animated-diagrams --mcp-port 8765 diagram.json          # GUI + MCP по HTTP
 | Библиотека | `Ctrl+L` — элементы, эффекты, анимации, дизайн-системы: просмотр, создание, правка, экспорт в плагин |
 | Дизайн-система | без выделения: инспектор «Сцена → Дизайн-система»; интерфейс редактора перекрашивается вслед за ней («Вид → Тема интерфейса» — зафиксировать одну) |
 | Анимация из шаблона | `Ctrl+T` или «▶ Анимация…» — роли шаблона сопоставляются узлам |
-| Импорт draw.io | `Ctrl+I` |
+| Импорт draw.io / Mermaid | `Ctrl+I` / `Ctrl+Shift+I` (вставить текст или открыть `.mmd` / `.md`) |
 | Правка | `Ctrl+Z` / `Ctrl+Shift+Z` · `Del` · `Ctrl+D` дублировать шаг |
-| Файлы | `Ctrl+S` · `Ctrl+Shift+S` · `Ctrl+E` экспорт в фоне: GIF / PNG / WebM / MP4 / PowerPoint (прогресс — в строке состояния и на панели «Экспорт») |
+| Файлы | `Ctrl+S` · `Ctrl+Shift+S` · `Ctrl+E` экспорт в фоне: GIF / PNG / WebM / MP4 / PowerPoint / HTML / Mermaid (прогресс — в строке состояния и на панели «Экспорт») |
 
 Типы шагов: сообщение (по связи или напрямую; форма/размер/количество пакетов, кривая движения, след),
 таймер, смена состояния узла, действие, анимация связи, заметка, эффект.
@@ -203,6 +213,7 @@ Windows: `%APPDATA%\AnimatedDiagrams\animated-diagrams\crashes`). Адреса �
 - [Формат документа](docs/file-format.md)
 - [Дизайн-системы](docs/design-systems.md)
 - [Презентации](docs/presentations.md) — PowerPoint (видео, GIF, анимации PowerPoint, Morph), вставка в готовую презентацию, HTML-плеер для reveal.js / Slidev / Marp / iframe
+- [Mermaid](docs/mermaid.md) — что импортируется и экспортируется, обратный импорт через Markdown
 - [Локализация](docs/localization.md) — английский и русский, добавление языков, переводы в плагинах
 - [Плагины](docs/plugins.md) — три плагина в комплекте: [`plugins/`](plugins)
 - [MCP-сервер](docs/mcp.md)
@@ -219,10 +230,10 @@ src/        ad_core — вся логика без Qt (покрыта unit-те�
   Geometry/   пути, SVG path (nanosvg), Catmull-Rom, длина дуги
   Io/         JSON (nlohmann) с нормализацией и обратной совместимостью
   Plugins/    формат плагинов, менеджер (сканирование, установка, вкл/выкл)
-  Import/     draw.io (XML — pugixml, сжатые страницы — zlib) → модель
+  Import/     draw.io (XML — pugixml, сжатые страницы — zlib), Mermaid (merman) → модель
   Mcp/        JSON-RPC MCP-сервер, инструменты документа, stdio-транспорт
   Export/     GIF / WebM / MP4 через libav (GIF: palettegen + paletteuse), PowerPoint (libzip + pugixml),
-              сетка кадров, шаблон HTML-плеера
+              Mermaid, сетка кадров, шаблон HTML-плеера
 UI/         Qt Widgets: вкладки, док-панели, холст, таймлайн, инспектор, палитра, библиотека, плагины,
             фоновый экспорт (ExportManager), HTTP-транспорт MCP; AppContext — общее для всех вкладок
 apps/       точка входа (GUI / CLI / MCP)

@@ -1,8 +1,8 @@
 // Animated Diagrams -- animated diagram editor (Qt 6, C++23).
 //
-//   animated-diagrams [file]                          GUI (file: .json or draw.io)
-//   animated-diagrams --export out.gif [opts] file    headless export (no display needed; gif, png, webm, mp4, html)
-//   animated-diagrams --convert out.json file.drawio  headless conversion to the native format
+//   animated-diagrams [file]                          GUI (file: .json, draw.io or Mermaid)
+//   animated-diagrams --export out.gif [opts] file    headless export (no display needed; gif, png, webm, mp4, pptx, html, mmd, md)
+//   animated-diagrams --convert out.json file.drawio  headless conversion to the native format (draw.io, Mermaid)
 //   animated-diagrams --mcp [file]                    MCP server over stdio (for AI agents)
 //   animated-diagrams --mcp-port 8765 [file]          GUI with the HTTP MCP server enabled
 
@@ -36,6 +36,7 @@
 #include "CrashReports.hpp"
 #include "Exporter.hpp"
 #include "Import/DrawioImporter.hpp"
+#include "Import/MermaidImporter.hpp"
 #include "Io/JsonIo.hpp"
 #include "Language.hpp"
 #include "MainWindow.hpp"
@@ -48,6 +49,7 @@
 #include "Theme.hpp"
 #include "TitleBar.hpp"
 #include "Utils/File.hpp"
+#include "Utils/I18n.hpp"
 
 namespace
 {
@@ -88,6 +90,15 @@ bool IsDrawioPath(const QString &path)
     return suffix == QStringLiteral("drawio") || suffix == QStringLiteral("xml");
 }
 
+bool IsMermaidPath(const QString &path)
+{
+    const QString suffix = QFileInfo(path).suffix().toLower();
+    return suffix == QStringLiteral("mmd") || suffix == QStringLiteral("mermaid") || suffix == QStringLiteral("md");
+}
+
+/// An imported file (not a native document: saving must ask for a path).
+bool IsImported(const QString &path) { return IsDrawioPath(path) || IsMermaidPath(path); }
+
 /// Load a native document or import a draw.io file.
 std::expected<Model, std::string> LoadInput(const QString &path, int page)
 {
@@ -108,6 +119,20 @@ std::expected<Model, std::string> LoadInput(const QString &path, int page)
         if (m.has_value() && (m->meta.name.empty() || m->meta.name == DrawioDefaultName()))
         {
             m->meta.name = Us(QFileInfo(path).completeBaseName());
+        }
+        return m;
+    }
+    if (IsMermaidPath(path))
+    {
+        MermaidImportReport rep;
+        auto                m = ImportMermaid(bytes, {}, &rep);
+        if (m.has_value() && m->meta.name == Tr("document", "Mermaid import"))
+        {
+            m->meta.name = Us(QFileInfo(path).completeBaseName());
+        }
+        for (const auto &w : rep.warnings)
+        {
+            std::cerr << "warning: " << w << "\n";
         }
         return m;
     }
@@ -154,6 +179,16 @@ int RunExport(const QCommandLineParser &cli, const Model &model, const Registry 
         if (!cli.isSet(QStringLiteral("fps")))
         {
             o.fps = 30; // smooth video on slides
+        }
+    }
+
+    if (o.format == ExportFormat::Mermaid && cli.isSet(QStringLiteral("mermaid")))
+    {
+        o.mermaid = MermaidKindFromId(Us(cli.value(QStringLiteral("mermaid"))));
+        if (!o.mermaid.has_value())
+        {
+            std::cerr << "error: invalid --mermaid (flowchart, sequence, markdown)\n";
+            return 2;
         }
     }
 
@@ -217,7 +252,7 @@ int RunMcpStdio(const QStringList &files, int page, const Registry &reg)
             return 2;
         }
         host.Doc().Reset(std::move(*model));
-        if (!IsDrawioPath(files.front()))
+        if (!IsImported(files.front()))
         {
             host.SetCurrentPath(Us(QFileInfo(files.front()).absoluteFilePath()));
         }
@@ -285,7 +320,8 @@ int main(int argc, char **argv)
     cli.setApplicationDescription(QStringLiteral("Animated diagram editor: request flows, timers, retries, effects"));
     cli.addHelpOption();
     cli.addVersionOption();
-    cli.addPositionalArgument(QStringLiteral("file"), QStringLiteral("Diagram to open: .json or draw.io (.drawio / .xml)"));
+    cli.addPositionalArgument(QStringLiteral("file"),
+                              QStringLiteral("Diagram to open: .json, draw.io (.drawio / .xml) or Mermaid (.mmd / .mermaid / .md)"));
     cli.addOptions({
         {QStringLiteral("export"),
          QStringLiteral("Export without GUI to <path> (%1 by extension)").arg(AvailableFormatIds().join(QLatin1Char('/'))),
@@ -306,6 +342,8 @@ int main(int argc, char **argv)
         {QStringLiteral("slide-size"), QStringLiteral("PowerPoint: 16:9 (default) or 4:3 for new presentations"), QStringLiteral("ratio"),
          QStringLiteral("16:9")},
         {QStringLiteral("no-segments"), QStringLiteral("PowerPoint: one slide for the whole scenario (ignore markers)")},
+        {QStringLiteral("mermaid"), QStringLiteral("Mermaid: flowchart (default for .mmd), sequence, markdown (both; default for .md)"),
+         QStringLiteral("kind")},
         {QStringLiteral("convert"), QStringLiteral("Save the input (e.g. a draw.io file) as a native .json document"),
          QStringLiteral("path")},
         {QStringLiteral("page"), QStringLiteral("draw.io page index (default 0)"), QStringLiteral("index"), QStringLiteral("0")},
@@ -372,15 +410,15 @@ int main(int argc, char **argv)
     AppContext ctx;
     MainWindow window(ctx);
     window.RestoreSession(files.isEmpty()); // all tabs of the previous session
-    for (const QString &f : files)
-    {
-        window.OpenPath(f); // command line files open in tabs
-    }
     window.StartMcpOnLaunch(mcp_port);
     window.show();
     QTimer::singleShot(0, &window,
-                       [&window]
+                       [&window, files]
                        {
+                           for (const QString &f : files)
+                           {
+                               window.OpenPath(f); // in tabs, over the shown window (imports ask for options)
+                           }
                            NotifyAboutCrashReports(&window); // a report left by the previous session
                        });
     return QApplication::exec();

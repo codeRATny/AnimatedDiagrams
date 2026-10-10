@@ -661,6 +661,17 @@ Rect ContentBounds(const Model &m, const TextMeasurer &tm, const Registry &reg)
         {
             b.Add(wp);
         }
+        const Node *from = m.FindNode(e.from);
+        const Node *to   = m.FindNode(e.to);
+        if (e.waypoints.empty() && e.curve != 0 && from != nullptr && to != nullptr)
+        {
+            // the top of the arc and room for the packet / label riding on it
+            const Vec2 a   = from->Center();
+            const Vec2 c   = to->Center();
+            const Vec2 ctl = geom::PerpControl(a, c, e.curve);
+            const Vec2 top = (a + ctl * 2 + c) / 4;
+            b.Add(Rect{top.x - 40, top.y - 34, 80, 68});
+        }
     }
     for (const auto &s : m.scenario.steps)
     {

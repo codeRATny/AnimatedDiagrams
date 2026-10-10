@@ -60,6 +60,10 @@ private:
     QCheckBox *_insert       = nullptr;
     QLineEdit *_insert_path  = nullptr;
     QSpinBox  *_insert_after = nullptr;
+
+    // Mermaid
+    QWidget   *_mermaid_box  = nullptr;
+    QComboBox *_mermaid_kind = nullptr;
 };
 
 } // namespace ad::ui

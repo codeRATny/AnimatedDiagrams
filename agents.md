@@ -19,6 +19,9 @@
 - `src/CMakeLists.txt` splits the core: `ad_engine` (Model, Io, Geometry, Engine, Timeline, Interaction,
   ExportPlan, I18n/Text; STL + nlohmann_json + nanosvg only -- it also compiles with Emscripten) and `ad_core` =
   ad_engine + Import, Export encoders, Mcp, Plugins, File, CrashHandler. Sources are listed explicitly.
+- Mermaid: `Import/MermaidImporter` maps the semantic / layout JSON of merman (Rust, `third_party/merman`, C ABI,
+  built by Corrosion, `WITH_MERMAID`) onto the model; `Export/MermaidExporter` writes flowchart / sequence /
+  Markdown text. Keep the export's encodings (`%% ad:pos`, `⏱`, `●`, `⚑` notes) in sync with the importer.
 - `player/` -- HTML player: `ad_engine` -> WebAssembly (`emcmake cmake -S . -B build/player`), display list
   as a flat buffer (`Engine/FrameBuffer.hpp`, decoded by `player/player.js`), one `player.html`. The app
   embeds it with `-DAD_PLAYER_HTML=<path>` and fills it via `Export/HtmlPlayer.hpp`. Drawing in `player.js`

@@ -71,6 +71,14 @@ std::expected<ExportOptions, std::string> ExportOptionsFor(const Model &m, const
         p.insert_after = request.insert_after;
         p.by_markers   = request.by_markers;
     }
+    if (o.format == ExportFormat::Mermaid && !request.mermaid_kind.empty())
+    {
+        o.mermaid = MermaidKindFromId(request.mermaid_kind);
+        if (!o.mermaid.has_value())
+        {
+            return std::unexpected("unknown mermaidKind '" + request.mermaid_kind + "' (flowchart, sequence, markdown)");
+        }
+    }
     return o;
 }
 

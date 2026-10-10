@@ -9,7 +9,9 @@
 #include "Engine/Design.hpp"
 #include "Engine/Layout.hpp"
 #include "Engine/Templates.hpp"
+#include "Export/MermaidExporter.hpp"
 #include "Import/DrawioImporter.hpp"
+#include "Import/MermaidImporter.hpp"
 #include "Io/JsonCodec.hpp"
 #include "Io/JsonIo.hpp"
 #include "Model/Markers.hpp"
@@ -292,6 +294,62 @@ public:
                                                      rep.notes, rep.skipped, DocumentSummary(_M(), _host.Reg())));
              });
 
+        _Add("import_mermaid", "Import Mermaid",
+             "Replace the document with a Mermaid diagram: a flowchart / graph (nodes, edges, shapes, colors, Mermaid's "
+             "layout) and / or a sequenceDiagram (an animated scenario: participants, messages, notes, activations, par / "
+             "alt / loop sections as markers). Pass the text in 'text' (a diagram or Markdown with ```mermaid blocks) or "
+             "a file in 'path'. A quick way to start: write the flow as a sequenceDiagram, import it, then refine.",
+             Schema({{"text", Prop("string", "Mermaid source or Markdown")},
+                     {"path", Prop("string", "File path (.mmd, .mermaid, .md)")},
+                     {"keepColors", Prop("boolean", "Keep style / classDef colors (default true)")}}),
+             false,
+             [this](const Json &a)
+             {
+                 if (!MermaidImportAvailable())
+                 {
+                     throw ToolError("this build has no Mermaid parser (WITH_MERMAID=OFF)");
+                 }
+                 std::string text = a.value("text", std::string{});
+                 if (text.empty())
+                 {
+                     text = ReadFile(PathFromUtf8(RequireString(a, "path")));
+                 }
+                 MermaidImportOptions opt;
+                 opt.keep_colors = a.value("keepColors", true);
+                 MermaidImportReport rep;
+                 auto                model = ImportMermaid(text, opt, &rep);
+                 if (!model.has_value())
+                 {
+                     throw ToolError(model.error());
+                 }
+                 _host.BeginNewDocument();
+                 _host.Doc().Reset(std::move(*model));
+                 _host.SetCurrentPath({});
+                 _host.Replaced();
+                 std::string warnings;
+                 for (const auto &w : rep.warnings)
+                 {
+                     warnings += "\nwarning: " + w;
+                 }
+                 return ToolResult::Text(std::format("Imported Mermaid {}: {} nodes, {} edges, {} steps, {} markers ({} skipped){}\n\n{}",
+                                                     rep.kinds, rep.nodes, rep.edges, rep.steps, rep.markers, rep.skipped, warnings,
+                                                     DocumentSummary(_M(), _host.Reg())));
+             });
+
+        _Add("to_mermaid", "Document as Mermaid",
+             "The document as Mermaid text (no file is written): a flowchart of nodes and edges, a sequenceDiagram of the "
+             "scenario, or Markdown with both. Useful to paste into a README, an issue or a chat.",
+             Schema({{"kind", EnumProp({"flowchart", "sequence", "markdown"}, "Default flowchart")}}), true,
+             [this](const Json &a)
+             {
+                 const auto kind = MermaidKindFromId(a.value("kind", std::string("flowchart")));
+                 if (!kind.has_value())
+                 {
+                     throw ToolError("kind must be flowchart, sequence or markdown");
+                 }
+                 return ToolResult::Text(ExportMermaid(_M(), _host.Reg(), *kind));
+             });
+
         _RegisterNodeTools();
         _RegisterEdgeTools();
         _RegisterStepTools();
@@ -404,7 +462,8 @@ public:
              "(format html, when available) a self-contained interactive HTML player page for web presentations. "
              "PowerPoint modes: video (MP4 slides playing automatically), gif (also for Google Slides), animated (editable "
              "shapes with PowerPoint animations), morph (key frame slides with the Morph transition). Markers split the "
-             "scenario into slides; insertInto adds the slides to an existing presentation (written to path).",
+             "scenario into slides; insertInto adds the slides to an existing presentation (written to path). Format mermaid "
+             "writes Mermaid text: a flowchart (.mmd), a sequence diagram of the scenario or Markdown with both (.md).",
              Schema({{"path", Prop("string", "Output file")},
                      {"format", EnumProp(_host.ExportFormats(), "Default: by extension")},
                      {"fps", Prop("number", "Frames per second (default 15)")},
@@ -416,7 +475,8 @@ public:
                      {"slideSize", EnumProp({"16:9", "4:3"}, "Slide size of a new presentation (default 16:9)")},
                      {"insertInto", Prop("string", "Existing .pptx to add the slides to")},
                      {"insertAfter", Prop("integer", "Insert after this 1-based slide (default: at the end)")},
-                     {"bySegments", Prop("boolean", "A slide per segment between markers (default true)")}},
+                     {"bySegments", Prop("boolean", "A slide per segment between markers (default true)")},
+                     {"mermaidKind", EnumProp({"flowchart", "sequence", "markdown"}, "Mermaid: default by extension (.md: markdown)")}},
                     {"path"}),
              false,
              [this](const Json &a)
@@ -434,6 +494,7 @@ public:
                  req.insert_into  = a.value("insertInto", std::string{});
                  req.insert_after = a.value("insertAfter", -1);
                  req.by_markers   = a.value("bySegments", true);
+                 req.mermaid_kind = a.value("mermaidKind", std::string{});
                  auto res         = _host.Export(req);
                  if (!res.has_value())
                  {

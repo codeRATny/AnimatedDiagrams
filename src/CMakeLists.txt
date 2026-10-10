@@ -5,7 +5,7 @@
 #                export framing, text and i18n helpers. Depends on the C++ standard library
 #                nlohmann_json and nanosvg (one header) ONLY: it is also compiled with Emscripten for the HTML
 #                player (player/). Do not add libav / zip / XML / zlib / file system code here.
-#   ad_core   -- ad_engine + everything else: draw.io import, GIF / video / PowerPoint / HTML export,
+#   ad_core   -- ad_engine + everything else: draw.io / Mermaid import, GIF / video / PowerPoint / HTML export,
 #                MCP server, plugins, file helpers, crash handler. The UI, the application
 #                and the tests link ad_core (ad::core) and see the same interface as before.
 #
@@ -59,12 +59,14 @@ endif()
 # ---- ad_core = ad_engine + import / export / MCP / plugins -----------------------------
 add_library(ad_core STATIC
     Export/HtmlPlayer.cpp
+    Export/MermaidExporter.cpp
     Export/Opc.cpp
     Export/Pptx.cpp
     Export/PptxDeck.cpp
     Export/PptxVector.cpp
     Export/VideoEncoder.cpp
     Import/DrawioImporter.cpp
+    Import/MermaidImporter.cpp
     Mcp/DocumentTools.cpp
     Mcp/McpServer.cpp
     Mcp/StdioTransport.cpp
@@ -88,6 +90,10 @@ target_sources(ad_core PRIVATE ${AD_PPTX_TEMPLATE_CPP})
 target_link_libraries(ad_core PUBLIC ad_engine)
 # XML (draw.io import, PowerPoint), DEFLATE (compressed draw.io pages), OPC zip container (PowerPoint)
 target_link_libraries(ad_core PRIVATE pugixml::pugixml ZLIB::ZLIB libzip::zip)
+if(WITH_MERMAID)
+    target_link_libraries(ad_core PRIVATE merman::merman) # Mermaid import
+    target_compile_definitions(ad_core PRIVATE AD_HAVE_MERMAN)
+endif()
 if(WITH_LIBAV)
     target_link_libraries(ad_core PRIVATE LibAV::LibAV)
     target_compile_definitions(ad_core PRIVATE AD_HAVE_LIBAV)

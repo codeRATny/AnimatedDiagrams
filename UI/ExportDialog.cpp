@@ -1,5 +1,7 @@
 #include "ExportDialog.hpp"
 
+#include <algorithm>
+
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
@@ -23,6 +25,7 @@
 #include "AppContext.hpp"
 #include "Controller.hpp"
 #include "Export/ExportPlan.hpp"
+#include "Export/MermaidExporter.hpp"
 #include "ExportManager.hpp"
 #include "Io/JsonIo.hpp"
 #include "QtRender.hpp"
@@ -64,6 +67,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     {
         _format->addItem(tr("HTML player — interactive, for web slides"), FormatId(ExportFormat::Html));
     }
+    _format->addItem(tr("Mermaid — text for GitHub, GitLab, Notion, docs"), FormatId(ExportFormat::Mermaid));
     // GIF / WebM / MP4 need a libav encoder for the container
     auto *model = qobject_cast<QStandardItemModel *>(_format->model());
     for (int i = 0; i < _format->count(); ++i)
@@ -194,6 +198,15 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
         connect(_insert, &QCheckBox::toggled, w, &QWidget::setEnabled);
     }
 
+    _mermaid_kind = new QComboBox;
+    _mermaid_kind->addItem(tr("Flowchart (.mmd) — nodes and edges"), QString::fromLatin1(MermaidKindId(MermaidKind::Flowchart)));
+    _mermaid_kind->addItem(tr("Sequence diagram (.mmd) — the scenario"), QString::fromLatin1(MermaidKindId(MermaidKind::Sequence)));
+    _mermaid_kind->addItem(tr("Markdown (.md) — both diagrams"), QString::fromLatin1(MermaidKindId(MermaidKind::Markdown)));
+    _mermaid_box       = new QWidget;
+    auto *mermaid_form = new QFormLayout(_mermaid_box);
+    mermaid_form->setContentsMargins(0, 0, 0, 0);
+    mermaid_form->addRow(tr("Diagram"), _mermaid_kind);
+
     auto *form = new QFormLayout;
     form->addRow(tr("Format"), _format);
     form->addRow(tr("Frame rate"), _fps);
@@ -203,6 +216,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     form->addRow(tr("Background"), bg_row);
     form->addRow(QString(), flags_row);
     form->addRow(_pptx_box);
+    form->addRow(_mermaid_box);
 
     _estimate = new QLabel;
     _estimate->setWordWrap(true);
@@ -220,7 +234,7 @@ ExportDialog::ExportDialog(Controller &ctl, Rect view_rect, QWidget *parent)
     layout->addWidget(_estimate);
     layout->addWidget(buttons);
 
-    for (QComboBox *c : {_format, _fps, _scale, _quality, _framing, _pptx_mode})
+    for (QComboBox *c : {_format, _fps, _scale, _quality, _framing, _pptx_mode, _mermaid_kind})
     {
         connect(c, &QComboBox::currentIndexChanged, this, &ExportDialog::_UpdateEstimate);
     }
@@ -257,24 +271,40 @@ ExportOptions ExportDialog::_Options() const
         p.insert_into  = _insert->isChecked() ? _insert_path->text().trimmed() : QString();
         p.insert_after = _insert_after->value() == 0 ? -1 : _insert_after->value();
     }
+    if (o.format == ExportFormat::Mermaid)
+    {
+        o.mermaid = MermaidKindFromId(Us(_mermaid_kind->currentData().toString()));
+    }
     return o;
 }
 
 void ExportDialog::_UpdateEstimate()
 {
-    const ExportOptions o    = _Options();
-    const bool          html = o.format == ExportFormat::Html;
-    const bool          pptx = o.format == ExportFormat::Pptx;
+    const ExportOptions o       = _Options();
+    const bool          html    = o.format == ExportFormat::Html;
+    const bool          pptx    = o.format == ExportFormat::Pptx;
+    const bool          mermaid = o.format == ExportFormat::Mermaid;
     _loop->setVisible(o.format == ExportFormat::Gif || html);
     _autoplay->setVisible(html);
     _pptx_box->setVisible(pptx);
-    const bool vector = pptx && o.presentation.mode != PptxMode::Video && o.presentation.mode != PptxMode::Gif;
+    _mermaid_box->setVisible(mermaid);
+    const bool vector = (pptx && o.presentation.mode != PptxMode::Video && o.presentation.mode != PptxMode::Gif) || mermaid;
     _quality->setEnabled(IsVideo(o.format) || (pptx && o.presentation.mode == PptxMode::Video));
     for (QComboBox *c : {_fps, _scale, _framing})
     {
-        c->setEnabled(!html && !vector); // the player and vector slides do not use frames
+        c->setEnabled(!html && !vector); // the player, vector slides and text do not use frames
     }
+    _bg_button->setEnabled(!mermaid);
     adjustSize();
+    if (mermaid)
+    {
+        const std::string text  = ExportMermaid(_ctl.GetModel(), _ctl.Reg(), o.mermaid.value_or(MermaidKind::Flowchart));
+        const auto        lines = std::ranges::count(text, '\n');
+        _estimate->setText(tr("Mermaid text, %n line(s): renders on GitHub and GitLab, in Notion, Obsidian, Confluence and "
+                              "documentation sites. Positions, timing and effects are simplified; Mermaid import reads it back.",
+                              nullptr, static_cast<int>(lines)));
+        return;
+    }
     if (html)
     {
         const qint64 bytes =
@@ -310,11 +340,21 @@ void ExportDialog::_Start()
         QMessageBox::warning(this, tr("PowerPoint"), tr("Choose an existing presentation to add the slides to."));
         return;
     }
-    const QString ext = FormatId(o.format);
+    QString ext = FormatId(o.format);
+    QString filter;
+    if (o.format == ExportFormat::Mermaid)
+    {
+        const bool md = o.mermaid == MermaidKind::Markdown;
+        ext           = md ? QStringLiteral("md") : QStringLiteral("mmd");
+        filter        = md ? tr("Markdown (*.md)") : tr("Mermaid (*.mmd *.mermaid)");
+    }
+    else
+    {
+        filter = tr("%1 (*.%2)").arg(ext.toUpper(), ext);
+    }
     QSettings     settings;
     const QString dir       = settings.value(kLastDirKey, QDir::homePath()).toString();
     const QString suggested = dir + QLatin1Char('/') + SafeFileName(Qs(_ctl.GetModel().meta.name)) + QLatin1Char('.') + ext;
-    const QString filter    = tr("%1 (*.%2)").arg(ext.toUpper(), ext);
     QString       path      = QFileDialog::getSaveFileName(this, tr("Save Animation"), suggested, filter);
     if (path.isEmpty())
     {

@@ -39,22 +39,23 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../UI/Exporter.cpp" line="+31"/>
+        <location filename="../UI/Exporter.cpp" line="+32"/>
         <source>Export cancelled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+130"/>
+        <location line="+131"/>
+        <location line="+14"/>
         <source>Could not write %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-109"/>
+        <location line="-124"/>
         <source>Could not write %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+33"/>
+        <location line="+34"/>
         <source>Video: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -69,7 +70,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+158"/>
+        <location line="+181"/>
         <source>No output file specified</source>
         <translation type="unfinished"></translation>
     </message>
@@ -84,7 +85,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+31"/>
+        <location line="+36"/>
         <source>Unknown format</source>
         <translation type="unfinished"></translation>
     </message>
@@ -281,7 +282,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>Video and GIF export are not available in this build: choose editable shapes or Morph key frames</source>
         <translation type="unfinished"></translation>
     </message>
@@ -355,15 +356,20 @@ Please attach it to your bug report.</source>
 <context>
     <name>ad::ui::Controller</name>
     <message>
-        <location filename="../UI/Controller.cpp" line="+282"/>
+        <location filename="../UI/Controller.cpp" line="+284"/>
         <source>Imported — nodes: %1, edges: %2, notes: %3; skipped: %4</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>Imported Mermaid %1 — nodes: %2, edges: %3, steps: %4, markers: %5; skipped: %6</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>ad::ui::ExportDialog</name>
     <message>
-        <location filename="../UI/ExportDialog.cpp" line="+50"/>
+        <location filename="../UI/ExportDialog.cpp" line="+53"/>
         <source>Export Animation</source>
         <translation type="unfinished"></translation>
     </message>
@@ -398,7 +404,12 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+2"/>
+        <source>Mermaid — text for GitHub, GitLab, Notion, docs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
         <source>No suitable codec in libav</source>
         <translation type="unfinished"></translation>
     </message>
@@ -459,12 +470,12 @@ Please attach it to your bug report.</source>
     </message>
     <message>
         <location line="+9"/>
-        <location line="+82"/>
+        <location line="+91"/>
         <source>Background</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-65"/>
+        <location line="-74"/>
         <source>Loop</source>
         <translation type="unfinished"></translation>
     </message>
@@ -555,6 +566,26 @@ Please attach it to your bug report.</source>
     </message>
     <message>
         <location line="+12"/>
+        <source>Flowchart (.mmd) — nodes and edges</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Sequence diagram (.mmd) — the scenario</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Markdown (.md) — both diagrams</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Diagram</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
         <source>Format</source>
         <translation type="unfinished"></translation>
     </message>
@@ -579,7 +610,7 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+10"/>
         <source>Export in Background</source>
         <translation type="unfinished"></translation>
     </message>
@@ -588,8 +619,16 @@ Please attach it to your bug report.</source>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
+    <message numerus="yes">
+        <location line="+75"/>
+        <source>Mermaid text, %n line(s): renders on GitHub and GitLab, in Notion, Obsidian, Confluence and documentation sites. Positions, timing and effects are simplified; Mermaid import reads it back.</source>
+        <translation>
+            <numerusform>Mermaid text, %n line: renders on GitHub and GitLab, in Notion, Obsidian, Confluence and documentation sites. Positions, timing and effects are simplified; Mermaid import reads it back.</numerusform>
+            <numerusform>Mermaid text, %n lines: renders on GitHub and GitLab, in Notion, Obsidian, Confluence and documentation sites. Positions, timing and effects are simplified; Mermaid import reads it back.</numerusform>
+        </translation>
+    </message>
     <message>
-        <location line="+68"/>
+        <location line="+9"/>
         <source>One self-contained HTML page (≈ %1): plays in any modern browser and embeds in web presentations (reveal.js, Slidev, Marp, an iframe).</source>
         <translation type="unfinished"></translation>
     </message>
@@ -623,12 +662,22 @@ Please attach it to your bug report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+9"/>
+        <source>Markdown (*.md)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Mermaid (*.mmd *.mermaid)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>%1 (*.%2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+5"/>
         <source>Save Animation</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1746,7 +1795,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 <context>
     <name>ad::ui::MainWindow</name>
     <message>
-        <location filename="../UI/MainWindow.cpp" line="+105"/>
+        <location filename="../UI/MainWindow.cpp" line="+125"/>
         <source>New tab (Ctrl+N)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1862,6 +1911,16 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+5"/>
+        <source>Import from Mermaid…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>This build has no Mermaid parser (Mermaid export still works)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>Save</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2108,12 +2167,12 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+5"/>
-        <location line="+960"/>
+        <location line="+1052"/>
         <source>About</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-795"/>
+        <location line="-887"/>
         <source>Not saved</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2176,7 +2235,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         </translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+53"/>
         <source>Open Error</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2198,7 +2257,7 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
     <message>
         <location line="+0"/>
-        <source>Diagrams (*.json);;draw.io (*.drawio *.xml)</source>
+        <source>Diagrams (*.json);;draw.io (*.drawio *.xml);;Mermaid (*.mmd *.mermaid *.md)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2245,7 +2304,58 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+23"/>
+        <location line="+14"/>
+        <location line="+19"/>
+        <location line="+56"/>
+        <location line="+4"/>
+        <source>Mermaid Import</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-73"/>
+        <source>flowchart LR
+  A[Client] --&gt;|REST| B[Service]
+
+or
+
+sequenceDiagram
+  A-&gt;&gt;B: request
+  B--&gt;&gt;A: 200 OK</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+28"/>
+        <source>Open File…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Import from Mermaid</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Mermaid (*.mmd *.mermaid *.md);;All Files (*)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Keep Mermaid colors (style, classDef)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>A flowchart gives nodes and edges (placed as Mermaid lays them out); a sequence diagram becomes an animated scenario: participants, messages, notes, activations, parallel and alternative sections as chapters. Markdown with both blocks gives both. The document opens in a new tab.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>Could not import the diagram:
+%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+18"/>
         <location line="+30"/>
         <source>Save Error</source>
         <translation type="unfinished"></translation>
@@ -3001,6 +3111,13 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <source>Action</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../UI/Controller.cpp" line="-7"/>
+        <location filename="../apps/AnimatedDiagrams.cpp" line="+129"/>
+        <location filename="../src/Import/MermaidImporter.cpp" line="+1321"/>
+        <source>Mermaid import</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>easing</name>
@@ -3487,6 +3604,44 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     </message>
 </context>
 <context>
+    <name>mermaid</name>
+    <message>
+        <location filename="../src/Import/MermaidImporter.cpp" line="-1229"/>
+        <source>line %1, column %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+118"/>
+        <source>unsupported Mermaid diagram type %1 (supported: flowchart / graph, sequenceDiagram)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>this build has no Mermaid import (WITH_MERMAID=OFF)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+473"/>
+        <source>subgraph &quot;%1&quot;: the frame is not imported, its nodes are kept</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+583"/>
+        <source>block %1: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>block %1: %2 diagram skipped (supported: flowchart, sequenceDiagram)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>no Mermaid flowchart or sequence diagram found</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>model</name>
     <message>
         <location filename="../src/Model/Model.hpp" line="+82"/>
@@ -3542,12 +3697,12 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
     <name>scene</name>
     <message>
         <location filename="../src/Engine/Scene.cpp" line="+542"/>
-        <location line="+127"/>
+        <location line="+138"/>
         <source>note</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-104"/>
+        <location line="-115"/>
         <source>Action</source>
         <translation type="unfinished"></translation>
     </message>

@@ -73,6 +73,7 @@ video::Container ContainerOf(ExportFormat f)
     case ExportFormat::Png:
     case ExportFormat::Pptx:
     case ExportFormat::Html:
+    case ExportFormat::Mermaid:
         break;
     }
     return video::Container::Mp4;
@@ -164,6 +165,20 @@ Result ExportHtml(const Model &m, const ExportOptions &o, const Registry &reg)
     return ExportResult{o.output_path, 0, static_cast<qint64>(html->size()), {}};
 }
 
+Result ExportMermaidText(const Model &m, const ExportOptions &o, const Registry &reg)
+{
+    const QString     suffix = QFileInfo(o.output_path).suffix().toLower();
+    const MermaidKind kind   = o.mermaid.value_or(
+        suffix == QStringLiteral("md") || suffix == QStringLiteral("markdown") ? MermaidKind::Markdown : MermaidKind::Flowchart);
+    const std::string text = ExportMermaid(m, reg, kind);
+    QSaveFile         f(o.output_path);
+    if (!f.open(QIODevice::WriteOnly) || f.write(text.data(), static_cast<qint64>(text.size())) < 0 || !f.commit())
+    {
+        return std::unexpected(QObject::tr("Could not write %1: %2").arg(o.output_path, f.errorString()));
+    }
+    return ExportResult{o.output_path, 0, static_cast<qint64>(text.size()), {}};
+}
+
 } // namespace
 
 QString FormatId(ExportFormat f)
@@ -182,6 +197,8 @@ QString FormatId(ExportFormat f)
         return QStringLiteral("pptx");
     case ExportFormat::Html:
         return QStringLiteral("html");
+    case ExportFormat::Mermaid:
+        return QStringLiteral("mermaid");
     }
     return {};
 }
@@ -216,8 +233,8 @@ std::optional<PptxMode> PptxModeFromId(const QString &id)
 
 std::optional<ExportFormat> FormatFromId(const QString &id)
 {
-    for (const auto f :
-         {ExportFormat::Gif, ExportFormat::Png, ExportFormat::WebM, ExportFormat::Mp4, ExportFormat::Pptx, ExportFormat::Html})
+    for (const auto f : {ExportFormat::Gif, ExportFormat::Png, ExportFormat::WebM, ExportFormat::Mp4, ExportFormat::Pptx,
+                         ExportFormat::Html, ExportFormat::Mermaid})
     {
         if (FormatId(f).compare(id, Qt::CaseInsensitive) == 0)
         {
@@ -228,6 +245,13 @@ std::optional<ExportFormat> FormatFromId(const QString &id)
     {
         return ExportFormat::Html;
     }
+    for (const char *ext : {"mmd", "mermaid", "md", "markdown"})
+    {
+        if (id.compare(QLatin1String(ext), Qt::CaseInsensitive) == 0)
+        {
+            return ExportFormat::Mermaid;
+        }
+    }
     return std::nullopt;
 }
 
@@ -235,8 +259,8 @@ bool HtmlPlayerAvailable() { return QFile::exists(QString::fromLatin1(kPlayerRes
 
 QStringList AvailableFormatIds()
 {
-    QStringList ids{FormatId(ExportFormat::Gif), FormatId(ExportFormat::Png), FormatId(ExportFormat::WebM), FormatId(ExportFormat::Mp4),
-                    FormatId(ExportFormat::Pptx)};
+    QStringList ids{FormatId(ExportFormat::Gif), FormatId(ExportFormat::Png),  FormatId(ExportFormat::WebM),
+                    FormatId(ExportFormat::Mp4), FormatId(ExportFormat::Pptx), FormatId(ExportFormat::Mermaid)};
     if (HtmlPlayerAvailable())
     {
         ids << FormatId(ExportFormat::Html);
@@ -252,7 +276,7 @@ QString EncoderFor(ExportFormat f)
     {
         return QStringLiteral("png"); // Qt image writer, always available
     }
-    if (f == ExportFormat::Pptx || f == ExportFormat::Html)
+    if (f == ExportFormat::Pptx || f == ExportFormat::Html || f == ExportFormat::Mermaid)
     {
         return FormatId(f); // written by the application itself (the PowerPoint video mode checks MP4 on its own)
     }
@@ -315,6 +339,10 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
     {
         return ExportHtml(m, o, reg); // no frames: the page renders them in the browser
     }
+    if (o.format == ExportFormat::Mermaid)
+    {
+        return ExportMermaidText(m, o, reg);
+    }
     if (o.format == ExportFormat::Pptx)
     {
         return ExportPresentation(m, o, reg, stop, progress);
@@ -338,6 +366,7 @@ std::expected<ExportResult, QString> RunExport(const Model &m, const ExportOptio
         return ExportEncoded(m, o, reg, g, times, stop, progress);
     case ExportFormat::Pptx:
     case ExportFormat::Html:
+    case ExportFormat::Mermaid:
         break; // handled above
     }
     return std::unexpected(QObject::tr("Unknown format"));

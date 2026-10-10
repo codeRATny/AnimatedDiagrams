@@ -1,6 +1,6 @@
 ---
 name: animated-diagrams
-description: Create and edit animated architecture diagrams (request flows, retries, timeouts, failovers, state changes) with the Animated Diagrams app via its MCP server or CLI; import draw.io files, apply animation templates, style with design systems, define custom elements / effects / design systems / plugins, render frames and export GIF/MP4/WebM. Use when the user asks for an animated diagram, a flow/sequence animation, a GIF of an architecture or wants to animate a draw.io diagram.
+description: Create and edit animated architecture diagrams (request flows, retries, timeouts, failovers, state changes) with the Animated Diagrams app via its MCP server or CLI; import draw.io / Mermaid diagrams, apply animation templates, style with design systems, define custom elements / effects / design systems / plugins, render frames and export GIF/MP4/WebM. Use when the user asks for an animated diagram, a flow/sequence animation, a GIF of an architecture or wants to animate a draw.io diagram.
 ---
 
 # Animated Diagrams
@@ -20,7 +20,7 @@ Prefer the MCP server; fall back to the CLI only for one-shot conversions/export
 
 In the live window the editor has several documents in tabs: tools work on the **active tab**;
 `list_documents` / `select_document {index}` switch it, and `new_document` / `open_document` /
-`import_drawio` open a new tab instead of replacing the user's work. `export_animation` runs as a
+`import_drawio` / `import_mermaid` open a new tab instead of replacing the user's work. `export_animation` runs as a
 background job there (the user keeps working) and returns when the file is written. Calls are
 serialized and wait while the user has a dialog or menu open, so a slow response usually means the
 user is in a dialog — use a generous client timeout instead of retrying. The design system of the
@@ -113,6 +113,18 @@ the shape: cylinder → db, rhombus → decision, cloud, document, actor → use
 (arrows, dashes, orthogonal routing kept), free text → notes, containers are skipped. Then add the
 scenario as usual. Check `get_summary` after import: node ids are generated.
 
+## 6a. Mermaid
+
+`import_mermaid {text | path, keepColors}` replaces the document. A `flowchart` gives nodes (type by shape:
+`[(db)]` → db, `{decision}` → decision, `@{ shape: h-cyl }` → queue, …), edges (labels, arrows, dashes,
+`style` / `classDef` colors) and Mermaid's own layout. A `sequenceDiagram` becomes an **animated scenario**:
+participants in a row, messages in order (`-->>` reply, `-x` error, `-)` event, `2xx` / `4xx` labels → success /
+error), self messages → actions, notes, `activate` → "active" state, `par` branches in parallel, `alt` / `loop` /
+`opt` sections → markers. Markdown with a flowchart and a sequenceDiagram gives both (that is what
+`to_mermaid {kind: "markdown"}` / `export_animation {format: "mermaid"}` write). Fastest way to draft a flow:
+write it as a sequenceDiagram, import, then tune durations, timers and effects. `to_mermaid {kind}` returns the
+document as Mermaid text for a README or an issue.
+
 ## 7. CLI (no MCP)
 
 ```bash
@@ -120,6 +132,8 @@ animated-diagrams --export out.gif diagram.json            # gif | png | webm | 
 animated-diagrams --export out.mp4 --fps 30 --scale 2 diagram.json
 animated-diagrams --convert out.json input.drawio --page 1  # draw.io -> native JSON
 animated-diagrams --convert out.json --export out.gif input.drawio
+animated-diagrams --export out.gif flow.mmd                 # Mermaid sequenceDiagram -> animated GIF
+animated-diagrams --export docs/flow.md diagram.json        # Mermaid (flowchart + sequence) in Markdown
 ```
 
 `--background '#ffffff'`, `--no-loop` (GIF). GIF / WebM / MP4 are encoded in process (libav: one shared GIF

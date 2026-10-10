@@ -58,6 +58,8 @@ public:
     bool OpenPath(const QString &path);
     /// Import a draw.io file into a new tab (asks for the page when there are several).
     bool ImportDrawioPath(const QString &path);
+    /// Mermaid import dialog, filled with a file's text (or the clipboard when `path` is empty).
+    bool ImportMermaidPath(const QString &path);
     /// Reopen the tabs of the previous session; on the first run open the example
     /// (or an empty tab when `example` is false, e.g. files are given on the command line).
     void RestoreSession(bool example = true);
@@ -118,6 +120,7 @@ private:
     void _NewDiagram();
     void _OpenDiagram();
     void _ImportDrawio();
+    void _ImportMermaid();
     bool _Save(Controller *ctl);
     bool _SaveAs(Controller *ctl);
     void _RenameDiagram();

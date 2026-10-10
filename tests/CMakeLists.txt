@@ -22,6 +22,7 @@ add_executable(ad_core_tests
     JsonIoTest.cpp
     LayoutTest.cpp
     LibraryTest.cpp
+    MermaidTest.cpp
     MarkersTest.cpp
     McpServerTest.cpp
     PathTest.cpp
@@ -38,6 +39,9 @@ add_executable(ad_core_tests
 )
 target_link_libraries(ad_core_tests PRIVATE ad::core GTest::gtest_main)
 target_compile_definitions(ad_core_tests PRIVATE AD_SAMPLES_DIR="${PROJECT_SOURCE_DIR}/samples" AD_PLUGINS_DIR="${PROJECT_SOURCE_DIR}/plugins")
+if(WITH_MERMAID)
+    target_compile_definitions(ad_core_tests PRIVATE AD_TEST_MERMAID_IMPORT)
+endif()
 if(WITH_LIBAV)
     # GifExportTest demuxes / decodes the written files
     target_link_libraries(ad_core_tests PRIVATE LibAV::LibAV)
@@ -69,6 +73,14 @@ if(TARGET animated_diagrams)
             -DOUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/smoke
             -P ${CMAKE_CURRENT_SOURCE_DIR}/mcp_smoke.cmake)
     set_tests_properties(AppMcpStdioSmoke PROPERTIES TIMEOUT 120)
+    add_test(NAME AppMermaidSmoke
+        COMMAND ${CMAKE_COMMAND}
+            -DAPP=$<TARGET_FILE:animated_diagrams>
+            -DINPUT=${PROJECT_SOURCE_DIR}/samples/fallback-retry.json
+            -DOUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/smoke
+            -DMERMAID_IMPORT=${WITH_MERMAID}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/mermaid_smoke.cmake)
+    set_tests_properties(AppMermaidSmoke PROPERTIES TIMEOUT 120 ENVIRONMENT QT_QPA_PLATFORM=offscreen)
     if(AD_PLAYER_HTML)
         # the HTML player is embedded: export the sample to a page
         add_test(NAME AppExportSmoke.html

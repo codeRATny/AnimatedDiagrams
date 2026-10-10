@@ -69,6 +69,8 @@ public:
     bool OpenFile(const QString &path, QString *error);
     bool SaveFile(const QString &path, QString *error);
     bool ImportDrawio(const QString &path, int page, bool keep_colors, QString *error, QString *report = nullptr);
+    /// Mermaid text (a diagram or Markdown with ```mermaid blocks); `name` names the document if the text has no title.
+    bool ImportMermaid(const QString &text, const QString &name, bool keep_colors, QString *error, QString *report = nullptr);
     void ReplaceModel(Model m, const QString &path, bool modified);
     /// Load the autosave of a previous session (tab id from the session list).
     bool RestoreAutosave(const QString &session_id, const QString &path, bool modified);
