@@ -219,6 +219,7 @@ Windows: `%APPDATA%\AnimatedDiagrams\animated-diagrams\crashes`). Адреса �
 - [MCP-сервер](docs/mcp.md)
 - [Скилл для агентов](skills/animated-diagrams/SKILL.md) — устанавливается в `share/animated-diagrams/skills`;
   для Claude Code: `cp -r skills/animated-diagrams ~/.claude/skills/`
+- [Roadmap](docs/roadmap.md) — планы по релизам
 
 ## 🏗 Архитектура
 

@@ -160,6 +160,7 @@ The detailed guides are in Russian for now.
 - [MCP server](docs/mcp.md) · [Skill for agents](skills/animated-diagrams/SKILL.md). For Claude Code:
   `cp -r skills/animated-diagrams ~/.claude/skills/`
 - [Localization](docs/localization.md): adding a language, translations in plugins
+- [Roadmap](docs/roadmap.md) (in Russian): planned releases and features
 
 ## 🛠 Build from source
 
