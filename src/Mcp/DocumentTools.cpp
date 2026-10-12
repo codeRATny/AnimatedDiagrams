@@ -760,13 +760,7 @@ private:
                      throw ToolError("invalid step");
                  }
                  _ValidateStep(*step);
-                 if (step->type == StepType::Message && step->edge_id.empty())
-                 {
-                     if (const Edge *e = _M().EdgeBetween(step->from, step->to); e != nullptr)
-                     {
-                         step->edge_id = e->id;
-                     }
-                 }
+                 _ResolveMessageEdge(*step);
                  const std::string id = _host.Doc().AddStep(std::move(*step)).id;
                  _host.Changed(true);
                  return ToolResult::FromJson(Json{{"id", id}});
@@ -795,6 +789,7 @@ private:
                  step->id       = id;
                  step->duration = std::max(kMinStepDuration, step->duration);
                  _ValidateStep(*step);
+                 _ResolveMessageEdge(*step);
                  _host.Doc().Checkpoint();
                  *_host.Doc().Mutable().FindStep(id) = std::move(*step);
                  _host.Doc().SortSteps();
@@ -962,6 +957,25 @@ private:
         {
             throw ToolError("effect '" + s.effect + "' not found (see list_library)");
         }
+    }
+
+    // A message flies along edge_id (the scene prefers it to from/to), so it has to connect the sender and
+    // the receiver: the defaults of a new step and a changed from/to leave a stale edge there. An explicit
+    // edge between the two nodes is kept (there can be several); otherwise any edge between them, or none.
+    void _ResolveMessageEdge(Step &s)
+    {
+        if (s.type != StepType::Message)
+        {
+            return;
+        }
+        const Model &m = _M();
+        if (const Edge *e = m.FindEdge(s.edge_id);
+            e != nullptr && ((e->from == s.from && e->to == s.to) || (e->from == s.to && e->to == s.from)))
+        {
+            return;
+        }
+        const Edge *e = m.EdgeBetween(s.from, s.to);
+        s.edge_id     = e != nullptr ? e->id : std::string{};
     }
 
     // -----------------------------------------------------------------------

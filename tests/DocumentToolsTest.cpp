@@ -143,6 +143,35 @@ TEST_F(ToolsFixture, UpdateAndRemove)
     EXPECT_EQ(M().nodes.size(), 1U);
 }
 
+TEST_F(ToolsFixture, MessageFliesAlongTheEdgeBetweenItsNodes)
+{
+    // A -> B -> C -> D: the default message step is bound to the first edge (A -> B)
+    const std::string a  = NewNode("A");
+    const std::string b  = NewNode("B");
+    const std::string c  = NewNode("C");
+    const std::string d  = NewNode("D");
+    const auto        ab = Ok("add_edge", {{"from", a}, {"to", b}}).structured["id"].get<std::string>();
+    const auto        bc = Ok("add_edge", {{"from", b}, {"to", c}}).structured["id"].get<std::string>();
+    const auto        cd = Ok("add_edge", {{"from", c}, {"to", d}}).structured["id"].get<std::string>();
+    const auto        cb = Ok("add_edge", {{"from", c}, {"to", b}}).structured["id"].get<std::string>();
+
+    const auto s = Ok("add_step", {{"type", "message"}, {"from", b}, {"to", c}}).structured["id"].get<std::string>();
+    EXPECT_EQ(M().FindStep(s)->edge_id, bc);
+    EXPECT_NE(M().FindStep(s)->edge_id, ab);
+
+    Ok("update_step", {{"id", s}, {"from", c}, {"to", d}});
+    EXPECT_EQ(M().FindStep(s)->edge_id, cd);
+
+    Ok("update_step", {{"id", s}, {"from", a}, {"to", d}}); // no edge: flies straight
+    EXPECT_TRUE(M().FindStep(s)->edge_id.empty());
+
+    // an explicit edge between the nodes is kept, in either direction
+    const auto r = Ok("add_step", {{"type", "message"}, {"from", b}, {"to", c}, {"edgeId", cb}}).structured["id"].get<std::string>();
+    EXPECT_EQ(M().FindStep(r)->edge_id, cb);
+    Ok("update_step", {{"id", r}, {"label", "retry"}});
+    EXPECT_EQ(M().FindStep(r)->edge_id, cb);
+}
+
 TEST_F(ToolsFixture, ValidationErrors)
 {
     EXPECT_TRUE(server.CallTool("add_node", Json::object()).is_error);
