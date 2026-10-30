@@ -93,6 +93,7 @@ every `vX.Y.Z` tag), or from the artifacts of the latest CI run.
 | **Windows 10/11 (x64)** | `animated-diagrams-X.Y.Z-win64.exe`, the installer, or `…-win64.zip`, the portable version |
 | **Ubuntu 24.04 / Debian 13** | `sudo apt install ./animated-diagrams_*_amd64.deb` |
 | **Fedora** | `sudo dnf install ./animated-diagrams-*.x86_64.rpm` |
+| **Linux (x86-64, glibc 2.28+)** | `chmod +x AnimatedDiagrams-x86_64.AppImage && ./AnimatedDiagrams-x86_64.AppImage` |
 
 **Windows installer.** A new version installs over the old one and updates it in place:
 - the same folder and shortcuts, and a single entry in *Apps & features*;
@@ -215,6 +216,7 @@ tests/    GoogleTest + export smoke tests (GIF / PNG / WebM / MP4 / PowerPoint /
 
 Every push is built and tested on:
 - Ubuntu 24.04 (clang-19 and gcc-13), Debian 13 and Fedora 43;
+- AlmaLinux 8: portable AppImage, including a glibc 2.28 compatibility check;
 - ASan + UBSan;
 - clang-format and clang-tidy;
 - Windows (MSVC 2022, Qt 6.8, vcpkg). It also builds the installer and checks a real update: install an old

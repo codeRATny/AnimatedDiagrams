@@ -1,7 +1,7 @@
 name: CI
 
 # Build + tests on every target platform; packages go to artifacts.
-# A vX.Y.Z tag publishes a GitHub Release with deb / rpm / exe / zip and SHA256SUMS.
+# A vX.Y.Z tag publishes a GitHub Release with deb / rpm / AppImage / exe / zip and SHA256SUMS.
 # PRs from this repository are not rebuilt (already built by the branch push).
 on:
   push:
@@ -189,6 +189,98 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  appimage:
+    name: Portable Linux (AlmaLinux 8, glibc 2.28)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    needs: player
+    runs-on: ubuntu-24.04
+    container: almalinux:8.10
+    env:
+      MAMBA_ROOT_PREFIX: /opt/mamba
+      QT_QPA_PLATFORM: offscreen
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install bootstrap tools
+        run: dnf install -y ca-certificates curl bzip2 tar binutils
+
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: player-html
+          path: player-dist
+
+      - name: Install build environment
+        run: |
+          mkdir -p /opt/micromamba
+          curl -fsSL --retry 3 https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj -C /opt/micromamba bin/micromamba
+          /opt/micromamba/bin/micromamba create -y -p /opt/ad-build -c conda-forge \
+            cmake=4.4 ninja pkg-config gxx_linux-64=13 qt6-main=6.12 \
+            'ffmpeg=9=*lgpl*' libzip zlib pugixml nlohmann_json gtest rust=1.99 patchelf git file python=3.12
+
+      - name: Version from tag
+        run: ci/version-from-tag.sh >> "$GITHUB_ENV"
+
+      - name: Configure, build and test
+        run: |
+          /opt/micromamba/bin/micromamba run -p /opt/ad-build cmake -S . -B build-appimage -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DWARNINGS_AS_ERRORS=ON \
+            -DREQUIRE_TRANSLATIONS=ON -DAD_PLAYER_HTML="$PWD/player-dist/player.html" ${AD_VERSION_ARG:-}
+          /opt/micromamba/bin/micromamba run -p /opt/ad-build cmake --build build-appimage --parallel 4
+          /opt/micromamba/bin/micromamba run -p /opt/ad-build ctest --test-dir build-appimage --output-on-failure --parallel 4
+
+      - name: Download packaging tools
+        run: |
+          mkdir -p /opt/linuxdeploy dist
+          curl -fsSL --retry 3 -o /opt/linuxdeploy/linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -fsSL --retry 3 -o /opt/linuxdeploy/linuxdeploy-plugin-qt.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x /opt/linuxdeploy/*.AppImage
+
+      - name: Package and check glibc
+        env:
+          APPDIR: /tmp/animated-diagrams-appdir
+          LINUXDEPLOY: /opt/linuxdeploy/linuxdeploy.AppImage
+        run: |
+          export OUTPUT="$PWD/dist/AnimatedDiagrams-x86_64.AppImage"
+          /opt/micromamba/bin/micromamba run -p /opt/ad-build ci/package-appimage.sh "$PWD/build-appimage"
+
+      - name: Test packaged export
+        run: |
+          APPIMAGE_EXTRACT_AND_RUN=1 dist/AnimatedDiagrams-x86_64.AppImage --export /tmp/smoke.gif --fps 4 --scale 0.5 samples/fallback-retry.json
+          test -s /tmp/smoke.gif
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: package-appimage
+          path: dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
+
+  appimage-smoke:
+    name: AppImage smoke test (${{ matrix.image }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    needs: appimage
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [ubuntu:24.04, fedora:43]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: package-appimage
+          path: dist
+      - name: Export a GIF
+        shell: bash
+        run: |
+          chmod +x dist/AnimatedDiagrams-x86_64.AppImage
+          QT_QPA_PLATFORM=offscreen APPIMAGE_EXTRACT_AND_RUN=1 dist/AnimatedDiagrams-x86_64.AppImage \
+            --export /tmp/smoke.gif --fps 4 --scale 0.5 samples/fallback-retry.json
+          test -s /tmp/smoke.gif
+
   sanitizers:
     name: Core tests (ASan + UBSan)
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
@@ -359,7 +451,7 @@ jobs:
   release:
     name: GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [player, linux, sanitizers, lint, windows]
+    needs: [player, linux, appimage, appimage-smoke, sanitizers, lint, windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

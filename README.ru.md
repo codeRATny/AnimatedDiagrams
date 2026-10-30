@@ -93,6 +93,7 @@
 | **Windows 10/11 (x64)** | `animated-diagrams-X.Y.Z-win64.exe` — установщик, `…-win64.zip` — портативная версия |
 | **Ubuntu 24.04 / Debian 13** | `sudo apt install ./animated-diagrams_*_amd64.deb` |
 | **Fedora** | `sudo dnf install ./animated-diagrams-*.x86_64.rpm` |
+| **Linux (x86-64, glibc 2.28+)** | `chmod +x AnimatedDiagrams-x86_64.AppImage && ./AnimatedDiagrams-x86_64.AppImage` |
 
 **Установщик Windows.** Новая версия ставится поверх старой и обновляет её на месте:
 - та же папка и ярлыки, одна запись в «Приложениях»;
@@ -255,6 +256,7 @@ tests/      GoogleTest (175+ тестов) + smoke-тесты экспорта (
 | Ubuntu 24.04 / Debian 13 | clang-19, `-Werror`, тесты, `cpack -G DEB` |
 | Ubuntu 24.04 (gcc-13) | сборка и тесты GCC, `-Werror` |
 | Fedora 43 | clang, `-Werror`, тесты, `cpack -G RPM` |
+| AlmaLinux 8 | сборка AppImage и проверка всех ELF-файлов на совместимость с glibc 2.28; запуск экспорта также проверяется в Ubuntu и Fedora |
 | Sanitizers | ядро (с libav) и тесты под ASan + UBSan |
 | Lint | clang-format и clang-tidy |
 | Windows | MSVC 2022 + Qt 6.8 + FFmpeg (LGPL shared) + vcpkg (`vcpkg.json`: zlib, pugixml, nanosvg, libzip; бинарный кэш), тесты, `cpack -G "INNOSETUP;ZIP"` (windeployqt + DLL FFmpeg и vcpkg) и проверка установщика: установка старой сборки, обновление при запущенном приложении, отказ от понижения версии, удаление |
