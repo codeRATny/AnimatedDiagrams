@@ -1,6 +1,7 @@
 #ifndef _MODEL_MODEL_HPP_
 #define _MODEL_MODEL_HPP_
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -153,10 +154,15 @@ struct Selection
     };
     Kind        kind = Kind::None;
     std::string id;
+    // Non-empty only for a group of nodes; id is its primary node.
+    std::vector<std::string> node_ids = {};
 
     [[nodiscard]] bool Empty() const { return kind == Kind::None || id.empty(); }
-    [[nodiscard]] bool Is(Kind k, std::string_view i) const { return kind == k && id == i; }
-    friend bool        operator==(const Selection &, const Selection &) = default;
+    [[nodiscard]] bool Is(Kind k, std::string_view i) const
+    {
+        return kind == k && (id == i || (k == Kind::Node && std::ranges::find(node_ids, i) != node_ids.end()));
+    }
+    friend bool operator==(const Selection &, const Selection &) = default;
 };
 
 } // namespace ad

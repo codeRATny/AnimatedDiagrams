@@ -249,3 +249,44 @@ TEST(DocumentTest, IdsAreUnique)
         m.nodes.push_back(n);
     }
 }
+
+TEST(DocumentTest, RemoveNodesIsOneUndoAndCascades)
+{
+    const Model original = SampleModel();
+    Document    d(original);
+    d.RemoveNodes({"svcA", "svcB", "missing"});
+    EXPECT_EQ(d.Get().FindNode("svcA"), nullptr);
+    EXPECT_EQ(d.Get().FindNode("svcB"), nullptr);
+    EXPECT_EQ(d.Get().FindEdge("eAB"), nullptr);
+    EXPECT_TRUE(d.Undo());
+    EXPECT_EQ(d.Get(), original);
+    EXPECT_FALSE(d.CanUndo());
+    EXPECT_TRUE(d.Redo());
+    EXPECT_EQ(d.Get().FindNode("svcA"), nullptr);
+}
+
+TEST(DocumentTest, RemoveMissingNodesDoesNotChangeHistory)
+{
+    Document d(SampleModel());
+    d.RemoveNodes({"missing"});
+    EXPECT_FALSE(d.CanUndo());
+}
+
+TEST(DocumentTest, RemoveLargeGroupIsOneUndo)
+{
+    Model                    model;
+    std::vector<std::string> ids;
+    for (int i = 0; i < 250; ++i)
+    {
+        Node node;
+        node.id = "n" + std::to_string(i);
+        ids.push_back(node.id);
+        model.nodes.push_back(std::move(node));
+    }
+    Document document(model);
+    document.RemoveNodes(ids);
+    EXPECT_TRUE(document.Get().nodes.empty());
+    EXPECT_TRUE(document.Undo());
+    EXPECT_EQ(document.Get(), model);
+    EXPECT_FALSE(document.CanUndo());
+}

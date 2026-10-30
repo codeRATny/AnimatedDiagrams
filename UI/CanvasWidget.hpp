@@ -6,8 +6,10 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "Geometry/Geometry.hpp"
+#include "Model/Model.hpp"
 
 /// @file CanvasWidget.hpp
 /// @brief Diagram canvas: frame rendering, tools (select / node / edge), dragging, zoom and pan.
@@ -43,6 +45,7 @@ public:
     /// Visible area in world coordinates (for "as on screen" export).
     [[nodiscard]] Rect VisibleWorldRect() const;
     void               CancelInteraction();
+    [[nodiscard]] bool IsInteracting() const { return _drag != Drag::None || _connect.has_value(); }
 
     [[nodiscard]] Controller &GetController() const { return _ctl; }
 
@@ -69,6 +72,7 @@ private:
         Node,
         Port,
         Waypoint,
+        Marquee,
         Pan
     };
 
@@ -97,6 +101,11 @@ private:
     QPointF                    _press_pos;
     QPointF                    _pan_origin;
     bool                       _moved = false;
+    QPointF                    _marquee_end;
+    Qt::KeyboardModifiers      _marquee_modifiers;
+    std::optional<Model>       _drag_model;
+    std::optional<Model>       _preview_model;
+    std::vector<std::string>   _drag_ids;
 };
 
 } // namespace ad::ui

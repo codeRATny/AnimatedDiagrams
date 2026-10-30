@@ -4,6 +4,7 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QShortcut>
 #include <QWheelEvent>
 
 #include <algorithm>
@@ -33,6 +34,8 @@ CanvasWidget::CanvasWidget(Controller &ctl, QWidget *parent) : QWidget(parent), 
         update();
     };
     connect(&_ctl, &Controller::ModelChanged, this, repaint);
+    connect(&_ctl, &Controller::ModelReplaced, this, &CanvasWidget::CancelInteraction);
+    connect(&_ctl, &Controller::HistoryTraversal, this, &CanvasWidget::CancelInteraction);
     connect(&_ctl, &Controller::SelectionChanged, this, repaint);
     connect(&_ctl, &Controller::TimeChanged, this, repaint);
     connect(&_ctl, &Controller::LibraryChanged, this, repaint);
@@ -42,12 +45,29 @@ CanvasWidget::CanvasWidget(Controller &ctl, QWidget *parent) : QWidget(parent), 
                 CancelInteraction();
                 _UpdateCursor();
             });
+    auto shortcut = [this](const QKeySequence &key, const auto &action)
+    {
+        auto *binding = new QShortcut(key, this);
+        binding->setContext(Qt::WidgetShortcut);
+        connect(binding, &QShortcut::activated, this, action);
+    };
+    shortcut(QKeySequence::Copy,
+             [this]
+             {
+                 _ctl.CopyNodes();
+             });
+    shortcut(QKeySequence::Paste,
+             [this]
+             {
+                 _ctl.PasteNodes();
+             });
     _UpdateCursor();
     _UpdateHint();
 }
 
 void CanvasWidget::SetTool(Tool tool)
 {
+    CancelInteraction();
     _tool = tool;
     _connect.reset();
     _UpdateCursor();
@@ -58,8 +78,11 @@ void CanvasWidget::SetTool(Tool tool)
 
 void CanvasWidget::CancelInteraction()
 {
+    _drag_model.reset();
+    _preview_model.reset();
     _connect.reset();
-    _drag = Drag::None;
+    _drag  = Drag::None;
+    _moved = false;
     update();
 }
 
@@ -68,7 +91,7 @@ void CanvasWidget::_UpdateHint()
     switch (_tool)
     {
     case Tool::Select:
-        _hint = tr("Select: click to select, drag to move, drag empty space to pan. "
+        _hint = tr("Select: click to select, drag nodes to move, drag empty space to select. Alt-drag or middle-drag to pan. "
                    "Double-click a node to rename it, or an edge to add a waypoint.");
         break;
     case Tool::Node:
@@ -115,6 +138,10 @@ double CanvasWidget::_Tolerance() const { return 3 / _ctl.GetModel().view.zoom; 
 
 void CanvasWidget::ZoomBy(double factor, std::optional<QPointF> anchor)
 {
+    if (_drag != Drag::None)
+    {
+        CancelInteraction();
+    }
     View          v  = _ctl.GetModel().view;
     const QPointF c  = anchor.value_or(QPointF(width() / 2.0, height() / 2.0));
     const double  wx = (c.x() - v.pan_x) / v.zoom;
@@ -128,12 +155,14 @@ void CanvasWidget::ZoomBy(double factor, std::optional<QPointF> anchor)
 
 void CanvasWidget::ResetView()
 {
+    CancelInteraction();
     _ctl.SetView({});
     update();
 }
 
 void CanvasWidget::FitView()
 {
+    CancelInteraction();
     const auto &m = _ctl.GetModel();
     if (m.nodes.empty())
     {
@@ -162,7 +191,7 @@ Rect CanvasWidget::VisibleWorldRect() const
 void CanvasWidget::paintEvent(QPaintEvent * /*e*/)
 {
     QPainter    p(this);
-    const auto &m = _ctl.GetModel();
+    const auto &m = _preview_model.has_value() ? *_preview_model : _ctl.GetModel();
     p.fillRect(rect(), ToQColor(Color::Parse(m.scene.background, palette::kCanvasBg)));
 
     if (m.scene.grid)
@@ -197,6 +226,13 @@ void CanvasWidget::paintEvent(QPaintEvent * /*e*/)
     RenderFrame(p, BuildFrame(m, _ctl.Time(), opt, QtTextMeasurer{}, _ctl.Reg()));
     p.restore();
 
+    if (_drag == Drag::Marquee && _moved)
+    {
+        p.setPen(QPen(ToQColor(Ui().accent), 1, Qt::DashLine));
+        p.setBrush(ToQColor(Ui().accent, 0.12));
+        p.drawRect(QRectF(_press_pos, _marquee_end).normalized());
+    }
+
     // tool hint in the bottom-left corner
     if (!_hint.isEmpty() && !_ctl.IsPlaying())
     {
@@ -225,8 +261,11 @@ void CanvasWidget::_BeginDragEdit()
     {
         return;
     }
-    _moved = true;
-    _ctl.Doc().Checkpoint(); // one history entry for the whole drag
+    _moved                = true;
+    _drag_model           = _ctl.GetModel();
+    _preview_model        = *_drag_model;
+    const auto &selection = _ctl.GetSelection();
+    _drag_ids             = selection.node_ids.empty() ? std::vector<std::string>{_drag_id} : selection.node_ids;
 }
 
 void CanvasWidget::mousePressEvent(QMouseEvent *e)
@@ -318,7 +357,28 @@ void CanvasWidget::mousePressEvent(QMouseEvent *e)
         break;
     case Hit::Kind::Node:
     {
-        _ctl.Select(Kind::Node, hit.id);
+        const auto selection = _ctl.GetSelection();
+        auto ids = selection.kind == Kind::Node ? (selection.node_ids.empty() ? std::vector<std::string>{selection.id} : selection.node_ids)
+                                                : std::vector<std::string>{};
+        const bool selected = std::ranges::contains(ids, hit.id);
+        if (e->modifiers().testFlag(Qt::ControlModifier) && selected)
+        {
+            std::erase(ids, hit.id);
+            _ctl.SelectNodes(std::move(ids), selection.id);
+            break;
+        }
+        if (e->modifiers().testFlag(Qt::ShiftModifier) || e->modifiers().testFlag(Qt::ControlModifier) || selected)
+        {
+            if (!selected)
+            {
+                ids.push_back(hit.id);
+            }
+            _ctl.SelectNodes(std::move(ids), hit.id);
+        }
+        else
+        {
+            _ctl.Select(Kind::Node, hit.id);
+        }
         const Node *n = _ctl.GetModel().FindNode(hit.id);
         _drag         = Drag::Node;
         _drag_id      = hit.id;
@@ -330,8 +390,16 @@ void CanvasWidget::mousePressEvent(QMouseEvent *e)
         _ctl.Select(Kind::Edge, hit.id);
         break;
     case Hit::Kind::None:
-        _ctl.ClearSelection();
-        start_pan();
+        if (e->modifiers().testFlag(Qt::AltModifier))
+        {
+            start_pan();
+        }
+        else
+        {
+            _drag              = Drag::Marquee;
+            _marquee_end       = pos;
+            _marquee_modifiers = e->modifiers();
+        }
         break;
     }
 }
@@ -349,6 +417,14 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent *e)
     }
     const Vec2 w = _ToWorld(pos);
 
+    if (_drag == Drag::Marquee)
+    {
+        _moved       = true;
+        _marquee_end = pos;
+        update();
+        return;
+    }
+
     if (_drag == Drag::Pan)
     {
         View v  = _ctl.GetModel().view;
@@ -361,14 +437,38 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent *e)
     }
 
     _BeginDragEdit();
-    Model &m = _ctl.Doc().Mutable();
+    Model &m = *_preview_model;
     switch (_drag)
     {
     case Drag::Node:
-        if (Node *n = m.FindNode(_drag_id); n != nullptr)
+        if (const Node *original = _drag_model->FindNode(_drag_id); original != nullptr)
         {
-            n->x = std::round(w.x - _grab_offset.x);
-            n->y = std::round(w.y - _grab_offset.y);
+            const Vec2 delta{std::round(w.x - _grab_offset.x) - original->x, std::round(w.y - _grab_offset.y) - original->y};
+            for (const auto &id : _drag_ids)
+            {
+                if (Node *n = m.FindNode(id); n != nullptr)
+                {
+                    if (const Node *old = _drag_model->FindNode(id); old != nullptr)
+                    {
+                        n->x = old->x + delta.x;
+                        n->y = old->y + delta.y;
+                    }
+                }
+            }
+            for (auto &edge : m.edges)
+            {
+                if (std::ranges::contains(_drag_ids, edge.from) && std::ranges::contains(_drag_ids, edge.to))
+                {
+                    if (const Edge *old = _drag_model->FindEdge(edge.id); old != nullptr)
+                    {
+                        edge.waypoints = old->waypoints;
+                        for (auto &point : edge.waypoints)
+                        {
+                            point = point + delta;
+                        }
+                    }
+                }
+            }
         }
         break;
     case Drag::Port:
@@ -390,18 +490,112 @@ void CanvasWidget::mouseMoveEvent(QMouseEvent *e)
     default:
         break;
     }
-    _ctl.Changed(false);
+    update();
 }
 
 void CanvasWidget::mouseReleaseEvent(QMouseEvent * /*e*/)
 {
-    if (_moved && _drag != Drag::Pan && _drag != Drag::None)
+    if (_drag == Drag::Marquee)
     {
-        _ctl.Doc().BreakMerge();
+        auto        selection = _ctl.GetSelection();
+        std::string primary   = selection.kind == Kind::Node ? selection.id : std::string{};
+        auto ids = selection.kind == Kind::Node ? (selection.node_ids.empty() ? std::vector<std::string>{selection.id} : selection.node_ids)
+                                                : std::vector<std::string>{};
+        if (!_marquee_modifiers.testFlag(Qt::ShiftModifier) && !_marquee_modifiers.testFlag(Qt::ControlModifier))
+        {
+            ids.clear();
+        }
+        if (_moved)
+        {
+            const Vec2 a = _ToWorld(_press_pos);
+            const Vec2 b = _ToWorld(_marquee_end);
+            const Rect bounds{std::min(a.x, b.x), std::min(a.y, b.y), std::abs(a.x - b.x), std::abs(a.y - b.y)};
+            for (const auto &node : _ctl.GetModel().nodes)
+            {
+                if (bounds.Contains({node.x, node.y}) && bounds.Contains({node.x + node.w, node.y + node.h}))
+                {
+                    if (_marquee_modifiers.testFlag(Qt::ControlModifier) && std::ranges::contains(ids, node.id))
+                    {
+                        std::erase(ids, node.id);
+                    }
+                    else if (!std::ranges::contains(ids, node.id))
+                    {
+                        ids.push_back(node.id);
+                        primary = node.id;
+                    }
+                }
+            }
+        }
+        _ctl.SelectNodes(std::move(ids), primary);
+    }
+    else if (_drag_model.has_value())
+    {
+        Model result = _ctl.GetModel();
+        if (_drag == Drag::Node)
+        {
+            const Node *old     = _drag_model->FindNode(_drag_id);
+            const Node *preview = _preview_model->FindNode(_drag_id);
+            if (old != nullptr && preview != nullptr)
+            {
+                const Vec2 delta{preview->x - old->x, preview->y - old->y};
+                for (const auto &id : _drag_ids)
+                {
+                    if (Node *node = result.FindNode(id); node != nullptr)
+                    {
+                        node->x += delta.x;
+                        node->y += delta.y;
+                    }
+                }
+                for (auto &edge : result.edges)
+                {
+                    if (std::ranges::contains(_drag_ids, edge.from) && std::ranges::contains(_drag_ids, edge.to) &&
+                        _drag_model->FindEdge(edge.id) != nullptr)
+                    {
+                        for (auto &point : edge.waypoints)
+                        {
+                            point = point + delta;
+                        }
+                    }
+                }
+            }
+        }
+        else if (_drag == Drag::Port)
+        {
+            const Port *old     = _drag_model->FindPort(_drag_id, _drag_port);
+            const Port *preview = _preview_model->FindPort(_drag_id, _drag_port);
+            Node       *node    = result.FindNode(_drag_id);
+            Port       *port    = node != nullptr ? node->FindPort(_drag_port) : nullptr;
+            if (old != nullptr && preview != nullptr && port != nullptr)
+            {
+                port->dx += preview->dx - old->dx;
+                port->dy += preview->dy - old->dy;
+            }
+        }
+        else if (_drag == Drag::Waypoint)
+        {
+            const Edge *old     = _drag_model->FindEdge(_drag_id);
+            const Edge *preview = _preview_model->FindEdge(_drag_id);
+            Edge       *edge    = result.FindEdge(_drag_id);
+            if (old != nullptr && preview != nullptr && edge != nullptr && _drag_waypoint < old->waypoints.size() &&
+                _drag_waypoint < preview->waypoints.size() && _drag_waypoint < edge->waypoints.size())
+            {
+                edge->waypoints[_drag_waypoint] =
+                    edge->waypoints[_drag_waypoint] + preview->waypoints[_drag_waypoint] - old->waypoints[_drag_waypoint];
+            }
+        }
+        _drag_model.reset();
+        _preview_model.reset();
+        if (result != _ctl.GetModel())
+        {
+            _ctl.Doc().Checkpoint();
+            _ctl.Doc().Mutable() = std::move(result);
+            _ctl.Changed(false);
+        }
     }
     _drag  = Drag::None;
     _moved = false;
     _UpdateCursor();
+    update();
 }
 
 void CanvasWidget::mouseDoubleClickEvent(QMouseEvent *e)

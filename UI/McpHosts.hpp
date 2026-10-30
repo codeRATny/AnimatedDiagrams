@@ -25,6 +25,7 @@ public:
     Document                                        &Doc() override;
     const Registry                                  &Reg() const override;
     void                                             Changed(bool structural) override;
+    void                                             BeforeHistoryTraversal() override;
     void                                             Replaced() override;
     [[nodiscard]] std::string                        CurrentPath() const override;
     void                                             SetCurrentPath(std::string path) override;

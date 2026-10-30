@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <unordered_set>
 
 #include "Model/Markers.hpp"
 #include "Utils/I18n.hpp"
@@ -165,42 +166,52 @@ Edge *Document::AddEdge(std::string_view from, std::string_view to, std::string_
     return &_model.edges.back();
 }
 
-void Document::RemoveNode(std::string_view id)
+void Document::RemoveNode(std::string_view id) { RemoveNodes({std::string(id)}); }
+
+void Document::RemoveNodes(const std::vector<std::string> &ids)
 {
-    if (_model.FindNode(id) == nullptr)
+    const std::unordered_set<std::string> requested(ids.begin(), ids.end());
+    std::unordered_set<std::string>       gone_nodes;
+    for (const auto &node : _model.nodes)
+    {
+        if (requested.contains(node.id))
+        {
+            gone_nodes.insert(node.id);
+        }
+    }
+    if (gone_nodes.empty())
     {
         return;
     }
     Checkpoint();
-    const std::string        nid(id);
-    std::vector<std::string> gone_edges;
+    std::unordered_set<std::string> gone_edges;
     for (const auto &e : _model.edges)
     {
-        if (e.from == nid || e.to == nid)
+        if (gone_nodes.contains(e.from) || gone_nodes.contains(e.to))
         {
-            gone_edges.push_back(e.id);
+            gone_edges.insert(e.id);
         }
     }
     std::erase_if(_model.nodes,
                   [&](const Node &n)
                   {
-                      return n.id == nid;
+                      return gone_nodes.contains(n.id);
                   });
     std::erase_if(_model.edges,
                   [&](const Edge &e)
                   {
-                      return e.from == nid || e.to == nid;
+                      return gone_edges.contains(e.id);
                   });
     std::erase_if(_model.scenario.steps,
                   [&](const Step &s)
                   {
-                      const bool refs_node = s.node_id == nid || s.from == nid || s.to == nid;
-                      const bool dead_link = s.type == StepType::Link && std::ranges::contains(gone_edges, s.edge_id);
+                      const bool refs_node = gone_nodes.contains(s.node_id) || gone_nodes.contains(s.from) || gone_nodes.contains(s.to);
+                      const bool dead_link = s.type == StepType::Link && gone_edges.contains(s.edge_id);
                       return refs_node || dead_link;
                   });
     for (auto &s : _model.scenario.steps)
     {
-        if (std::ranges::contains(gone_edges, s.edge_id))
+        if (gone_edges.contains(s.edge_id))
         {
             s.edge_id.clear();
         }

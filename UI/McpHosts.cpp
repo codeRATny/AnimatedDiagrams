@@ -133,6 +133,7 @@ Controller &AppDocumentHost::_Ctl() const
 Document       &AppDocumentHost::Doc() { return _Ctl().Doc(); }
 const Registry &AppDocumentHost::Reg() const { return _ctx.Reg(); }
 void            AppDocumentHost::Changed(bool structural) { _Ctl().Changed(structural); }
+void            AppDocumentHost::BeforeHistoryTraversal() { Q_EMIT _Ctl().HistoryTraversal(); }
 
 void AppDocumentHost::Replaced()
 {

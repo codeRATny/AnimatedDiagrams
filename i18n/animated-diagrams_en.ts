@@ -329,7 +329,7 @@ Please attach it to your bug report.</source>
     <name>ad::ui::CanvasWidget</name>
     <message>
         <location filename="../UI/CanvasWidget.cpp" line="+71"/>
-        <source>Select: click to select, drag to move, drag empty space to pan. Double-click a node to rename it, or an edge to add a waypoint.</source>
+        <source>Select: click to select, drag nodes to move, drag empty space to select. Alt-drag or middle-drag to pan. Double-click a node to rename it, or an edge to add a waypoint.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -728,6 +728,10 @@ Please attach it to your bug report.</source>
 </context>
 <context>
     <name>ad::ui::Inspector</name>
+    <message>
+        <source>%1 elements selected</source>
+        <translation>%1 elements selected</translation>
+    </message>
     <message>
         <location filename="../UI/Inspector.cpp" line="+140"/>
         <source>Auto</source>
@@ -1794,6 +1798,18 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 </context>
 <context>
     <name>ad::ui::MainWindow</name>
+    <message>
+        <source>Copy Nodes</source>
+        <translation>Copy Nodes</translation>
+    </message>
+    <message>
+        <source>Paste Nodes</source>
+        <translation>Paste Nodes</translation>
+    </message>
+    <message>
+        <source>Select All of This Type</source>
+        <translation>Select All of This Type</translation>
+    </message>
     <message>
         <location filename="../UI/MainWindow.cpp" line="+125"/>
         <source>New tab (Ctrl+N)</source>

@@ -65,6 +65,7 @@ public:
     /// nullptr when from == to or a node is missing.
     Edge *AddEdge(std::string_view from, std::string_view to, std::string_view from_port = {}, std::string_view to_port = {});
     void  RemoveNode(std::string_view id);
+    void  RemoveNodes(const std::vector<std::string> &ids);
     void  RemoveEdge(std::string_view id);
     void  RemoveStep(std::string_view id);
 

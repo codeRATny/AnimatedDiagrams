@@ -490,9 +490,30 @@ void MainWindow::_BuildMenus()
                        with_tab(
                            [](Tab &t)
                            {
-                               t.ctl->DeleteSelection();
+                               if (!t.ctl->IsPlaying())
+                               {
+                                   t.ctl->DeleteSelection();
+                               }
                            }));
     del->setShortcuts({QKeySequence::Delete, QKeySequence(Qt::Key_Backspace)});
+    act(edit, tr("Copy Nodes"), {},
+        with_tab(
+            [](Tab &t)
+            {
+                t.ctl->CopyNodes();
+            }));
+    act(edit, tr("Paste Nodes"), {},
+        with_tab(
+            [](Tab &t)
+            {
+                t.ctl->PasteNodes();
+            }));
+    act(edit, tr("Select All of This Type"), {},
+        with_tab(
+            [](Tab &t)
+            {
+                t.ctl->SelectAllOfType();
+            }));
     act(edit, tr("Duplicate Step"), QKeySequence(Qt::CTRL | Qt::Key_D),
         with_tab(
             [](Tab &t)
@@ -512,8 +533,12 @@ void MainWindow::_BuildMenus()
         with_tab(
             [](Tab &t)
             {
+                const bool interacting = t.canvas->IsInteracting();
                 t.canvas->CancelInteraction();
-                t.ctl->ClearSelection();
+                if (!interacting)
+                {
+                    t.ctl->ClearSelection();
+                }
             }));
 
     QMenu *view = _menu_bar->addMenu(tr("&View"));

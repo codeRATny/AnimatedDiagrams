@@ -134,7 +134,9 @@ The format comes from the extension, or from `--format gif|png|webm|mp4|pptx|htm
 |---|---|
 | Tools | `V` select · `N` node (pick a type in the palette or drag it onto the canvas) · `E` edge |
 | Tabs | `Ctrl+N` new · `Ctrl+O` open · `Ctrl+W` close · `Ctrl+PgUp/PgDn` switch; drop files onto the canvas |
-| Move / pan / zoom | drag · drag empty space or the middle button · wheel |
+| Select nodes | drag a rectangle on empty canvas; Shift-click adds, Ctrl-click toggles; Edit → Select All of This Type |
+| Copy nodes | `Ctrl+C` / `Ctrl+V` with canvas focused; internal edges are copied with the nodes |
+| Move / pan / zoom | drag nodes · Alt-drag empty space or middle-drag · wheel |
 | Edge waypoints | double-click an edge to add one, a waypoint to remove it, drag to move |
 | Playback | `Space` · `Home` / `End` · click the timeline ruler · *Stop at markers* |
 | Timeline | drag steps, drag their edges to change the duration, `Ctrl` + wheel zooms |

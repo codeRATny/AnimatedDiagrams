@@ -506,6 +506,10 @@ public:
         _Add("undo", "Undo", "Undo the last change.", Schema(Json::object()), false,
              [this](const Json &)
              {
+                 if (_host.Doc().CanUndo())
+                 {
+                     _host.BeforeHistoryTraversal();
+                 }
                  const bool ok = _host.Doc().Undo();
                  _host.Changed(true);
                  return ToolResult::Text(ok ? "Undone" : "Nothing to undo");
@@ -513,6 +517,10 @@ public:
         _Add("redo", "Redo", "Redo the last undone change.", Schema(Json::object()), false,
              [this](const Json &)
              {
+                 if (_host.Doc().CanRedo())
+                 {
+                     _host.BeforeHistoryTraversal();
+                 }
                  const bool ok = _host.Doc().Redo();
                  _host.Changed(true);
                  return ToolResult::Text(ok ? "Redone" : "Nothing to redo");

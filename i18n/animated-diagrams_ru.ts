@@ -334,8 +334,8 @@ Please attach it to your bug report.</source>
     <name>ad::ui::CanvasWidget</name>
     <message>
         <location filename="../UI/CanvasWidget.cpp" line="+71" />
-        <source>Select: click to select, drag to move, drag empty space to pan. Double-click a node to rename it, or an edge to add a waypoint.</source>
-        <translation>Выбор: клик — выделить, перетаскивание — двигать, пустое место — панорама. Двойной клик: узел — переименовать, связь — точка изгиба.</translation>
+        <source>Select: click to select, drag nodes to move, drag empty space to select. Alt-drag or middle-drag to pan. Double-click a node to rename it, or an edge to add a waypoint.</source>
+        <translation>Выбор: клик — выделить, перетаскивание узла — двигать, пустого места — рамка выделения. Alt-перетаскивание или средняя кнопка — панорама. Двойной клик: узел — переименовать, связь — точка изгиба.</translation>
     </message>
     <message>
         <location line="+4" />
@@ -737,6 +737,10 @@ Please attach it to your bug report.</source>
 </context>
 <context>
     <name>ad::ui::Inspector</name>
+    <message>
+        <source>%1 elements selected</source>
+        <translation>Выбрано элементов: %1</translation>
+    </message>
     <message>
         <location filename="../UI/Inspector.cpp" line="+140" />
         <source>Auto</source>
@@ -1805,6 +1809,18 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
 </context>
 <context>
     <name>ad::ui::MainWindow</name>
+    <message>
+        <source>Copy Nodes</source>
+        <translation>Копировать узлы</translation>
+    </message>
+    <message>
+        <source>Paste Nodes</source>
+        <translation>Вставить узлы</translation>
+    </message>
+    <message>
+        <source>Select All of This Type</source>
+        <translation>Выделить все элементы этого типа</translation>
+    </message>
     <message>
         <location filename="../UI/MainWindow.cpp" line="+125" />
         <source>New tab (Ctrl+N)</source>

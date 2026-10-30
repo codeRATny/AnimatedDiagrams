@@ -1,6 +1,7 @@
 #ifndef _UI_CONTROLLER_HPP_
 #define _UI_CONTROLLER_HPP_
 
+#include <QByteArray>
 #include <QElapsedTimer>
 #include <QObject>
 #include <QString>
@@ -46,6 +47,10 @@ public:
     // -----------------------------------------------------------------------
     [[nodiscard]] const Selection &GetSelection() const { return _selection; }
     void                           Select(Selection::Kind kind, const std::string &id);
+    void                           SelectNodes(std::vector<std::string> ids, const std::string &primary = {});
+    void                           SelectAllOfType();
+    void                           CopyNodes();
+    void                           PasteNodes();
     void                           ClearSelection() { Select(Selection::Kind::None, {}); }
     void                           DeleteSelection();
 
@@ -106,6 +111,8 @@ public:
     void SetStopAtMarkers(bool on);
 
 Q_SIGNALS:
+    void ModelReplaced();
+    void HistoryTraversal();
     void ModelChanged(bool structural);
     void SelectionChanged();
     void TimeChanged(double t);
@@ -129,6 +136,8 @@ private:
     AppContext &_ctx;
     Document    _doc;
     Selection   _selection;
+    QByteArray  _last_clipboard;
+    int         _paste_count = 0;
     QString     _session_id;
     QString     _path;
     bool        _modified = false;

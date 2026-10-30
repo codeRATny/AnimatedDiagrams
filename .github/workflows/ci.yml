@@ -203,7 +203,7 @@ jobs:
         shell: bash
     steps:
       - name: Install bootstrap tools
-        run: dnf install -y ca-certificates curl bzip2 tar binutils
+        run: dnf install -y ca-certificates curl bzip2 tar binutils fontconfig dejavu-sans-fonts
 
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5

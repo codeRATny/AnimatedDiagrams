@@ -112,6 +112,18 @@ void Inspector::_Rebuild()
     box->addWidget(_title);
 
     const auto &sel = _ctl.GetSelection();
+    if (sel.kind == Kind::Node && !sel.node_ids.empty())
+    {
+        _title->setText(tr("%1 elements selected").arg(sel.node_ids.size()));
+        box->addStretch(1);
+        QWidget *old = takeWidget();
+        setWidget(content);
+        if (old != nullptr)
+        {
+            old->deleteLater();
+        }
+        return;
+    }
     switch (sel.kind)
     {
     case Kind::Node:

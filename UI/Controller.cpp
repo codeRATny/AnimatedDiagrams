@@ -1,19 +1,28 @@
 #include "Controller.hpp"
 
+#include <QApplication>
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QMimeData>
 #include <QSaveFile>
 #include <QSettings>
 #include <QUuid>
 
 #include <algorithm>
+#include <cmath>
+#include <map>
+#include <set>
+
+#include <nlohmann/json.hpp>
 
 #include "AppContext.hpp"
 #include "Import/DrawioImporter.hpp"
 #include "Import/MermaidImporter.hpp"
+#include "Io/JsonCodec.hpp"
 #include "Io/JsonIo.hpp"
 #include "Model/Markers.hpp"
 #include "Model/Sample.hpp"
@@ -86,12 +95,281 @@ void Controller::Select(Selection::Kind kind, const std::string &id)
     Q_EMIT SelectionChanged();
 }
 
+void Controller::SelectNodes(std::vector<std::string> ids, const std::string &primary)
+{
+    std::vector<std::string> valid;
+    for (const auto &id : ids)
+    {
+        if (GetModel().FindNode(id) != nullptr && !std::ranges::contains(valid, id))
+        {
+            valid.push_back(id);
+        }
+    }
+    if (valid.empty())
+    {
+        ClearSelection();
+        return;
+    }
+    Selection next{Selection::Kind::Node, std::ranges::contains(valid, primary) ? primary : valid.back()};
+    if (valid.size() > 1)
+    {
+        next.node_ids = std::move(valid);
+    }
+    if (next != _selection)
+    {
+        _selection = std::move(next);
+        Q_EMIT SelectionChanged();
+    }
+}
+
+void Controller::SelectAllOfType()
+{
+    const Node *primary = GetModel().FindNode(_selection.id);
+    if (_selection.kind != Selection::Kind::Node || primary == nullptr)
+    {
+        return;
+    }
+    const std::string        type = primary->type;
+    std::vector<std::string> ids;
+    for (const auto &node : GetModel().nodes)
+    {
+        if (node.type == type)
+        {
+            ids.push_back(node.id);
+        }
+    }
+    SelectNodes(std::move(ids), _selection.id);
+}
+
+namespace
+{
+constexpr auto kNodeClipboard = "application/x-animated-diagrams-nodes";
+}
+
+void Controller::CopyNodes()
+{
+    if (_selection.kind != Selection::Kind::Node)
+    {
+        return;
+    }
+    const auto ids = _selection.node_ids.empty() ? std::vector<std::string>{_selection.id} : _selection.node_ids;
+    Model      fragment;
+    for (const auto &node : GetModel().nodes)
+    {
+        if (!std::ranges::contains(ids, node.id))
+        {
+            continue;
+        }
+        fragment.nodes.push_back(node);
+        if (!std::ranges::any_of(fragment.library.elements,
+                                 [&](const ElementType &e)
+                                 {
+                                     return e.id == node.type;
+                                 }))
+        {
+            ElementType type = Reg().Element(node.type, &GetModel().library);
+            type.id          = node.type;
+            fragment.library.elements.push_back(std::move(type));
+        }
+    }
+    for (const auto &edge : GetModel().edges)
+    {
+        if (std::ranges::contains(ids, edge.from) && std::ranges::contains(ids, edge.to))
+        {
+            fragment.edges.push_back(edge);
+        }
+    }
+    if (fragment.nodes.empty())
+    {
+        return;
+    }
+    const nlohmann::json payload = {{"version", 1}, {"document", SerializeModel(fragment)}};
+    auto                *mime    = new QMimeData;
+    mime->setData(kNodeClipboard, QByteArray::fromStdString(payload.dump()));
+    QApplication::clipboard()->setMimeData(mime);
+    _last_clipboard.clear();
+    _paste_count = 0;
+}
+
+void Controller::PasteNodes()
+{
+    if (_playing)
+    {
+        return;
+    }
+    const QMimeData *mime = QApplication::clipboard()->mimeData();
+    if (mime == nullptr || !mime->hasFormat(kNodeClipboard))
+    {
+        return;
+    }
+    const QByteArray bytes = mime->data(kNodeClipboard);
+    if (bytes.size() > 16 * 1024 * 1024)
+    {
+        return;
+    }
+    const auto payload = nlohmann::json::parse(bytes.constData(), bytes.constData() + bytes.size(), nullptr, false);
+    if (!payload.is_object() || !payload.contains("version") || payload["version"] != 1 || !payload.contains("document") ||
+        !payload["document"].is_string())
+    {
+        return;
+    }
+    const auto text = payload["document"].get<std::string>();
+    const auto raw  = nlohmann::json::parse(text, nullptr, false);
+    if (!raw.is_object() || !raw.contains("nodes") || !raw["nodes"].is_array() || !raw.contains("edges") || !raw["edges"].is_array() ||
+        !raw.contains("scenario") || !raw["scenario"].is_object())
+    {
+        return;
+    }
+    const Model          decoded   = json::ModelFromJson(raw);
+    const Model         *fragment  = &decoded;
+    const nlohmann::json canonical = json::ToJson(decoded);
+    if (raw != canonical || decoded.nodes.empty() || !decoded.scenario.steps.empty() || !decoded.scenario.markers.empty() ||
+        raw["nodes"].size() != decoded.nodes.size() || raw["edges"].size() != decoded.edges.size())
+    {
+        return;
+    }
+    std::set<std::string> ids;
+    for (const auto &node : decoded.nodes)
+    {
+        if (node.id.empty() || node.type.empty() || !ids.insert(node.id).second || !std::isfinite(node.x) || !std::isfinite(node.y) ||
+            !std::isfinite(node.w) || !std::isfinite(node.h) || node.w <= 0 || node.h <= 0)
+        {
+            return;
+        }
+        for (const auto &port : node.ports)
+        {
+            if (port.id.empty() || !ids.insert(port.id).second || !std::isfinite(port.dx) || !std::isfinite(port.dy))
+            {
+                return;
+            }
+        }
+    }
+    for (const auto &edge : decoded.edges)
+    {
+        if (edge.id.empty() || !ids.insert(edge.id).second || edge.from == edge.to || decoded.FindNode(edge.from) == nullptr ||
+            decoded.FindNode(edge.to) == nullptr || (!edge.from_port.empty() && decoded.FindPort(edge.from, edge.from_port) == nullptr) ||
+            (!edge.to_port.empty() && decoded.FindPort(edge.to, edge.to_port) == nullptr))
+        {
+            return;
+        }
+        for (const auto &point : edge.waypoints)
+        {
+            if (!std::isfinite(point.x) || !std::isfinite(point.y))
+            {
+                return;
+            }
+        }
+    }
+    std::set<std::string> definitions;
+    for (const auto &type : decoded.library.elements)
+    {
+        if (type.id.empty() || !definitions.insert(type.id).second)
+        {
+            return;
+        }
+    }
+    for (const Node &node : fragment->nodes)
+    {
+        if (!std::ranges::any_of(fragment->library.elements,
+                                 [&](const ElementType &e)
+                                 {
+                                     return e.id == node.type;
+                                 }))
+        {
+            return;
+        }
+    }
+    if (bytes != _last_clipboard)
+    {
+        _last_clipboard = bytes;
+        _paste_count    = 0;
+    }
+    const double offset = 26.0 * (++_paste_count) / GetModel().view.zoom;
+    _doc.Checkpoint();
+    Model                             &model = _doc.Mutable();
+    std::map<std::string, std::string> types;
+    for (const auto &type : fragment->library.elements)
+    {
+        ElementType copy = type;
+        if (const auto *existing = Reg().FindElement(copy.id, &model.library); existing != nullptr)
+        {
+            if (*existing == copy)
+            {
+                types[type.id] = copy.id;
+                continue;
+            }
+            int suffix = 1;
+            do
+            {
+                copy.id = type.id + "_copy" + std::to_string(suffix++);
+            } while (Reg().FindElement(copy.id, &model.library) != nullptr);
+        }
+        types[type.id] = copy.id;
+        model.library.elements.push_back(std::move(copy));
+    }
+    std::map<std::string, std::string>                         nodes;
+    std::map<std::pair<std::string, std::string>, std::string> ports;
+    std::vector<std::string>                                   selected;
+    for (const auto &source : fragment->nodes)
+    {
+        Node copy = source;
+        copy.id   = _doc.NewId("n");
+        copy.type = types.at(source.type);
+        copy.x += offset;
+        copy.y += offset;
+        nodes[source.id] = copy.id;
+        selected.push_back(copy.id);
+        copy.ports.clear();
+        model.nodes.push_back(std::move(copy));
+        for (const auto &port : source.ports)
+        {
+            Port new_port               = port;
+            new_port.id                 = _doc.NewId("p");
+            ports[{source.id, port.id}] = new_port.id;
+            model.nodes.back().ports.push_back(std::move(new_port));
+        }
+    }
+    for (const auto &source : fragment->edges)
+    {
+        Edge copy = source;
+        copy.id   = _doc.NewId("e");
+        copy.from = nodes.at(source.from);
+        copy.to   = nodes.at(source.to);
+        if (!source.from_port.empty())
+        {
+            copy.from_port = ports.at({source.from, source.from_port});
+        }
+        if (!source.to_port.empty())
+        {
+            copy.to_port = ports.at({source.to, source.to_port});
+        }
+        for (auto &point : copy.waypoints)
+        {
+            point = point + Vec2{offset, offset};
+        }
+        model.edges.push_back(std::move(copy));
+    }
+    Changed(true);
+    SelectNodes(std::move(selected));
+}
+
 void Controller::DeleteSelection()
 {
+    if (_playing)
+    {
+        return;
+    }
     switch (_selection.kind)
     {
     case Selection::Kind::Node:
-        _doc.RemoveNode(_selection.id);
+        if (_selection.node_ids.empty())
+        {
+            _doc.RemoveNode(_selection.id);
+        }
+        else
+        {
+            _doc.RemoveNodes(_selection.node_ids);
+        }
         break;
     case Selection::Kind::Edge:
         _doc.RemoveEdge(_selection.id);
@@ -108,8 +386,13 @@ void Controller::DeleteSelection()
 
 void Controller::_ValidateSelection()
 {
-    const auto &m     = GetModel();
-    bool        alive = true;
+    const auto &m = GetModel();
+    if (_selection.kind == Selection::Kind::Node && !_selection.node_ids.empty())
+    {
+        SelectNodes(_selection.node_ids, _selection.id);
+        return;
+    }
+    bool alive = true;
     switch (_selection.kind)
     {
     case Selection::Kind::Node:
@@ -159,6 +442,10 @@ void Controller::SetView(const View &v)
 
 void Controller::Undo()
 {
+    if (_doc.CanUndo())
+    {
+        Q_EMIT HistoryTraversal();
+    }
     const View view = GetModel().view; // undo must not jump the view
     if (!_doc.Undo())
     {
@@ -170,6 +457,10 @@ void Controller::Undo()
 
 void Controller::Redo()
 {
+    if (_doc.CanRedo())
+    {
+        Q_EMIT HistoryTraversal();
+    }
     const View view = GetModel().view;
     if (!_doc.Redo())
     {
@@ -194,6 +485,7 @@ void Controller::ReplaceModel(Model m, const QString &path, bool modified)
 void Controller::_OnReplaced()
 {
     Pause();
+    Q_EMIT ModelReplaced();
     _selection = {};
     _time      = 0;
     Q_EMIT SelectionChanged();

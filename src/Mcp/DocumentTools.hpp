@@ -56,6 +56,8 @@ public:
     virtual const Registry &Reg() const = 0;
     /// Called after every change made by a tool.
     virtual void Changed(bool structural) = 0;
+    /// Called before a successful undo or redo, so a GUI can cancel previews.
+    virtual void BeforeHistoryTraversal() {}
     /// Called after the whole document was replaced (new / open / import).
     virtual void Replaced() = 0;
 
