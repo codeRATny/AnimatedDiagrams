@@ -62,6 +62,10 @@ public:
     [[nodiscard]] Workspace  *GetWorkspace() const { return _workspace; }
     [[nodiscard]] Controller *Active() const { return _active; }
     void                      SetActive(Controller *ctl);
+    [[nodiscard]] bool        ConfirmingDocumentClose() const { return _confirming_document_close; }
+    bool                     &DocumentCloseInProgress() { return _confirming_document_close; }
+    QStringList               DocumentAgents(Controller *ctl);
+    void                      UnregisterDocumentAgents(Controller *ctl);
 
     // -----------------------------------------------------------------------
     // Plugins
@@ -105,8 +109,9 @@ private:
     Registry                         _registry;
     PluginManager                    _plugins;
     QStringList                      _favorites;
-    Workspace                       *_workspace = nullptr;
-    Controller                      *_active    = nullptr;
+    Workspace                       *_workspace                 = nullptr;
+    Controller                      *_active                    = nullptr;
+    bool                             _confirming_document_close = false;
     std::unique_ptr<ExportManager>   _exports;
     std::unique_ptr<AppDocumentHost> _host;
     std::unique_ptr<mcp::McpServer>  _mcp;

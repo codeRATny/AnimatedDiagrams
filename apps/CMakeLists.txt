@@ -1,4 +1,4 @@
-find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets Network)
+find_package(Qt6 ${AD_MIN_QT_VERSION} REQUIRED COMPONENTS Widgets Network)
 
 qt_add_executable(animated_diagrams WIN32 MACOSX_BUNDLE AnimatedDiagrams.cpp)
 
@@ -21,7 +21,7 @@ target_compile_definitions(animated_diagrams PRIVATE AD_VERSION_STRING="${PROJEC
 # ---- translations (Qt Linguist) -----------------------------------------------
 # Source strings are English; i18n/*.ts are compiled into the executable (:/i18n).
 # `cmake --build build --target update_translations` refreshes the .ts files from the sources.
-find_package(Qt6 6.4 QUIET COMPONENTS LinguistTools)
+find_package(Qt6 ${AD_MIN_QT_VERSION} QUIET COMPONENTS LinguistTools)
 if(Qt6LinguistTools_FOUND)
     file(GLOB_RECURSE AD_TR_SOURCES CONFIGURE_DEPENDS
         ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.hpp

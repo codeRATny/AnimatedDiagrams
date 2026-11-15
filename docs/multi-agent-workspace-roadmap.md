@@ -1,70 +1,96 @@
-# AnimatedDiagrams — Multi-Agent Workspace roadmap
+# AnimatedDiagrams — дорожная карта многоагентного рабочего пространства
 
-> Status: planning draft. Reconstructed from the agreed project discussion; implementation details and version milestones require validation against the repository.
+> Статус: черновик. План восстановлен по обсуждению проекта. Детали реализации и привязку к версиям предстоит сверить с репозиторием.
 
-## Goal
+## Цель
 
-Enable multiple AI agents to collaborate on animated diagrams and presentations through MCP while the AnimatedDiagrams GUI is running. Long-term, an AI agent should be able to create, animate, and export a complete presentation without manual editing.
+Дать нескольким ИИ-агентам возможность совместно работать над анимированными диаграммами и презентациями через MCP, пока запущен графический интерфейс AnimatedDiagrams. В перспективе агент сможет самостоятельно создать, анимировать и экспортировать готовую презентацию.
 
-## MVP: Multi-Agent Workspace
+## Задачи MVP
 
-### Agent lifecycle
-- Add MCP tool `register_agent` returning a unique `agentId`.
-- Require an explicit `agentId` in agent-scoped MCP calls; return a clear error for missing or invalid IDs.
-- Track agent registration, connection/disconnection, document ownership or association, and cleanup.
-- Target up to 10 concurrent agents for the MVP.
+### 1. Регистрация агента
 
-### GUI visualization
-- Display per-agent cursors and activity in the Qt GUI using an `AgentOverlay`.
-- Associate each agent with its current document and show which document or element it is editing.
-- Keep visual state consistent when agents disconnect or change documents.
+Добавить инструмент MCP `register_agent`.
 
-### Concurrent editing
-- Serialize document-mutating operations to avoid conflicting edits.
-- Define deterministic ordering, error reporting, and document revision handling.
-- Ensure the GUI and MCP actions use the same document state.
+**Приёмка.** Два зарегистрированных агента получают разные `agentId`.
 
-### MCP runtime constraints
-- MCP is available only while the main GUI application is running.
-- A standalone daemon and `stdio` transport are out of scope for the MVP.
+### 2. Проверка идентификатора агента
 
-## Suggested implementation stages
+Требовать явный `agentId` в вызовах MCP, выполняемых от имени агента.
 
-1. **Agent identity:** implement registration, `agentId` validation, lifecycle and tests.
-2. **Workspace state:** maintain active agents and their document associations.
-3. **AgentOverlay:** render cursors and agent activity in the Qt UI.
-4. **Edit coordination:** serialize mutations, handle stale state and failures.
-5. **Multi-agent validation:** exercise concurrent workflows with up to 10 agents.
+**Приёмка.** Вызов без идентификатора или с недействительным идентификатором возвращает понятную ошибку до изменения документа.
 
-## MVP acceptance criteria
+### 3. Жизненный цикл агента
 
-- Multiple agents can register and receive distinct identifiers.
-- Agent-scoped calls without a valid `agentId` fail predictably.
-- The GUI shows the active agent cursors and their document associations.
-- Concurrent edits do not corrupt document state.
-- Agent termination removes or marks its GUI state correctly.
-- The MCP interface does not run independently of the GUI.
+Отслеживать регистрацию, подключение и отключение агентов. Очищать состояние завершившейся сессии.
 
-## Longer-term roadmap (directional)
+При ручной отрегистрации `agentId` становится недействительным сразу. После 15 минут без вызовов MCP с этим идентификатором агент автоматически отрегистрируется в фоне, без уведомления или анимации. Активность отсчитывается от регистрации или последнего вызова с действительным `agentId`.
 
-The broader roadmap discussed for versions 2.2–4.4 includes:
-- Scenario logic and branching.
-- OpenTelemetry integration.
-- Automatic layout and positioning.
-- A unified document/data model.
-- AI-driven creation of complete animated presentations, including animation, timing and export.
+**Приёмка.** После завершения сессии её идентификатор становится недействительным, а связанное состояние очищается.
 
-> Exact version-to-feature assignments are intentionally omitted here because the original detailed roadmap was not available for verification.
+### 4. Привязка агента к документу
 
-## Out of scope for this branch's initial planning document
+Хранить текущую привязку агента и дать агенту возможность выбрать или сменить документ.
 
-- Automatic merging into `develop` or `main`.
-- Building a standalone MCP daemon.
-- Requiring an external orchestration service for the GUI MVP.
+Если пользователь закрывает документ, к которому привязан хотя бы один зарегистрированный агент, показать модальное окно с количеством и списком таких агентов. Действие «Закрыть с отрегистрацией агентов» закрывает документ и отрегистрирует всех привязанных агентов. Действие «Отмена» сохраняет документ открытым и сохраняет регистрации.
 
-## Open design questions
+**Приёмка.** Привязка обновляется при смене документа и корректно обрабатывается при его закрытии.
 
-- How are agents authenticated and how long does an `agentId` remain valid?
-- Which operations are serialized per document versus globally?
-- How should the GUI display conflicts, disconnections and agent activity?
-- What is the desired API for assigning or switching documents?
+### 5. Курсоры и активность агентов в Qt
+
+Добавить `AgentOverlay` для отображения курсоров и активности агентов.
+
+- При первом появлении на холсте курсор с подписью собирается из частиц цвета агента в его первой позиции примерно за 250 мс.
+- При переходе между документами курсор входит в портал на исходной вкладке и выходит из портала на целевой.
+- В пределах одной вкладки курсор плавно перемещается к редактируемому элементу с замедлением к концу. Длительность по умолчанию — 180 мс, её можно изменить в конфигурации.
+- Через 30 секунд бездействия курсор скрывается через глич. При следующем вызове MCP с тем же ещё действительным `agentId` курсор появляется через глич.
+- При ручной отрегистрации видимый курсор распадается на частицы. Фоновая отрегистрация после 15 минут бездействия проходит бесшумно.
+
+**Приёмка.** Интерфейс показывает курсоры агентов текущего документа и позволяет понять, какой документ или элемент редактирует агент. При переключении документа или отключении агента отображение обновляется.
+
+### 6. Последовательное применение изменений
+
+Согласовать изменения из GUI и MCP и определить порядок применения одновременных правок.
+
+**Приёмка.** GUI и MCP используют общее состояние документа. Одновременные правки применяются последовательно в определённом порядке и сохраняют целостность документа.
+
+### 7. Ревизии документов и ошибки редактирования
+
+Определить правила обработки устаревших ревизий и ошибок при применении изменений.
+
+**Приёмка.** Запрос с устаревшей ревизией обрабатывается по установленному правилу. Ошибка операции возвращает понятный результат и сохраняет целостность документа.
+
+### 8. Жизненный цикл MCP
+
+Связать работу MCP с главным графическим приложением. Автономный демон и транспорт `stdio` выходят за рамки MVP.
+
+**Приёмка.** MCP принимает вызовы только во время работы GUI и прекращает их принимать при закрытии приложения.
+
+### 9. Проверка совместной работы десяти агентов
+
+Проверить параллельную работу до десяти агентов с одним или несколькими документами.
+
+**Приёмка.** Десять агентов могут зарегистрироваться, выполнить совместные правки и отключиться. Проверки подтверждают целостность документов и корректную очистку состояния агентов.
+
+## Дальнейшее развитие
+
+В обсуждении версий 2.2–4.4 выделены следующие направления. Привязку отдельных задач к версиям предстоит подтвердить.
+
+- Добавить логику и ветвление сценариев.
+- Интегрировать OpenTelemetry.
+- Добавить автоматическую раскладку и позиционирование.
+- Объединить модели документов и данных.
+- Реализовать создание готовых анимированных презентаций с помощью ИИ, включая анимацию, тайминг и экспорт.
+
+## За рамками начального этапа
+
+- Автоматическое слияние с `develop` или `main`.
+- Создание автономного MCP-демона.
+- Обязательное использование внешнего сервиса оркестрации для MVP с графическим интерфейсом.
+
+## Открытые вопросы
+
+- Как аутентифицировать агентов и как долго действует `agentId`?
+- Какие операции нужно ставить в очередь отдельно для каждого документа, а какие — для всего рабочего пространства?
+- Как показывать в GUI активность агентов, отключения и конфликты?
+- Какой API использовать для назначения и смены документа?

@@ -2239,6 +2239,22 @@ Nodes and steps that use it will fall back to the plugin or built-in definition.
         <translation>Сохранить изменения в «%1»?</translation>
     </message>
     <message>
+        <source>Registered Agents</source>
+        <translation>Зарегистрированные агенты</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n registered agent(s) will be unregistered.</source>
+        <translation>
+            <numerusform>Будет отрегистрирован %n агент.</numerusform>
+            <numerusform>Будут отрегистрированы %n агента.</numerusform>
+            <numerusform>Будут отрегистрированы %n агентов.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Close and Unregister Agents</source>
+        <translation>Закрыть с отрегистрацией агентов</translation>
+    </message>
+    <message>
         <location line="+163" />
         <source>MCP: %1</source>
         <translation>MCP: %1</translation>

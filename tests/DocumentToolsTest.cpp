@@ -38,9 +38,49 @@ protected:
 
 } // namespace
 
+TEST_F(ToolsFixture, RegisterAgentReturnsDistinctIdentifiers)
+{
+    const auto first  = Ok("register_agent").structured.at("agentId").get<std::string>();
+    const auto second = Ok("register_agent").structured.at("agentId").get<std::string>();
+
+    EXPECT_FALSE(first.empty());
+    EXPECT_FALSE(second.empty());
+    EXPECT_NE(first, second);
+}
+
+TEST_F(ToolsFixture, AgentValidationPrecedesDocumentChanges)
+{
+    const auto  id     = Ok("register_agent").structured.at("agentId");
+    const Model before = M();
+    EXPECT_TRUE(server.CallTool("add_node", {{"label", "Invalid"}, {"agentId", "unknown"}}).is_error);
+    EXPECT_TRUE(server.CallTool("add_node", {{"label", "Invalid"}, {"agentId", nullptr}}).is_error);
+    EXPECT_TRUE(server.CallTool("unregister_agent", Json::object()).is_error);
+    EXPECT_EQ(M(), before);
+    Ok("add_node", {{"label", "Agent"}, {"agentId", id}});
+    Ok("unregister_agent", {{"agentId", id}});
+    EXPECT_TRUE(server.CallTool("add_node", {{"label", "Ended"}, {"agentId", id}}).is_error);
+    NewNode("Legacy");
+    EXPECT_EQ(M().nodes.size(), before.nodes.size() + 2);
+}
+
+TEST_F(ToolsFixture, AgentExpiryUsesLastActivity)
+{
+    const auto id     = Ok("register_agent").structured.at("agentId").get<std::string>();
+    const auto start  = DocumentHost::Clock::now();
+    const auto active = start + std::chrono::seconds(30);
+    EXPECT_EQ(host.TouchAgent(id, active), &host);
+    host.ExpireAgents(active + DocumentHost::kAgentTimeout - std::chrono::seconds(1));
+    EXPECT_EQ(host.AgentsForDocument(&host), std::vector{id});
+    host.ExpireAgents(active + DocumentHost::kAgentTimeout);
+    EXPECT_TRUE(host.AgentsForDocument(&host).empty());
+    EXPECT_TRUE(server.CallTool("get_document", {{"agentId", id}}).is_error);
+}
+
 TEST_F(ToolsFixture, RegistersAllTools)
 {
-    for (const char *name : {"get_summary",
+    for (const char *name : {"register_agent",
+                             "unregister_agent",
+                             "get_summary",
                              "list_documents",
                              "select_document",
                              "get_document",

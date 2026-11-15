@@ -44,6 +44,18 @@ AppContext::~AppContext()
     _http = nullptr;
 }
 
+QStringList AppContext::DocumentAgents(Controller *ctl)
+{
+    QStringList ids;
+    for (const auto &id : _host->AgentsForDocument(ctl))
+    {
+        ids.push_back(QString::fromStdString(id));
+    }
+    return ids;
+}
+
+void AppContext::UnregisterDocumentAgents(Controller *ctl) { _host->UnregisterDocumentAgents(ctl); }
+
 void AppContext::SetActive(Controller *ctl)
 {
     if (_active == ctl)
@@ -152,6 +164,7 @@ bool AppContext::StartMcp(quint16 port, QString *error)
 void AppContext::StopMcp()
 {
     _http->Stop();
+    _host->ClearAgents();
     Q_EMIT McpStateChanged();
 }
 

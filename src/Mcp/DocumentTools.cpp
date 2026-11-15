@@ -1,6 +1,7 @@
 #include "DocumentTools.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <format>
 #include <map>
 #include <memory>
@@ -22,6 +23,108 @@
 
 namespace ad::mcp
 {
+
+DocumentHost::DocumentHost()
+    : _expiry_worker(
+          [this](std::stop_token stop)
+          {
+              std::unique_lock lock(_agents_mutex);
+              while (!stop.stop_requested())
+              {
+                  _expiry_wait.wait_for(lock, stop, std::chrono::seconds(1),
+                                        []
+                                        {
+                                            return false;
+                                        });
+                  _ExpireAgents(Clock::now());
+              }
+          })
+{
+}
+
+std::string DocumentHost::RegisterAgent()
+{
+    static std::atomic<uint64_t> next_agent_id{1};
+    const auto                   id       = std::to_string(next_agent_id.fetch_add(1, std::memory_order_relaxed));
+    const auto                   document = ActiveDocumentKey();
+    std::scoped_lock             lock(_agents_mutex);
+    _agents.emplace(id, Agent{document, Clock::now()});
+    return id;
+}
+
+DocumentHost::DocumentKey DocumentHost::TouchAgent(const std::string &id, Clock::time_point now)
+{
+    std::scoped_lock lock(_agents_mutex);
+    _ExpireAgents(now);
+    const auto it = _agents.find(id);
+    if (it == _agents.end())
+    {
+        throw ToolError("unknown or expired agentId: " + id);
+    }
+    it->second.last_activity = now;
+    return it->second.document;
+}
+
+void DocumentHost::BindAgent(const std::string &id, DocumentKey document)
+{
+    std::scoped_lock lock(_agents_mutex);
+    if (const auto it = _agents.find(id); it != _agents.end())
+    {
+        it->second.document = document;
+    }
+}
+
+void DocumentHost::UnregisterAgent(const std::string &id)
+{
+    std::scoped_lock lock(_agents_mutex);
+    _agents.erase(id);
+}
+
+void DocumentHost::_ExpireAgents(Clock::time_point now)
+{
+    std::erase_if(_agents,
+                  [now](const auto &entry)
+                  {
+                      return now - entry.second.last_activity >= kAgentTimeout;
+                  });
+}
+
+void DocumentHost::ExpireAgents(Clock::time_point now)
+{
+    std::scoped_lock lock(_agents_mutex);
+    _ExpireAgents(now);
+}
+
+std::vector<std::string> DocumentHost::AgentsForDocument(DocumentKey document)
+{
+    std::scoped_lock lock(_agents_mutex);
+    _ExpireAgents(Clock::now());
+    std::vector<std::string> ids;
+    for (const auto &[id, agent] : _agents)
+    {
+        if (agent.document == document)
+        {
+            ids.push_back(id);
+        }
+    }
+    return ids;
+}
+
+void DocumentHost::UnregisterDocumentAgents(DocumentKey document)
+{
+    std::scoped_lock lock(_agents_mutex);
+    std::erase_if(_agents,
+                  [document](const auto &entry)
+                  {
+                      return entry.second.document == document;
+                  });
+}
+
+void DocumentHost::ClearAgents()
+{
+    std::scoped_lock lock(_agents_mutex);
+    _agents.clear();
+}
 
 std::vector<DocumentInfo> DocumentHost::Documents() { return {DocumentInfo{Doc().Get().meta.name, CurrentPath(), true, false}}; }
 
@@ -156,6 +259,19 @@ public:
 
     void Register()
     {
+        _Add("register_agent", "Register agent", "Issue a process-local agent identifier.", Schema(Json::object()), true,
+             [this](const Json &)
+             {
+                 return ToolResult::FromJson(Json{{"agentId", _host.RegisterAgent()}});
+             });
+
+        _Add("unregister_agent", "Unregister agent", "End the agent session immediately.", Schema(Json::object(), {"agentId"}), false,
+             [this](const Json &args)
+             {
+                 _host.UnregisterAgent(RequireString(args, "agentId"));
+                 return ToolResult::FromJson(Json{{"unregistered", true}});
+             });
+
         _Add("get_summary", "Document overview",
              "Short text overview of the current diagram: nodes with ids, edges, scenario steps and the library. Call this first.",
              Schema(Json::object()), true,
@@ -187,7 +303,7 @@ public:
                  return ToolResult::FromJson(_Library(a.value("kind", std::string("all"))));
              });
 
-        _Add("list_documents", "List documents", "Documents open in the editor (tabs) with their index; tools work on the active one.",
+        _Add("list_documents", "List documents", "List the editor tabs by index and indicate which tab is active in the GUI.",
              Schema(Json::object()), true,
              [this](const Json & /*a*/)
              {
@@ -200,7 +316,7 @@ public:
                  return ToolResult::FromJson(Json{{"documents", arr}});
              });
 
-        _Add("select_document", "Select document", "Make the document with this index (see list_documents) the active one.",
+        _Add("select_document", "Select document", "Bind the agent to this tab, or activate it in the GUI when called without an agentId.",
              Schema({{"index", Prop("integer", "Document index")}}, {"index"}), false,
              [this](const Json &a)
              {
@@ -209,7 +325,8 @@ public:
                  {
                      throw ToolError("no document with this index (see list_documents)");
                  }
-                 return ToolResult::Text("Active document: " + _M().meta.name + "\n\n" + DocumentSummary(_M(), _host.Reg()));
+                 return ToolResult::Text(std::string(a.contains("agentId") ? "Agent document: " : "Active document: ") + _M().meta.name +
+                                         "\n\n" + DocumentSummary(_M(), _host.Reg()));
              });
 
         _Add("new_document", "New document", "Create an empty document (or the bundled example). In the editor it opens in a new tab.",
@@ -532,10 +649,43 @@ private:
 
     void _Add(std::string name, std::string title, std::string description, Json schema, bool read_only, ToolHandler handler)
     {
-        // handlers capture `this`; every handler keeps the Tools object alive
-        ToolHandler keep_alive = [self = shared_from_this(), h = std::move(handler)](const Json &args)
+        const bool unregister   = name == "unregister_agent";
+        const bool registration = name == "register_agent";
+        if (!registration)
         {
-            return h(args);
+            schema["properties"]["agentId"] = Prop("string", "Registered agent ID. Include in every call made on behalf of an agent.");
+        }
+        ToolHandler keep_alive = [this, self = shared_from_this(), h = std::move(handler), unregister, registration](const Json &args)
+        {
+            if (!_host.ToolsAvailable())
+            {
+                throw ToolError("the editor is confirming a document closure; retry after the dialog closes");
+            }
+            std::string               id;
+            DocumentHost::DocumentKey target = nullptr;
+            if (unregister || args.contains("agentId"))
+            {
+                id     = RequireString(args, "agentId");
+                target = _host.TouchAgent(id);
+                if (registration)
+                {
+                    throw ToolError("register_agent does not accept an agentId");
+                }
+            }
+
+            struct RestoreTarget
+            {
+                DocumentHost             &host;
+                DocumentHost::DocumentKey previous;
+                ~RestoreTarget() { host.ExchangeTarget(previous); }
+            } restore{_host, _host.ExchangeTarget(id.empty() ? nullptr : (target ? target : _host.ActiveDocumentKey()))};
+
+            auto result = h(args);
+            if (!id.empty() && !unregister && !result.is_error)
+            {
+                _host.BindAgent(id, _host.TargetDocument());
+            }
+            return result;
         };
         _server.AddTool(
             ToolSpec{std::move(name), std::move(title), std::move(description), std::move(schema), read_only, std::move(keep_alive)});
@@ -1221,7 +1371,9 @@ std::string DefaultInstructions()
            "actions, link animations, notes and keyframe effects. Workflow: get_summary -> list_library -> add_node / add_edge -> "
            "add_step or apply_animation -> optional add_marker (chapters for presenting) -> render_frame at several times to verify -> "
            "save_document / export_animation. "
-           "Times are in milliseconds. Use node ids returned by add_node.";
+           "Times are in milliseconds. Use node ids returned by add_node. "
+           "For an agent session, call register_agent and pass its agentId in every subsequent call. "
+           "Use select_document with that agentId to choose a tab and unregister_agent to end the session.";
 }
 
 } // namespace ad::mcp

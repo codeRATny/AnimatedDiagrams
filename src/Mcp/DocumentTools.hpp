@@ -1,9 +1,15 @@
 #ifndef _MCP_DOCUMENT_TOOLS_HPP_
 #define _MCP_DOCUMENT_TOOLS_HPP_
 
+#include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <expected>
+#include <map>
+#include <mutex>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #include "Mcp/McpServer.hpp"
@@ -50,7 +56,26 @@ struct DocumentInfo
 class DocumentHost
 {
 public:
+    using Clock                         = std::chrono::steady_clock;
+    using DocumentKey                   = void *;
+    static constexpr auto kAgentTimeout = std::chrono::minutes(15);
+
+    DocumentHost();
     virtual ~DocumentHost() = default;
+
+    std::string              RegisterAgent();
+    DocumentKey              TouchAgent(const std::string &id, Clock::time_point now = Clock::now());
+    void                     BindAgent(const std::string &id, DocumentKey document);
+    void                     UnregisterAgent(const std::string &id);
+    void                     ExpireAgents(Clock::time_point now);
+    std::vector<std::string> AgentsForDocument(DocumentKey document);
+    void                     UnregisterDocumentAgents(DocumentKey document);
+    void                     ClearAgents();
+
+    virtual DocumentKey ActiveDocumentKey() { return this; }
+    virtual bool        ToolsAvailable() const { return true; }
+    DocumentKey         TargetDocument() const { return _target; }
+    DocumentKey         ExchangeTarget(DocumentKey document) { return std::exchange(_target, document); }
 
     virtual Document       &Doc()       = 0;
     virtual const Registry &Reg() const = 0;
@@ -78,6 +103,21 @@ public:
     /// Called right before new_document / open_document / import_drawio replace the
     /// document: the GUI opens a new tab here instead of overwriting the current one.
     virtual void BeginNewDocument() {}
+
+private:
+    struct Agent
+    {
+        DocumentKey       document;
+        Clock::time_point last_activity;
+    };
+
+    void _ExpireAgents(Clock::time_point now);
+
+    DocumentKey                  _target = nullptr;
+    std::mutex                   _agents_mutex;
+    std::map<std::string, Agent> _agents;
+    std::condition_variable_any  _expiry_wait;
+    std::jthread                 _expiry_worker;
 };
 
 /// Host owning its document; rendering / export are unsupported unless overridden.

@@ -86,6 +86,7 @@ private:
 
     Tab                      *_AddTab();
     void                      _CloseTab(int index);
+    bool                      _ConfirmAgentClose(const QStringList &agents);
     bool                      _ConfirmClose(Controller *ctl);
     void                      _OnCurrentTabChanged(int index);
     void                      _UpdateTabText(Controller *ctl);

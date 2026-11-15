@@ -1,6 +1,11 @@
 # ad_ui -- Qt widgets, rendering, export and the HTTP transport of the MCP server.
-find_package(Qt6 6.4 REQUIRED COMPONENTS Widgets Network)
-qt_standard_project_setup()
+find_package(Qt6 ${AD_MIN_QT_VERSION} REQUIRED COMPONENTS Widgets Network)
+if(COMMAND qt_standard_project_setup)
+    qt_standard_project_setup()
+else()
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTOUIC ON)
+endif()
 
 qt_add_library(ad_ui STATIC
     AppContext.cpp AppContext.hpp
@@ -37,6 +42,10 @@ if(WIN32)
     target_link_libraries(ad_ui PRIVATE dwmapi) # title bar colors of system frames
 endif()
 ad_set_warnings(ad_ui)
+if(Qt6_VERSION VERSION_LESS 6.3 AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    # Qt 6.2's QHash instantiates std::aligned_storage, deprecated in C++23.
+    target_compile_options(ad_ui PRIVATE -Wno-error=deprecated-declarations)
+endif()
 
 # HTML player (player/ built with Emscripten): embedded as :/player/player.html when
 # AD_PLAYER_HTML points to a prebuilt player.html; without it the HTML export is not offered.

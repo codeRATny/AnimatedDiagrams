@@ -35,6 +35,8 @@ public:
     std::vector<mcp::DocumentInfo>                   Documents() override;
     bool                                             SelectDocument(size_t index) override;
     void                                             BeginNewDocument() override;
+    DocumentKey                                      ActiveDocumentKey() override;
+    bool                                             ToolsAvailable() const override;
 
 private:
     [[nodiscard]] Controller &_Ctl() const;

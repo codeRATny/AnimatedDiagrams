@@ -2,8 +2,12 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QMessageBox>
 #include <QMimeData>
+#include <QPushButton>
 #include <QStandardPaths>
+#include <QTabWidget>
+#include <QTimer>
 #include <QtTest/QTest>
 
 #include <nlohmann/json.hpp>
@@ -11,6 +15,7 @@
 #include "AppContext.hpp"
 #include "CanvasWidget.hpp"
 #include "Controller.hpp"
+#include "MainWindow.hpp"
 #include "Mcp/McpServer.hpp"
 #include "Model/Sample.hpp"
 
@@ -124,13 +129,14 @@ TEST(UISelectionTest, MarqueeAndGroupMove)
     CanvasWidget canvas(controller);
     canvas.resize(400, 250);
     canvas.show();
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {2, 2});
-    QTest::mouseMove(&canvas, {170, 70});
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::NoModifier, {170, 70});
+    // The QWindow overload sends mouse moves even on the offscreen Qt 6.2 backend.
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {2, 2});
+    QTest::mouseMove(canvas.windowHandle(), {170, 70});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {170, 70});
     ASSERT_EQ(controller.GetSelection().node_ids.size(), 2u);
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {30, 30});
-    QTest::mouseMove(&canvas, {50, 50});
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::NoModifier, {50, 50});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {30, 30});
+    QTest::mouseMove(canvas.windowHandle(), {50, 50});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {50, 50});
     EXPECT_EQ(controller.GetModel().FindNode("a")->x, 30);
     EXPECT_EQ(controller.GetModel().FindNode("b")->x, 120);
     controller.Undo();
@@ -171,9 +177,9 @@ TEST(UISelectionTest, GroupMoveTranslatesOnlyInternalWaypoints)
     CanvasWidget canvas(controller);
     canvas.resize(400, 250);
     canvas.show();
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {30, 30});
-    QTest::mouseMove(&canvas, {50, 50});
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::NoModifier, {50, 50});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {30, 30});
+    QTest::mouseMove(canvas.windowHandle(), {50, 50});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {50, 50});
     EXPECT_EQ(controller.GetModel().FindEdge("internal")->waypoints[0], (Vec2{100, 100}));
     EXPECT_EQ(controller.GetModel().FindEdge("external")->waypoints[0], (Vec2{170, 80}));
     controller.Undo();
@@ -196,21 +202,21 @@ TEST(UISelectionTest, CancelDragAndPreserveExternalEdits)
     CanvasWidget canvas(controller);
     canvas.resize(400, 250);
     canvas.show();
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {30, 30});
-    QTest::mouseMove(&canvas, {50, 50});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {30, 30});
+    QTest::mouseMove(canvas.windowHandle(), {50, 50});
     EXPECT_EQ(controller.GetModel(), m);
     canvas.CancelInteraction();
     EXPECT_EQ(controller.GetModel(), m);
     EXPECT_FALSE(controller.Doc().CanUndo());
 
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {30, 30});
-    QTest::mouseMove(&canvas, {50, 50});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {30, 30});
+    QTest::mouseMove(canvas.windowHandle(), {50, 50});
     controller.Edit({},
                     [](Model &model)
                     {
                         model.meta.name = "External";
                     });
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::NoModifier, {50, 50});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {50, 50});
     EXPECT_EQ(controller.GetModel().meta.name, "External");
     EXPECT_EQ(controller.GetModel().FindNode("a")->x, 30);
     controller.Undo();
@@ -234,12 +240,12 @@ TEST(UISelectionTest, ReplacingDocumentCancelsDrag)
     CanvasWidget canvas(controller);
     canvas.resize(400, 250);
     canvas.show();
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {30, 30});
-    QTest::mouseMove(&canvas, {50, 50});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {30, 30});
+    QTest::mouseMove(canvas.windowHandle(), {50, 50});
     Model replacement     = model;
     replacement.meta.name = "Another document";
     controller.ReplaceModel(replacement, {}, false);
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::NoModifier, {50, 50});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {50, 50});
     EXPECT_EQ(controller.GetModel(), replacement);
     EXPECT_FALSE(controller.Doc().CanUndo());
 }
@@ -294,12 +300,12 @@ TEST(UISelectionTest, ToggleAndEmptyMarqueePreservePrimary)
     CanvasWidget canvas(controller);
     canvas.resize(400, 250);
     canvas.show();
-    QTest::mouseClick(&canvas, Qt::LeftButton, Qt::ControlModifier, {120, 30});
+    QTest::mouseClick(canvas.windowHandle(), Qt::LeftButton, Qt::ControlModifier, {120, 30});
     EXPECT_EQ(controller.GetSelection().id, "a");
     ASSERT_EQ(controller.GetSelection().node_ids.size(), 2u);
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::ShiftModifier, {300, 100});
-    QTest::mouseMove(&canvas, {350, 150});
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::ShiftModifier, {350, 150});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::ShiftModifier, {300, 100});
+    QTest::mouseMove(canvas.windowHandle(), {350, 150});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::ShiftModifier, {350, 150});
     EXPECT_EQ(controller.GetSelection().id, "a");
 }
 
@@ -324,17 +330,17 @@ TEST(UISelectionTest, UndoAndZoomCancelDrag)
     CanvasWidget canvas(controller);
     canvas.resize(400, 250);
     canvas.show();
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {30, 30});
-    QTest::mouseMove(&canvas, {50, 50});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {30, 30});
+    QTest::mouseMove(canvas.windowHandle(), {50, 50});
     controller.Undo();
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::NoModifier, {50, 50});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {50, 50});
     EXPECT_EQ(controller.GetModel(), model);
     EXPECT_TRUE(controller.Doc().CanRedo());
     controller.Redo();
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {30, 30});
-    QTest::mouseMove(&canvas, {50, 50});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {30, 30});
+    QTest::mouseMove(canvas.windowHandle(), {50, 50});
     canvas.ZoomBy(1.1);
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::NoModifier, {50, 50});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {50, 50});
     EXPECT_EQ(controller.GetModel().FindNode("a")->x, 10);
     EXPECT_EQ(controller.GetModel().meta.name, "Changed");
 }
@@ -361,12 +367,93 @@ TEST(UISelectionTest, McpUndoCancelsDragAndPreservesRedo)
     CanvasWidget canvas(controller);
     canvas.resize(400, 250);
     canvas.show();
-    QTest::mousePress(&canvas, Qt::LeftButton, Qt::NoModifier, {30, 30});
-    QTest::mouseMove(&canvas, {50, 50});
+    QTest::mousePress(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {30, 30});
+    QTest::mouseMove(canvas.windowHandle(), {50, 50});
     EXPECT_FALSE(context.Mcp().CallTool("undo", nlohmann::json::object()).is_error);
-    QTest::mouseRelease(&canvas, Qt::LeftButton, Qt::NoModifier, {50, 50});
+    QTest::mouseRelease(canvas.windowHandle(), Qt::LeftButton, Qt::NoModifier, {50, 50});
     EXPECT_EQ(controller.GetModel(), model);
     EXPECT_TRUE(controller.Doc().CanRedo());
+}
+
+TEST(UISelectionTest, AgentBindingSurvivesTabSwitchAndCancelledClose)
+{
+    AppContext context;
+    MainWindow window(context);
+    auto      &mcp   = context.Mcp();
+    auto      *first = window.NewDocumentTab();
+    ASSERT_NE(first, nullptr);
+    const auto agent  = mcp.CallTool("register_agent", {}).structured.at("agentId");
+    auto      *second = window.NewDocumentTab();
+    ASSERT_FALSE(mcp.CallTool("add_node", {{"agentId", agent}, {"label", "First"}}).is_error);
+    ASSERT_EQ(first->GetModel().nodes.back().label, "First");
+    EXPECT_EQ(context.Active(), second);
+
+    auto *tabs = window.findChild<QTabWidget *>();
+    ASSERT_NE(tabs, nullptr);
+    const auto docs         = window.Documents();
+    const int  first_index  = std::ranges::find(docs, first) - docs.begin();
+    const int  second_index = std::ranges::find(docs, second) - docs.begin();
+    EXPECT_TRUE(mcp.CallTool("select_document", {{"agentId", agent}, {"index", -1}}).is_error);
+    EXPECT_EQ(context.DocumentAgents(first).size(), 1);
+    ASSERT_FALSE(mcp.CallTool("select_document", {{"agentId", agent}, {"index", second_index}}).is_error);
+    EXPECT_TRUE(context.DocumentAgents(first).isEmpty());
+    window.Activate(first);
+    ASSERT_FALSE(mcp.CallTool("add_node", {{"agentId", agent}, {"label", "Second"}}).is_error);
+    ASSERT_EQ(second->GetModel().nodes.back().label, "Second");
+    EXPECT_EQ(context.Active(), first);
+
+    auto respond = [&](bool confirm_agents, QMessageBox::StandardButton save_response)
+    {
+        QTimer::singleShot(0, &window,
+                           [&, confirm_agents, save_response]
+                           {
+                               auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+                               EXPECT_NE(dialog, nullptr);
+                               if (dialog == nullptr)
+                               {
+                                   return;
+                               }
+                               EXPECT_TRUE(dialog->text().contains("1"));
+                               EXPECT_EQ(dialog->informativeText().toStdString(), agent.get<std::string>());
+                               if (!confirm_agents)
+                               {
+                                   dialog->button(QMessageBox::Cancel)->click();
+                                   return;
+                               }
+                               QTimer::singleShot(0, &window,
+                                                  [save_response]
+                                                  {
+                                                      auto *save = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+                                                      EXPECT_NE(save, nullptr);
+                                                      if (save != nullptr)
+                                                      {
+                                                          save->button(save_response)->click();
+                                                      }
+                                                  });
+                               for (auto *button : dialog->buttons())
+                               {
+                                   if (dialog->buttonRole(button) == QMessageBox::DestructiveRole)
+                                   {
+                                       button->click();
+                                       return;
+                                   }
+                               }
+                               ADD_FAILURE() << "Missing close action";
+                               dialog->reject();
+                           });
+        Q_EMIT tabs->tabCloseRequested(second_index);
+    };
+
+    respond(false, QMessageBox::Cancel);
+    EXPECT_FALSE(mcp.CallTool("get_document", {{"agentId", agent}}).is_error);
+    respond(true, QMessageBox::Cancel);
+    EXPECT_FALSE(mcp.CallTool("get_document", {{"agentId", agent}}).is_error);
+    EXPECT_EQ(window.Documents().size(), docs.size());
+    respond(true, QMessageBox::Discard);
+    EXPECT_EQ(window.Documents().size(), docs.size() - 1);
+    EXPECT_TRUE(mcp.CallTool("get_document", {{"agentId", agent}}).is_error);
+    EXPECT_TRUE(context.DocumentAgents(first).isEmpty());
+    EXPECT_NE(first_index, second_index);
 }
 
 int main(int argc, char **argv)

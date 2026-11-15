@@ -26,6 +26,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QScopedValueRollback>
 #include <QSettings>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -165,6 +166,10 @@ MainWindow::MainWindow(AppContext &ctx, QWidget *parent) : QMainWindow(parent), 
 MainWindow::~MainWindow()
 {
     _closing = true;
+    for (const Tab &tab : _tabs)
+    {
+        _ctx.UnregisterDocumentAgents(tab.ctl);
+    }
     _ctx.SetWorkspace(nullptr);
     _ctx.SetActive(nullptr);
 }
@@ -1032,8 +1037,28 @@ bool MainWindow::_ConfirmClose(Controller *ctl)
     return r == QMessageBox::Discard;
 }
 
+bool MainWindow::_ConfirmAgentClose(const QStringList &agents)
+{
+    if (agents.isEmpty())
+    {
+        return true;
+    }
+    QMessageBox dialog(QMessageBox::Warning, tr("Registered Agents"),
+                       tr("%n registered agent(s) will be unregistered.", nullptr, agents.size()), QMessageBox::Cancel, this);
+    dialog.setInformativeText(agents.join(QLatin1Char('\n')));
+    auto *close = dialog.addButton(tr("Close and Unregister Agents"), QMessageBox::DestructiveRole);
+    dialog.setDefaultButton(QMessageBox::Cancel);
+    dialog.exec();
+    return dialog.clickedButton() == close;
+}
+
 void MainWindow::_CloseTab(int index)
 {
+    if (_ctx.ConfirmingDocumentClose())
+    {
+        return;
+    }
+    const QScopedValueRollback closing(_ctx.DocumentCloseInProgress(), true);
     crash::Breadcrumb("UI: close tab " + std::to_string(index));
     QWidget   *page = _doc_tabs->widget(index);
     const auto it   = std::ranges::find_if(_tabs,
@@ -1046,7 +1071,7 @@ void MainWindow::_CloseTab(int index)
         return;
     }
     Controller *ctl = it->ctl;
-    if (!_ConfirmClose(ctl))
+    if (!_ConfirmAgentClose(_ctx.DocumentAgents(ctl)) || !_ConfirmClose(ctl))
     {
         return;
     }
@@ -1060,6 +1085,7 @@ void MainWindow::_CloseTab(int index)
     {
         NewDocumentTab(); // there is always a document
     }
+    _ctx.UnregisterDocumentAgents(tab.ctl);
     tab.ctl->Pause();
     tab.ctl->DiscardAutosave();
     _tabs.erase(std::ranges::find(_tabs, tab.ctl, &Tab::ctl));
@@ -1315,6 +1341,22 @@ void MainWindow::showEvent(QShowEvent *e)
 
 void MainWindow::closeEvent(QCloseEvent *e)
 {
+    if (_ctx.ConfirmingDocumentClose())
+    {
+        e->ignore();
+        return;
+    }
+    const QScopedValueRollback closing(_ctx.DocumentCloseInProgress(), true);
+    QStringList                agents;
+    for (const Tab &tab : _tabs)
+    {
+        agents.append(_ctx.DocumentAgents(tab.ctl));
+    }
+    if (!_ConfirmAgentClose(agents))
+    {
+        e->ignore();
+        return;
+    }
     if (_ctx.Exports().Pending() > 0)
     {
         const auto r =
@@ -1328,6 +1370,7 @@ void MainWindow::closeEvent(QCloseEvent *e)
         }
         _ctx.Exports().CancelAll();
     }
+    _ctx.StopMcp();
     // unsaved changes are not lost: every tab is restored from its autosave
     _SaveSession();
     _closing = true;

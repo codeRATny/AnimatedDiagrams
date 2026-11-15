@@ -118,7 +118,7 @@ std::expected<std::string, std::string> ExportForMcp(const Model &m, const Regis
 
 Controller &AppDocumentHost::_Ctl() const
 {
-    Controller *c = _ctx.Active();
+    Controller *c = TargetDocument() ? static_cast<Controller *>(TargetDocument()) : _ctx.Active();
     if (c == nullptr && _ctx.GetWorkspace() != nullptr)
     {
         c = _ctx.GetWorkspace()->NewDocumentTab();
@@ -197,15 +197,30 @@ bool AppDocumentHost::SelectDocument(size_t index)
     {
         return false;
     }
-    _ctx.GetWorkspace()->Activate(docs[index]);
+    if (TargetDocument())
+    {
+        ExchangeTarget(docs[index]);
+    }
+    else
+    {
+        _ctx.GetWorkspace()->Activate(docs[index]);
+    }
     return true;
 }
+
+mcp::DocumentHost::DocumentKey AppDocumentHost::ActiveDocumentKey() { return _ctx.Active(); }
+
+bool AppDocumentHost::ToolsAvailable() const { return !_ctx.ConfirmingDocumentClose(); }
 
 void AppDocumentHost::BeginNewDocument()
 {
     if (_ctx.GetWorkspace() != nullptr)
     {
-        _ctx.GetWorkspace()->NewDocumentTab();
+        Controller *document = _ctx.GetWorkspace()->NewDocumentTab();
+        if (TargetDocument())
+        {
+            ExchangeTarget(document);
+        }
     }
 }
 
