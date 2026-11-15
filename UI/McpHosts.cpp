@@ -210,6 +210,8 @@ bool AppDocumentHost::SelectDocument(size_t index)
 
 mcp::DocumentHost::DocumentKey AppDocumentHost::ActiveDocumentKey() { return _ctx.Active(); }
 
+void AppDocumentHost::AgentCalled(const AgentActivity &activity) { Q_EMIT _ctx.AgentActivity(activity); }
+
 bool AppDocumentHost::ToolsAvailable() const { return !_ctx.ConfirmingDocumentClose(); }
 
 void AppDocumentHost::BeginNewDocument()

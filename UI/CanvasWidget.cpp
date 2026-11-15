@@ -4,12 +4,14 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QSettings>
 #include <QShortcut>
 #include <QWheelEvent>
 
 #include <algorithm>
 #include <cmath>
 
+#include "AppContext.hpp"
 #include "Controller.hpp"
 #include "Engine/Engine.hpp"
 #include "Engine/Scene.hpp"
@@ -23,12 +25,43 @@ namespace ad::ui
 
 using Kind = Selection::Kind;
 
-CanvasWidget::CanvasWidget(Controller &ctl, QWidget *parent) : QWidget(parent), _ctl(ctl)
+namespace
+{
+
+std::chrono::milliseconds AgentMoveDuration()
+{
+    bool      ok = false;
+    const int ms = QSettings().value(QStringLiteral("mcp/agentCursorMoveMs")).toInt(&ok);
+    return ok ? std::chrono::milliseconds(std::clamp(ms, 1, 5000)) : AgentOverlay::kDefaultMove;
+}
+
+} // namespace
+
+CanvasWidget::CanvasWidget(Controller &ctl, QWidget *parent) : QWidget(parent), _ctl(ctl), _agents(AgentMoveDuration())
 {
     setFocusPolicy(Qt::ClickFocus);
     setMinimumSize(320, 200);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAcceptDrops(true);
+    _agent_frame.setSingleShot(true);
+    connect(&_agent_frame, &QTimer::timeout, this, qOverload<>(&CanvasWidget::update));
+    connect(&_ctl.Context(), &AppContext::AgentActivity, this,
+            [this](const mcp::DocumentHost::AgentActivity &activity)
+            {
+                if (activity.document == nullptr || activity.document == &_ctl || activity.previous_document == &_ctl)
+                {
+                    const auto world = VisibleWorldRect().Center();
+                    _agents.Apply(activity, &_ctl, QPointF(world.x, world.y), AgentOverlay::Clock::now());
+                    update();
+                }
+            });
+    connect(&_ctl.Context(), &AppContext::AgentsCleared, this,
+            [this]
+            {
+                _agents.Clear();
+                _agent_frame.stop();
+                update();
+            });
     auto repaint = [this]
     {
         update();
@@ -248,6 +281,15 @@ void CanvasWidget::paintEvent(QPaintEvent * /*e*/)
         p.drawRoundedRect(box, 7, 7);
         p.setPen(ToQColor(Ui().muted));
         p.drawText(box, Qt::AlignCenter, text);
+    }
+
+    if (const auto delay = _agents.Paint(p, rect(), m.view, AgentOverlay::Clock::now()))
+    {
+        _agent_frame.start(static_cast<int>(delay->count()));
+    }
+    else
+    {
+        _agent_frame.stop();
     }
 }
 

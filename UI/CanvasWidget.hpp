@@ -2,12 +2,14 @@
 #define _UI_CANVAS_WIDGET_HPP_
 
 #include <QString>
+#include <QTimer>
 #include <QWidget>
 
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "AgentOverlay.hpp"
 #include "Geometry/Geometry.hpp"
 #include "Model/Model.hpp"
 
@@ -89,6 +91,8 @@ private:
     void                 _BeginDragEdit();
 
     Controller                &_ctl;
+    AgentOverlay               _agents;
+    QTimer                     _agent_frame;
     QString                    _hint;
     Tool                       _tool         = Tool::Select;
     std::string                _pending_type = "service";

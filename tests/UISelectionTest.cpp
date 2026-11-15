@@ -456,6 +456,58 @@ TEST(UISelectionTest, AgentBindingSurvivesTabSwitchAndCancelledClose)
     EXPECT_NE(first_index, second_index);
 }
 
+TEST(UISelectionTest, McpReportsAgentPositionAndTransfers)
+{
+    using Activity = mcp::DocumentHost::AgentActivity;
+    std::vector<Activity> calls;
+    AppContext            context;
+    MainWindow            window(context);
+    auto                 *first = window.NewDocumentTab();
+    auto                 &mcp   = context.Mcp();
+    QObject::connect(&context, &AppContext::AgentActivity, &window,
+                     [&](const Activity &activity)
+                     {
+                         calls.push_back(activity);
+                     });
+
+    const auto id   = mcp.CallTool("register_agent", {}).structured.at("agentId");
+    const auto node = mcp.CallTool("add_node", {{"agentId", id}, {"label", "Agent node"}, {"x", 100}, {"y", 80}});
+    ASSERT_FALSE(node.is_error);
+    const auto node_id = node.structured.at("id").get<std::string>();
+    ASSERT_EQ(calls.size(), 1);
+    EXPECT_EQ(calls.back().document, first);
+    EXPECT_EQ(calls.back().position, first->GetModel().FindNode(node_id)->Bounds().Center());
+
+    calls.clear();
+    EXPECT_TRUE(mcp.CallTool("update_node", {{"agentId", id}, {"id", "unknown"}}).is_error);
+    ASSERT_EQ(calls.size(), 1);
+    EXPECT_FALSE(calls.back().position.has_value());
+
+    calls.clear();
+    const auto removed_at = first->GetModel().FindNode(node_id)->Bounds().Center();
+    ASSERT_FALSE(mcp.CallTool("remove_node", {{"agentId", id}, {"id", node_id}}).is_error);
+    ASSERT_EQ(calls.size(), 1);
+    EXPECT_EQ(calls.back().position, removed_at);
+
+    calls.clear();
+    ASSERT_FALSE(mcp.CallTool("add_step", {{"agentId", id}, {"type", "note"}, {"text", "Note"}, {"x", 145}, {"y", 320}}).is_error);
+    ASSERT_EQ(calls.size(), 1);
+    EXPECT_EQ(calls.back().position, (Vec2{145, 320}));
+
+    calls.clear();
+    auto      *second    = window.NewDocumentTab();
+    const auto documents = window.Documents();
+    const auto index     = std::ranges::find(documents, second) - documents.begin();
+    ASSERT_FALSE(mcp.CallTool("select_document", {{"agentId", id}, {"index", index}}).is_error);
+    ASSERT_EQ(calls.size(), 1);
+    EXPECT_EQ(calls.back().previous_document, first);
+    EXPECT_EQ(calls.back().document, second);
+    ASSERT_FALSE(mcp.CallTool("unregister_agent", {{"agentId", id}}).is_error);
+    ASSERT_EQ(calls.size(), 2);
+    EXPECT_EQ(calls.back().previous_document, second);
+    EXPECT_EQ(calls.back().document, nullptr);
+}
+
 int main(int argc, char **argv)
 {
     QStandardPaths::setTestModeEnabled(true);

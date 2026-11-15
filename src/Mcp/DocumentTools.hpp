@@ -60,18 +60,30 @@ public:
     using DocumentKey                   = void *;
     static constexpr auto kAgentTimeout = std::chrono::minutes(15);
 
+    // A null document ends the session. A null previous document then requests silent removal.
+    struct AgentActivity
+    {
+        std::string         id;
+        DocumentKey         previous_document;
+        DocumentKey         document;
+        std::optional<Vec2> position;
+        Clock::time_point   called_at;
+    };
+
     DocumentHost();
     virtual ~DocumentHost() = default;
 
     std::string              RegisterAgent();
     DocumentKey              TouchAgent(const std::string &id, Clock::time_point now = Clock::now());
-    void                     BindAgent(const std::string &id, DocumentKey document);
+    bool                     BindAgent(const std::string &id, DocumentKey document);
     void                     UnregisterAgent(const std::string &id);
     void                     ExpireAgents(Clock::time_point now);
     std::vector<std::string> AgentsForDocument(DocumentKey document);
-    void                     UnregisterDocumentAgents(DocumentKey document);
+    std::vector<std::string> UnregisterDocumentAgents(DocumentKey document);
     void                     ClearAgents();
 
+    virtual bool        TracksAgentActivity() const { return false; }
+    virtual void        AgentCalled(const AgentActivity        &/*activity*/) {}
     virtual DocumentKey ActiveDocumentKey() { return this; }
     virtual bool        ToolsAvailable() const { return true; }
     DocumentKey         TargetDocument() const { return _target; }

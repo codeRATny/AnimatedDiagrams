@@ -8,6 +8,7 @@
 
 #include "Common/Exceptions.hpp"
 #include "Engine/Design.hpp"
+#include "Engine/Engine.hpp"
 #include "Engine/Layout.hpp"
 #include "Engine/Templates.hpp"
 #include "Export/MermaidExporter.hpp"
@@ -65,13 +66,15 @@ DocumentHost::DocumentKey DocumentHost::TouchAgent(const std::string &id, Clock:
     return it->second.document;
 }
 
-void DocumentHost::BindAgent(const std::string &id, DocumentKey document)
+bool DocumentHost::BindAgent(const std::string &id, DocumentKey document)
 {
     std::scoped_lock lock(_agents_mutex);
     if (const auto it = _agents.find(id); it != _agents.end())
     {
         it->second.document = document;
+        return true;
     }
+    return false;
 }
 
 void DocumentHost::UnregisterAgent(const std::string &id)
@@ -110,14 +113,23 @@ std::vector<std::string> DocumentHost::AgentsForDocument(DocumentKey document)
     return ids;
 }
 
-void DocumentHost::UnregisterDocumentAgents(DocumentKey document)
+std::vector<std::string> DocumentHost::UnregisterDocumentAgents(DocumentKey document)
 {
-    std::scoped_lock lock(_agents_mutex);
-    std::erase_if(_agents,
-                  [document](const auto &entry)
-                  {
-                      return entry.second.document == document;
-                  });
+    std::scoped_lock         lock(_agents_mutex);
+    std::vector<std::string> ids;
+    for (auto it = _agents.begin(); it != _agents.end();)
+    {
+        if (it->second.document == document)
+        {
+            ids.push_back(it->first);
+            it = _agents.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    return ids;
 }
 
 void DocumentHost::ClearAgents()
@@ -250,6 +262,76 @@ Json NormalizeStepArgs(Json args)
     args.erase("node");
     args.erase("edge");
     return args;
+}
+
+enum class AgentTarget
+{
+    None,
+    Node,
+    Edge,
+    Step,
+};
+
+AgentTarget TargetForTool(std::string_view name)
+{
+    if (name.ends_with("_node"))
+    {
+        return AgentTarget::Node;
+    }
+    if (name.ends_with("_edge"))
+    {
+        return AgentTarget::Edge;
+    }
+    if (name.ends_with("_step") || name == "apply_animation")
+    {
+        return AgentTarget::Step;
+    }
+    return AgentTarget::None;
+}
+
+std::optional<Vec2> AgentPosition(AgentTarget target, const Model &model, const Registry &reg, const Json &id)
+{
+    if (!id.is_string())
+    {
+        return {};
+    }
+    const auto &key = id.get_ref<const std::string &>();
+    if (target == AgentTarget::Node)
+    {
+        if (const auto *node = model.FindNode(key))
+        {
+            return node->Bounds().Center();
+        }
+    }
+    if (target == AgentTarget::Edge)
+    {
+        if (const auto *edge = model.FindEdge(key))
+        {
+            if (const auto geometry = ComputeEdgeGeometry(model, *edge, reg); geometry && !geometry->path.Empty())
+            {
+                return FlatPath(geometry->path).PointAtFraction(0.5);
+            }
+        }
+    }
+    if (target == AgentTarget::Step)
+    {
+        if (const auto *step = model.FindStep(key))
+        {
+            if (step->type == StepType::Note)
+            {
+                return Vec2{step->x, step->y};
+            }
+            if (!step->edge_id.empty())
+            {
+                if (auto point = AgentPosition(AgentTarget::Edge, model, reg, step->edge_id))
+                {
+                    return point;
+                }
+            }
+            return AgentPosition(AgentTarget::Node, model, reg, step->node_id.empty() ? step->from : step->node_id);
+        }
+    }
+    return {};
 }
 
 class Tools : public std::enable_shared_from_this<Tools>
@@ -655,18 +737,22 @@ private:
         {
             schema["properties"]["agentId"] = Prop("string", "Registered agent ID. Include in every call made on behalf of an agent.");
         }
-        ToolHandler keep_alive = [this, self = shared_from_this(), h = std::move(handler), unregister, registration](const Json &args)
+        const auto  element         = TargetForTool(name);
+        const bool  removes_element = element != AgentTarget::None && name.starts_with("remove_");
+        ToolHandler keep_alive =
+            [this, self = shared_from_this(), h = std::move(handler), unregister, registration, element, removes_element](const Json &args)
         {
             if (!_host.ToolsAvailable())
             {
                 throw ToolError("the editor is confirming a document closure; retry after the dialog closes");
             }
             std::string               id;
-            DocumentHost::DocumentKey target = nullptr;
+            const auto                called_at = DocumentHost::Clock::now();
+            DocumentHost::DocumentKey target    = nullptr;
             if (unregister || args.contains("agentId"))
             {
                 id     = RequireString(args, "agentId");
-                target = _host.TouchAgent(id);
+                target = _host.TouchAgent(id, called_at);
                 if (registration)
                 {
                     throw ToolError("register_agent does not accept an agentId");
@@ -680,10 +766,57 @@ private:
                 ~RestoreTarget() { host.ExchangeTarget(previous); }
             } restore{_host, _host.ExchangeTarget(id.empty() ? nullptr : (target ? target : _host.ActiveDocumentKey()))};
 
-            auto result = h(args);
-            if (!id.empty() && !unregister && !result.is_error)
+            if (id.empty())
             {
-                _host.BindAgent(id, _host.TargetDocument());
+                return h(args);
+            }
+
+            const bool          observe    = _host.TracksAgentActivity();
+            const auto          element_id = args.value("id", Json{});
+            std::optional<Vec2> position;
+            if (observe && removes_element && _host.TargetDocument() && element_id.is_string())
+            {
+                position = AgentPosition(element, _M(), _host.Reg(), element_id);
+            }
+
+            ToolResult result;
+            try
+            {
+                result = h(args);
+            }
+            catch (...)
+            {
+                if (observe && target && !unregister && _host.BindAgent(id, target))
+                {
+                    _host.AgentCalled({id, target, target, {}, called_at});
+                }
+                throw;
+            }
+
+            const auto document = result.is_error ? target : _host.TargetDocument();
+            if (unregister)
+            {
+                if (observe && !result.is_error)
+                {
+                    _host.AgentCalled({id, target, nullptr, {}, called_at});
+                }
+            }
+            else if (_host.BindAgent(id, document) && observe)
+            {
+                if (!result.is_error && document && element != AgentTarget::None && !removes_element)
+                {
+                    Json edited = element_id;
+                    if (result.structured.is_object())
+                    {
+                        edited = result.structured.value("id", edited);
+                        if (const auto steps = result.structured.find("steps"); steps != result.structured.end() && !steps->empty())
+                        {
+                            edited = steps->front();
+                        }
+                    }
+                    position = AgentPosition(element, _M(), _host.Reg(), edited);
+                }
+                _host.AgentCalled({id, target, document, result.is_error ? std::nullopt : position, called_at});
             }
             return result;
         };

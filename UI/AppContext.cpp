@@ -54,7 +54,13 @@ QStringList AppContext::DocumentAgents(Controller *ctl)
     return ids;
 }
 
-void AppContext::UnregisterDocumentAgents(Controller *ctl) { _host->UnregisterDocumentAgents(ctl); }
+void AppContext::UnregisterDocumentAgents(Controller *ctl)
+{
+    for (const auto &id : _host->UnregisterDocumentAgents(ctl))
+    {
+        Q_EMIT AgentActivity({id, nullptr, nullptr, {}, mcp::DocumentHost::Clock::now()});
+    }
+}
 
 void AppContext::SetActive(Controller *ctl)
 {
@@ -165,6 +171,7 @@ void AppContext::StopMcp()
 {
     _http->Stop();
     _host->ClearAgents();
+    Q_EMIT AgentsCleared();
     Q_EMIT McpStateChanged();
 }
 

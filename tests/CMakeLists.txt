@@ -128,7 +128,7 @@ endif()
 
 if(TARGET ad_ui)
     find_package(Qt6 REQUIRED COMPONENTS Test)
-    add_executable(ad_ui_tests UISelectionTest.cpp)
+    add_executable(ad_ui_tests UISelectionTest.cpp AgentOverlayTest.cpp)
     target_link_libraries(ad_ui_tests PRIVATE ad_ui Qt6::Test GTest::gtest)
     ad_set_warnings(ad_ui_tests)
     add_test(NAME UISelectionTest COMMAND ad_ui_tests)

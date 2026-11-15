@@ -2,6 +2,13 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="ru_RU">
 <context>
+    <name>AgentOverlay</name>
+    <message>
+        <source>Agent %1</source>
+        <translation>Агент %1</translation>
+    </message>
+</context>
+<context>
     <name>QObject</name>
     <message>
         <location filename="../UI/CrashReports.cpp" line="+97" />

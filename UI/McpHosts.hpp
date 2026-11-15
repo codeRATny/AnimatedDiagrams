@@ -37,6 +37,8 @@ public:
     void                                             BeginNewDocument() override;
     DocumentKey                                      ActiveDocumentKey() override;
     bool                                             ToolsAvailable() const override;
+    bool                                             TracksAgentActivity() const override { return true; }
+    void                                             AgentCalled(const AgentActivity &activity) override;
 
 private:
     [[nodiscard]] Controller &_Ctl() const;

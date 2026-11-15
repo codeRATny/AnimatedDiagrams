@@ -10,6 +10,7 @@ endif()
 qt_add_library(ad_ui STATIC
     AppContext.cpp AppContext.hpp
     ApplyTemplateDialog.cpp ApplyTemplateDialog.hpp
+    AgentOverlay.cpp AgentOverlay.hpp
     CanvasWidget.cpp CanvasWidget.hpp
     Controller.cpp Controller.hpp
     CrashReports.cpp CrashReports.hpp

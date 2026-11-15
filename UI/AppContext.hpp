@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include "Mcp/DocumentTools.hpp"
 #include "Model/Registry.hpp"
 #include "Plugins/PluginManager.hpp"
 
@@ -104,6 +105,8 @@ Q_SIGNALS:
     void McpStateChanged();
     /// A tool call arrived over MCP (for the status bar).
     void McpActivity(const QString &text);
+    void AgentActivity(const mcp::DocumentHost::AgentActivity &activity);
+    void AgentsCleared();
 
 private:
     Registry                         _registry;
