@@ -73,6 +73,7 @@ bool McpHttpServer::Start(quint16 port, QString *error)
 
 void McpHttpServer::Stop()
 {
+    _retry->stop();
     if (_tcp != nullptr)
     {
         _tcp->close();
@@ -177,7 +178,7 @@ void McpHttpServer::_ProcessQueue()
         return; // the running request picks the rest up when it is done
     }
     _busy = true;
-    while (!_queue.isEmpty())
+    while (IsRunning() && !_queue.isEmpty())
     {
         if (QApplication::activeModalWidget() != nullptr || QApplication::activePopupWidget() != nullptr)
         {
@@ -189,7 +190,7 @@ void McpHttpServer::_ProcessQueue()
         {
             continue; // the client went away while waiting
         }
-        const QByteArray response = HandleRequest(r.method, r.path, r.headers, r.body);
+        const QByteArray response = _HandleRequest(r.method, r.path, r.headers, r.body);
         if (r.socket != nullptr && r.socket->state() == QAbstractSocket::ConnectedState)
         {
             r.socket->write(response);
@@ -199,8 +200,8 @@ void McpHttpServer::_ProcessQueue()
     _busy = false;
 }
 
-QByteArray McpHttpServer::HandleRequest(const QByteArray &method, const QByteArray &path, const QHash<QByteArray, QByteArray> &headers,
-                                        const QByteArray &body)
+QByteArray McpHttpServer::_HandleRequest(const QByteArray &method, const QByteArray &path, const QHash<QByteArray, QByteArray> &headers,
+                                         const QByteArray &body)
 {
     const QByteArray route = path.split('?').value(0);
     if (method == "GET" && route == "/health")
@@ -226,9 +227,17 @@ QByteArray McpHttpServer::HandleRequest(const QByteArray &method, const QByteArr
     }
     const std::string response = _server.Handle(std::string_view(body.constData(), static_cast<size_t>(body.size())));
     const auto        parsed   = mcp::Json::parse(body.constData(), body.constData() + body.size(), nullptr, false);
-    if (!parsed.is_discarded() && parsed.is_object() && parsed.value("method", "") == "tools/call")
+    if (parsed.is_object() && parsed.contains("method") && parsed["method"] == "tools/call")
     {
-        Q_EMIT RequestHandled(QStringLiteral("MCP: %1").arg(QString::fromStdString(parsed["params"].value("name", ""))));
+        const auto params = parsed.find("params");
+        if (params != parsed.end() && params->is_object())
+        {
+            const auto name = params->find("name");
+            if (name != params->end() && name->is_string())
+            {
+                Q_EMIT RequestHandled(QStringLiteral("MCP: %1").arg(QString::fromStdString(name->get<std::string>())));
+            }
+        }
     }
     if (response.empty())
     {

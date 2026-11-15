@@ -3,12 +3,10 @@
 
 #include <string>
 
-#include "Exporter.hpp"
 #include "Mcp/DocumentTools.hpp"
 
 /// @file McpHosts.hpp
-/// @brief DocumentHost implementations: the running GUI (through the Controller) and the
-///        headless `--mcp` stdio mode. Both render frames and export with Qt.
+/// @brief DocumentHost for the running GUI.
 
 namespace ad::ui
 {
@@ -25,7 +23,7 @@ public:
     Document                                        &Doc() override;
     const Registry                                  &Reg() const override;
     void                                             Changed(bool structural) override;
-    void                                             BeforeHistoryTraversal() override;
+    void                                             HistoryTraversed() override;
     void                                             Replaced() override;
     [[nodiscard]] std::string                        CurrentPath() const override;
     void                                             SetCurrentPath(std::string path) override;
@@ -33,11 +31,12 @@ public:
     std::expected<std::string, std::string>          Export(const mcp::ExportRequest &request) override;
     [[nodiscard]] std::vector<std::string>           ExportFormats() const override;
     std::vector<mcp::DocumentInfo>                   Documents() override;
-    bool                                             SelectDocument(size_t index) override;
+    bool                                             SelectDocument(size_t index, bool activate) override;
     void                                             BeginNewDocument() override;
     DocumentKey                                      ActiveDocumentKey() override;
     bool                                             ToolsAvailable() const override;
     bool                                             TracksAgentActivity() const override { return true; }
+    bool                                             AgentsAvailable() const override;
     void                                             AgentCalled(const AgentActivity &activity) override;
 
 private:
@@ -45,24 +44,6 @@ private:
 
     AppContext &_ctx;
 };
-
-/// Standalone host for `animated-diagrams --mcp` (no window).
-class HeadlessDocumentHost final : public mcp::BasicDocumentHost
-{
-public:
-    explicit HeadlessDocumentHost(const Registry &reg) : mcp::BasicDocumentHost(reg) {}
-
-    std::expected<std::vector<uint8_t>, std::string> RenderPng(double time_ms, double scale) override;
-    std::expected<std::string, std::string>          Export(const mcp::ExportRequest &request) override;
-    [[nodiscard]] std::vector<std::string>           ExportFormats() const override;
-};
-
-/// Formats of this build for MCP clients (AvailableFormatIds).
-std::vector<std::string> McpExportFormats();
-/// Export options for an MCP request (format by extension when not given).
-std::expected<ExportOptions, std::string> ExportOptionsFor(const Model &m, const mcp::ExportRequest &request);
-/// Synchronous export for the headless host.
-std::expected<std::string, std::string> ExportForMcp(const Model &m, const Registry &reg, const mcp::ExportRequest &request);
 
 } // namespace ad::ui
 

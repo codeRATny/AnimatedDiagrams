@@ -1,7 +1,9 @@
 #include "McpHosts.hpp"
 
+#include <QApplication>
 #include <QColor>
 #include <QFileInfo>
+#include <QThread>
 
 #include <format>
 
@@ -27,8 +29,6 @@ std::expected<std::vector<uint8_t>, std::string> Png(const Model &m, double t, d
     }
     return std::vector<uint8_t>(bytes.begin(), bytes.end());
 }
-
-} // namespace
 
 std::vector<std::string> McpExportFormats()
 {
@@ -82,9 +82,6 @@ std::expected<ExportOptions, std::string> ExportOptionsFor(const Model &m, const
     return o;
 }
 
-namespace
-{
-
 std::string ResultLine(const ExportResult &r)
 {
     if (r.frames == 0)
@@ -96,25 +93,6 @@ std::string ResultLine(const ExportResult &r)
 }
 
 } // namespace
-
-std::expected<std::string, std::string> ExportForMcp(const Model &m, const Registry &reg, const mcp::ExportRequest &request)
-{
-    const auto o = ExportOptionsFor(m, request);
-    if (!o.has_value())
-    {
-        return std::unexpected(o.error());
-    }
-    const auto r = RunExport(m, *o, reg, std::stop_token{});
-    if (!r.has_value())
-    {
-        return std::unexpected(Us(r.error()));
-    }
-    return ResultLine(*r);
-}
-
-// ---------------------------------------------------------------------------
-// AppDocumentHost
-// ---------------------------------------------------------------------------
 
 Controller &AppDocumentHost::_Ctl() const
 {
@@ -133,7 +111,7 @@ Controller &AppDocumentHost::_Ctl() const
 Document       &AppDocumentHost::Doc() { return _Ctl().Doc(); }
 const Registry &AppDocumentHost::Reg() const { return _ctx.Reg(); }
 void            AppDocumentHost::Changed(bool structural) { _Ctl().Changed(structural); }
-void            AppDocumentHost::BeforeHistoryTraversal() { Q_EMIT _Ctl().HistoryTraversal(); }
+void            AppDocumentHost::HistoryTraversed() { Q_EMIT _Ctl().HistoryTraversal(); }
 
 void AppDocumentHost::Replaced()
 {
@@ -181,12 +159,12 @@ std::vector<mcp::DocumentInfo> AppDocumentHost::Documents()
     }
     for (Controller *c : _ctx.GetWorkspace()->Documents())
     {
-        out.push_back({c->GetModel().meta.name, Us(c->FilePath()), c == _ctx.Active(), c->IsModified()});
+        out.push_back({c->GetModel().meta.name, Us(c->FilePath()), c == _ctx.Active(), c->IsModified(), c->Doc().Revision()});
     }
     return out;
 }
 
-bool AppDocumentHost::SelectDocument(size_t index)
+bool AppDocumentHost::SelectDocument(size_t index, bool activate)
 {
     if (_ctx.GetWorkspace() == nullptr)
     {
@@ -197,11 +175,8 @@ bool AppDocumentHost::SelectDocument(size_t index)
     {
         return false;
     }
-    if (TargetDocument())
-    {
-        ExchangeTarget(docs[index]);
-    }
-    else
+    ExchangeTarget(docs[index]);
+    if (activate)
     {
         _ctx.GetWorkspace()->Activate(docs[index]);
     }
@@ -212,34 +187,20 @@ mcp::DocumentHost::DocumentKey AppDocumentHost::ActiveDocumentKey() { return _ct
 
 void AppDocumentHost::AgentCalled(const AgentActivity &activity) { Q_EMIT _ctx.AgentActivity(activity); }
 
-bool AppDocumentHost::ToolsAvailable() const { return !_ctx.ConfirmingDocumentClose(); }
+bool AppDocumentHost::ToolsAvailable() const
+{
+    return QThread::currentThread() == _ctx.thread() && !_ctx.ConfirmingDocumentClose() && QApplication::activeModalWidget() == nullptr &&
+           QApplication::activePopupWidget() == nullptr;
+}
+
+bool AppDocumentHost::AgentsAvailable() const { return _ctx.GetWorkspace() != nullptr; }
 
 void AppDocumentHost::BeginNewDocument()
 {
     if (_ctx.GetWorkspace() != nullptr)
     {
-        Controller *document = _ctx.GetWorkspace()->NewDocumentTab();
-        if (TargetDocument())
-        {
-            ExchangeTarget(document);
-        }
+        ExchangeTarget(_ctx.GetWorkspace()->NewDocumentTab());
     }
 }
-
-// ---------------------------------------------------------------------------
-// HeadlessDocumentHost
-// ---------------------------------------------------------------------------
-
-std::expected<std::vector<uint8_t>, std::string> HeadlessDocumentHost::RenderPng(double time_ms, double scale)
-{
-    return Png(Doc().Get(), time_ms, scale, Reg());
-}
-
-std::expected<std::string, std::string> HeadlessDocumentHost::Export(const mcp::ExportRequest &request)
-{
-    return ExportForMcp(Doc().Get(), Reg(), request);
-}
-
-std::vector<std::string> HeadlessDocumentHost::ExportFormats() const { return McpExportFormats(); }
 
 } // namespace ad::ui

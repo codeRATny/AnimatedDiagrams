@@ -13,18 +13,21 @@ data (JSON), so an agent can build a diagram end to end and verify it visually.
 
 Prefer the MCP server; fall back to the CLI only for one-shot conversions/exports.
 
-| Mode | Setup | When |
-|---|---|---|
-| stdio (headless) | `claude mcp add animated-diagrams -- animated-diagrams --mcp [file.json]` | no window needed; most automation |
-| HTTP (live window) | user enables *Tools → MCP Server for Agents* (Russian UI: *Инструменты → MCP-сервер для агентов*) (or starts `animated-diagrams --mcp-port 8765`), then `claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp` | the user watches/edits the same document; changes are undoable with Ctrl+Z |
+Open Animated Diagrams and enable *Tools → MCP Server for Agents* (Russian UI:
+*Инструменты → MCP-сервер для агентов*), or start `animated-diagrams --mcp-port 8765`. Connect with
+`claude mcp add --transport http animated-diagrams http://127.0.0.1:8765/mcp`. Keep the editor open
+while using MCP.
 
-In the live window the editor has several documents in tabs: tools work on the **active tab**;
-`list_documents` / `select_document {index}` switch it, and `new_document` / `open_document` /
-`import_drawio` / `import_mermaid` open a new tab instead of replacing the user's work. `export_animation` runs as a
-background job there (the user keeps working) and returns when the file is written. Calls are
-serialized and wait while the user has a dialog or menu open, so a slow response usually means the
-user is in a dialog — use a generous client timeout instead of retrying. The design system of the
-active document (`set_scene {designSystem}`) also recolors the editor UI.
+Call `register_agent` once and include the returned `agentId` in every subsequent call. This targets
+your bound tab independently of the user's current tab. Choose a tab using
+`list_documents` and `select_document {index, agentId}`. New, open and import operations create a tab
+and bind you to it. Call `unregister_agent {agentId}` when done.
+
+For edits of an existing document, send `expectedRevision` from the last relevant
+`structuredContent.revision` (for example, `get_summary` or a successful edit). On
+`revision_conflict`, read the current document and recompute the edit before retrying.
+Calls are serialized and wait while a dialog or menu is open. `export_animation` renders a snapshot
+in a background job and returns when the file is written.
 
 If no MCP tools named `get_summary`, `add_node`, … are available, use the CLI (section 6) or ask the
 user to connect the server. Never edit the user's open document over HTTP without being asked.

@@ -2,6 +2,13 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="ru_RU">
 <context>
+    <name>ad::ui::AppContext</name>
+    <message>
+        <source>Open the editor before starting the MCP server.</source>
+        <translation>Откройте редактор перед запуском MCP-сервера.</translation>
+    </message>
+</context>
+<context>
     <name>AgentOverlay</name>
     <message>
         <source>Agent %1</source>
@@ -2496,8 +2503,8 @@ sequenceDiagram
     </message>
     <message>
         <location line="+3" />
-        <source>&lt;b&gt;Option 1 — to the open window (HTTP)&lt;/b&gt;&lt;br&gt;Enable “Tools → MCP Server for Agents” and add the server to your agent:&lt;br&gt;&lt;code&gt;claude mcp add --transport http animated-diagrams %1&lt;/code&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Option 2 — without a window (stdio)&lt;/b&gt;&lt;br&gt;The agent launches the program in server mode itself:&lt;br&gt;&lt;code&gt;claude mcp add animated-diagrams -- animated-diagrams --mcp&lt;/code&gt;&lt;br&gt;&lt;br&gt;Tools operate on the active tab (use list_documents / select_document to switch), new documents open in tabs, and changes can be undone with Ctrl+Z.</source>
-        <translation>&lt;b&gt;Вариант 1 — к открытому окну (HTTP)&lt;/b&gt;&lt;br&gt;Включите «Инструменты → MCP-сервер» и добавьте сервер в агент:&lt;br&gt;&lt;code&gt;claude mcp add --transport http animated-diagrams %1&lt;/code&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Вариант 2 — без окна (stdio)&lt;/b&gt;&lt;br&gt;Агент сам запускает программу в режиме сервера:&lt;br&gt;&lt;code&gt;claude mcp add animated-diagrams -- animated-diagrams --mcp&lt;/code&gt;&lt;br&gt;&lt;br&gt;Инструменты работают с активной вкладкой (list_documents / select_document — переключение), новые документы открываются во вкладках, изменения отменяются Ctrl+Z.</translation>
+        <source>Enable “Tools → MCP Server for Agents” and connect over HTTP:&lt;br&gt;&lt;code&gt;claude mcp add --transport http animated-diagrams %1&lt;/code&gt;&lt;br&gt;&lt;br&gt;Call register_agent, then include agentId in each call. Use list_documents and select_document to choose a tab. Edits can be undone with Ctrl+Z.</source>
+        <translation>Включите «Инструменты → MCP-сервер для агентов» и подключитесь по HTTP:&lt;br&gt;&lt;code&gt;claude mcp add --transport http animated-diagrams %1&lt;/code&gt;&lt;br&gt;&lt;br&gt;Вызовите register_agent, затем передавайте agentId в каждом запросе. Для выбора вкладки используйте list_documents и select_document. Правки отменяются клавишами Ctrl+Z.</translation>
     </message>
     <message>
         <location line="+15" />

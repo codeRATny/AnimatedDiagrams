@@ -76,6 +76,49 @@ TEST_F(ToolsFixture, AgentExpiryUsesLastActivity)
     EXPECT_TRUE(server.CallTool("get_document", {{"agentId", id}}).is_error);
 }
 
+TEST_F(ToolsFixture, RevisionConflictLeavesTheModelAndHistoryUntouched)
+{
+    const auto initial = Ok("get_document").structured.at("revision");
+    const auto added   = Ok("add_node", {{"label", "Valid"}, {"expectedRevision", initial}}).structured.at("revision");
+    EXPECT_NE(added, initial);
+    const auto stale = server.CallTool("set_scene", {{"name", "Stale"}, {"expectedRevision", initial}});
+    ASSERT_TRUE(stale.is_error);
+    EXPECT_EQ(stale.structured.at("code"), "revision_conflict");
+    EXPECT_EQ(stale.structured.at("revision"), added);
+    EXPECT_TRUE(server.CallTool("undo", {{"expectedRevision", -1}}).is_error);
+
+    const auto undone = Ok("undo", {{"expectedRevision", added}}).structured.at("revision");
+    EXPECT_NE(undone, added);
+    EXPECT_NE(undone, initial);
+    EXPECT_TRUE(M().nodes.empty());
+    EXPECT_FALSE(host.Doc().CanUndo());
+    const auto no_op = Ok("undo", {{"expectedRevision", undone}}).structured.at("revision");
+    EXPECT_EQ(no_op, undone);
+    EXPECT_NE(Ok("redo", {{"expectedRevision", undone}}).structured.at("revision"), undone);
+    ASSERT_EQ(M().nodes.size(), 1U);
+    EXPECT_EQ(M().nodes.front().label, "Valid");
+}
+
+TEST_F(ToolsFixture, HandlerErrorsRollBackPartialChangesAndPreserveRedo)
+{
+    NewNode("First");
+    NewNode("Second");
+    Ok("undo");
+    const Model before   = M();
+    const auto  revision = host.Doc().Revision();
+    EXPECT_TRUE(server.CallTool("add_node", {{"label", "Broken"}, {"subtitle", 17}, {"expectedRevision", revision}}).is_error);
+    EXPECT_TRUE(server.CallTool("set_scene", {{"name", "Broken"}, {"background", "not a color"}}).is_error);
+    EXPECT_EQ(M(), before);
+    EXPECT_EQ(host.Doc().Revision(), revision);
+    EXPECT_TRUE(host.Doc().CanRedo());
+    Ok("redo");
+    ASSERT_EQ(M().nodes.size(), 2U);
+    EXPECT_EQ(M().nodes.back().label, "Second");
+    Ok("undo");
+    Ok("undo");
+    EXPECT_TRUE(M().nodes.empty());
+}
+
 TEST_F(ToolsFixture, RegistersAllTools)
 {
     for (const char *name : {"register_agent",

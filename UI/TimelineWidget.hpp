@@ -71,6 +71,7 @@ private:
         double      press_x       = 0;
         double      orig_start    = 0;
         double      orig_duration = 0;
+        uint64_t    revision      = 0;
         bool        edited        = false;
     };
 

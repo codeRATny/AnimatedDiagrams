@@ -62,6 +62,15 @@ void AppContext::UnregisterDocumentAgents(Controller *ctl)
     }
 }
 
+void AppContext::SetWorkspace(Workspace *workspace)
+{
+    _workspace = workspace;
+    if (!_workspace && IsMcpRunning())
+    {
+        StopMcp();
+    }
+}
+
 void AppContext::SetActive(Controller *ctl)
 {
     if (_active == ctl)
@@ -162,6 +171,18 @@ void AppContext::SetFavorite(const QString &id, bool favorite)
 
 bool AppContext::StartMcp(quint16 port, QString *error)
 {
+    if (!_workspace)
+    {
+        if (error)
+        {
+            *error = tr("Open the editor before starting the MCP server.");
+        }
+        return false;
+    }
+    if (IsMcpRunning())
+    {
+        StopMcp();
+    }
     const bool ok = _http->Start(port, error);
     Q_EMIT McpStateChanged();
     return ok;

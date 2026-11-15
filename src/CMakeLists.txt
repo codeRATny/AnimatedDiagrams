@@ -69,7 +69,6 @@ add_library(ad_core STATIC
     Import/MermaidImporter.cpp
     Mcp/DocumentTools.cpp
     Mcp/McpServer.cpp
-    Mcp/StdioTransport.cpp
     Plugins/Plugin.cpp
     Plugins/PluginManager.cpp
     Utils/CrashHandler.cpp

@@ -18,6 +18,7 @@
 #include "MainWindow.hpp"
 #include "Mcp/McpServer.hpp"
 #include "Model/Sample.hpp"
+#include "TimelineWidget.hpp"
 
 using namespace ad;
 using namespace ad::ui;
@@ -506,6 +507,47 @@ TEST(UISelectionTest, McpReportsAgentPositionAndTransfers)
     ASSERT_EQ(calls.size(), 2);
     EXPECT_EQ(calls.back().previous_document, second);
     EXPECT_EQ(calls.back().document, nullptr);
+}
+
+TEST(UISelectionTest, TimelineDragCommitsBeforeMcpAndDoesNotOverwriteItsEdit)
+{
+    AppContext context;
+    Controller controller(context);
+    context.SetActive(&controller);
+    Model model;
+    Step  step;
+    step.id       = "dragged";
+    step.type     = StepType::Note;
+    step.start    = 1000;
+    step.duration = 1000;
+    model.scenario.steps.push_back(step);
+    controller.ReplaceModel(model, {}, false);
+
+    TimelineWidget timeline(controller);
+    timeline.resize(700, 150);
+    timeline.show();
+    const auto point = [&](int x)
+    {
+        return timeline.viewport()->mapTo(&timeline, QPoint(x, 44));
+    };
+    auto *surface = timeline.windowHandle();
+    QTest::mousePress(surface, Qt::LeftButton, Qt::NoModifier, point(120));
+    const auto before_drag = controller.Doc().Revision();
+    QTest::mouseMove(surface, point(210));
+    ASSERT_GT(controller.Doc().Revision(), before_drag);
+    ASSERT_EQ(controller.GetModel().FindStep("dragged")->start, 2000);
+
+    const auto during_drag = controller.Doc().Revision();
+    const auto result      = context.Mcp().CallTool("update_step", {{"id", "dragged"}, {"start", 3500}, {"expectedRevision", during_drag}});
+    ASSERT_FALSE(result.is_error);
+    QTest::mouseMove(surface, point(300));
+    QTest::mouseRelease(surface, Qt::LeftButton, Qt::NoModifier, point(300));
+    EXPECT_EQ(controller.GetModel().FindStep("dragged")->start, 3500);
+    EXPECT_EQ(controller.Doc().Revision(), result.structured.at("revision"));
+    controller.Undo();
+    EXPECT_EQ(controller.GetModel().FindStep("dragged")->start, 2000);
+    controller.Undo();
+    EXPECT_EQ(controller.GetModel().FindStep("dragged")->start, 1000);
 }
 
 int main(int argc, char **argv)

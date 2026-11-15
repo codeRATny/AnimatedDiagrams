@@ -31,7 +31,6 @@ add_executable(ad_core_tests
     RegistryTest.cpp
     SceneTest.cpp
     ShapesTest.cpp
-    StdioTransportTest.cpp
     TemplatesTest.cpp
     TextTest.cpp
     TimelineLayoutTest.cpp
@@ -50,7 +49,7 @@ endif()
 ad_set_warnings(ad_core_tests)
 gtest_discover_tests(ad_core_tests DISCOVERY_TIMEOUT 60)
 
-# Application smoke tests: headless export and MCP stdio session.
+# Application smoke tests: headless export and CLI migration.
 if(TARGET animated_diagrams)
     set(smoke_formats png)
     if(WITH_LIBAV)
@@ -66,13 +65,9 @@ if(TARGET animated_diagrams)
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/export_smoke.cmake)
         set_tests_properties(AppExportSmoke.${fmt} PROPERTIES TIMEOUT 120)
     endforeach()
-    add_test(NAME AppMcpStdioSmoke
-        COMMAND ${CMAKE_COMMAND}
-            -DAPP=$<TARGET_FILE:animated_diagrams>
-            -DINPUT=${PROJECT_SOURCE_DIR}/samples/fallback-retry.json
-            -DOUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/smoke
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/mcp_smoke.cmake)
-    set_tests_properties(AppMcpStdioSmoke PROPERTIES TIMEOUT 120)
+    add_test(NAME AppMcpStdioRemoved
+        COMMAND ${CMAKE_COMMAND} -DAPP=$<TARGET_FILE:animated_diagrams> -P ${CMAKE_CURRENT_SOURCE_DIR}/mcp_cli_test.cmake)
+    set_tests_properties(AppMcpStdioRemoved PROPERTIES TIMEOUT 10)
     add_test(NAME AppMermaidSmoke
         COMMAND ${CMAKE_COMMAND}
             -DAPP=$<TARGET_FILE:animated_diagrams>
@@ -128,9 +123,11 @@ endif()
 
 if(TARGET ad_ui)
     find_package(Qt6 REQUIRED COMPONENTS Test)
-    add_executable(ad_ui_tests UISelectionTest.cpp AgentOverlayTest.cpp)
+    add_executable(ad_ui_tests UISelectionTest.cpp AgentOverlayTest.cpp McpWorkspaceTest.cpp)
     target_link_libraries(ad_ui_tests PRIVATE ad_ui Qt6::Test GTest::gtest)
     ad_set_warnings(ad_ui_tests)
-    add_test(NAME UISelectionTest COMMAND ad_ui_tests)
-    set_tests_properties(UISelectionTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    add_test(NAME UISelectionTest COMMAND ad_ui_tests --gtest_filter=-McpWorkspaceTest.*)
+    add_test(NAME McpWorkspaceHttp COMMAND ad_ui_tests --gtest_filter=McpWorkspaceTest.*)
+    set_tests_properties(UISelectionTest McpWorkspaceHttp PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(McpWorkspaceHttp PROPERTIES TIMEOUT 30 SKIP_REGULAR_EXPRESSION "Loopback sockets unavailable")
 endif()

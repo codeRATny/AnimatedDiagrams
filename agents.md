@@ -7,7 +7,7 @@
 - `UI/` — `ad_ui`, Qt 6 Widgets + Network (`QT_NO_KEYWORDS`: use `Q_SIGNALS` / `Q_EMIT`).
   `AppContext` — shared state (registry, plugins, favorites, MCP, `ExportManager`); one `Controller` per
   document tab; `MainWindow` owns the tabs and the dock panels (palette, inspector / timeline stacks, exports).
-- `apps/` — `animated_diagrams` executable (GUI, `--export`, `--convert`, `--mcp`, `--mcp-port`).
+- `apps/` — `animated_diagrams` executable (GUI, `--export`, `--convert`, `--mcp-port`).
 - `tests/` — GoogleTest, one `<Class>Test.cpp` per class; `TEST(ClassNameTest, Behaviour)`.
 - `plugins/` bundled plugins (generated from code with the core API — keep them valid, see
   `PluginTest.BundledTemplatesReferenceKnownDefinitions`), `skills/` agent skill, `docs/` user docs,

@@ -138,9 +138,12 @@ void DocumentHost::ClearAgents()
     _agents.clear();
 }
 
-std::vector<DocumentInfo> DocumentHost::Documents() { return {DocumentInfo{Doc().Get().meta.name, CurrentPath(), true, false}}; }
+std::vector<DocumentInfo> DocumentHost::Documents()
+{
+    return {DocumentInfo{Doc().Get().meta.name, CurrentPath(), true, false, Doc().Revision()}};
+}
 
-bool DocumentHost::SelectDocument(size_t index) { return index == 0; }
+bool DocumentHost::SelectDocument(size_t index, bool /*activate*/) { return index == 0; }
 
 std::expected<std::vector<uint8_t>, std::string> DocumentHost::RenderPng(double /*time_ms*/, double /*scale*/)
 {
@@ -341,7 +344,7 @@ public:
 
     void Register()
     {
-        _Add("register_agent", "Register agent", "Issue a process-local agent identifier.", Schema(Json::object()), true,
+        _Add("register_agent", "Register agent", "Issue a process-local agent identifier.", Schema(Json::object()), false,
              [this](const Json &)
              {
                  return ToolResult::FromJson(Json{{"agentId", _host.RegisterAgent()}});
@@ -393,7 +396,12 @@ public:
                  size_t i   = 0;
                  for (const auto &d : _host.Documents())
                  {
-                     arr.push_back({{"index", i++}, {"name", d.name}, {"path", d.path}, {"active", d.active}, {"modified", d.modified}});
+                     arr.push_back({{"index", i++},
+                                    {"name", d.name},
+                                    {"path", d.path},
+                                    {"active", d.active},
+                                    {"modified", d.modified},
+                                    {"revision", d.revision}});
                  }
                  return ToolResult::FromJson(Json{{"documents", arr}});
              });
@@ -403,7 +411,7 @@ public:
              [this](const Json &a)
              {
                  if (!a.contains("index") || !a["index"].is_number_integer() || a["index"].get<int64_t>() < 0 ||
-                     !_host.SelectDocument(static_cast<size_t>(a["index"].get<int64_t>())))
+                     !_host.SelectDocument(static_cast<size_t>(a["index"].get<int64_t>()), !a.contains("agentId")))
                  {
                      throw ToolError("no document with this index (see list_documents)");
                  }
@@ -421,7 +429,7 @@ public:
                      m.meta.name = a["name"].get<std::string>();
                  }
                  _host.BeginNewDocument();
-                 _host.Doc().Reset(std::move(m));
+                 _Doc().Reset(std::move(m));
                  _host.SetCurrentPath({});
                  _host.Replaced();
                  return ToolResult::Text("New document created");
@@ -438,7 +446,7 @@ public:
                      throw ToolError(parsed.error());
                  }
                  _host.BeginNewDocument();
-                 _host.Doc().Reset(std::move(*parsed));
+                 _Doc().Reset(std::move(*parsed));
                  _host.SetCurrentPath(path);
                  _host.Replaced();
                  return ToolResult::Text("Opened " + path + "\n\n" + DocumentSummary(_M(), _host.Reg()));
@@ -486,7 +494,7 @@ public:
                      throw ToolError(model.error());
                  }
                  _host.BeginNewDocument();
-                 _host.Doc().Reset(std::move(*model));
+                 _Doc().Reset(std::move(*model));
                  _host.SetCurrentPath({});
                  _host.Replaced();
                  return ToolResult::Text(std::format("Imported {} nodes, {} edges, {} notes ({} cells skipped)\n\n{}", rep.nodes, rep.edges,
@@ -522,7 +530,7 @@ public:
                      throw ToolError(model.error());
                  }
                  _host.BeginNewDocument();
-                 _host.Doc().Reset(std::move(*model));
+                 _Doc().Reset(std::move(*model));
                  _host.SetCurrentPath({});
                  _host.Replaced();
                  std::string warnings;
@@ -579,8 +587,8 @@ public:
                      }
                  }
                  const DesignSystem ds_copy = ds != nullptr ? *ds : DesignSystem{}; // the registry entry may live in the document
-                 _host.Doc().Checkpoint();
-                 Model &m = _host.Doc().Mutable();
+                 _Doc().Checkpoint();
+                 Model &m = _Doc().Mutable();
                  if (ds != nullptr)
                  {
                      ApplyDesignSystem(m, ds_copy);
@@ -620,7 +628,7 @@ public:
                  {
                      m.scene.grid = a["grid"].get<bool>();
                  }
-                 _host.Changed(true);
+                 _Changed(true);
                  return ToolResult::Text("Scene updated");
              });
 
@@ -631,9 +639,9 @@ public:
                  LayoutOptions opt;
                  opt.direction =
                      a.value("direction", std::string("LR")) == "TB" ? LayoutDirection::TopToBottom : LayoutDirection::LeftToRight;
-                 _host.Doc().Checkpoint();
-                 AutoLayout(_host.Doc().Mutable(), opt);
-                 _host.Changed(true);
+                 _Doc().Checkpoint();
+                 AutoLayout(_Doc().Mutable(), opt);
+                 _Changed(true);
                  return ToolResult::Text("Layout applied");
              });
 
@@ -705,29 +713,96 @@ public:
         _Add("undo", "Undo", "Undo the last change.", Schema(Json::object()), false,
              [this](const Json &)
              {
-                 if (_host.Doc().CanUndo())
+                 const View view = _M().view;
+                 const bool ok   = _Doc().Undo();
+                 if (ok)
                  {
-                     _host.BeforeHistoryTraversal();
+                     _Doc().Mutable().view    = view;
+                     _edit->history_traversed = true;
+                     _Changed(true);
                  }
-                 const bool ok = _host.Doc().Undo();
-                 _host.Changed(true);
                  return ToolResult::Text(ok ? "Undone" : "Nothing to undo");
              });
         _Add("redo", "Redo", "Redo the last undone change.", Schema(Json::object()), false,
              [this](const Json &)
              {
-                 if (_host.Doc().CanRedo())
+                 const View view = _M().view;
+                 const bool ok   = _Doc().Redo();
+                 if (ok)
                  {
-                     _host.BeforeHistoryTraversal();
+                     _Doc().Mutable().view    = view;
+                     _edit->history_traversed = true;
+                     _Changed(true);
                  }
-                 const bool ok = _host.Doc().Redo();
-                 _host.Changed(true);
                  return ToolResult::Text(ok ? "Redone" : "Nothing to redo");
              });
     }
 
 private:
-    const Model &_M() { return _host.Doc().Get(); }
+    struct StagedEdit
+    {
+        Document            document;
+        std::optional<bool> structural;
+        bool                history_traversed = false;
+    };
+
+    Document    &_Doc() { return _edit ? _edit->document : _host.Doc(); }
+    const Model &_M() { return _Doc().Get(); }
+    void         _Changed(bool structural) { _edit->structural = structural; }
+
+    ToolResult _RunEdit(const ToolHandler &handler, const Json &args)
+    {
+        Document      &live    = _host.Doc();
+        const uint64_t current = live.Revision();
+        if (const auto expected = args.find("expectedRevision"); expected != args.end())
+        {
+            if (!expected->is_number_integer() || (!expected->is_number_unsigned() && expected->get<int64_t>() < 1) ||
+                (expected->is_number_unsigned() && expected->get<uint64_t>() == 0))
+            {
+                throw ToolError("expectedRevision must be a positive integer");
+            }
+            if (expected->get<uint64_t>() != current)
+            {
+                auto result =
+                    ToolResult::Error(std::format("document revision conflict: expected {}, current {}", expected->dump(), current));
+                result.structured = {{"code", "revision_conflict"}, {"revision", current}, {"expectedRevision", *expected}};
+                return result;
+            }
+        }
+
+        // Edit a private copy on the GUI thread. The handlers here do not enter a nested event loop.
+        // Until the result is ready, the live model and both history stacks remain untouched.
+        Json edit_args = args;
+        edit_args.erase("agentId");
+        edit_args.erase("expectedRevision");
+        StagedEdit staged{live, {}, false};
+        ToolResult result;
+        {
+            struct ClearEdit
+            {
+                StagedEdit *&edit;
+                ~ClearEdit() { edit = nullptr; }
+            } clear{_edit};
+            _edit  = &staged;
+            result = handler(edit_args);
+        }
+        if (result.is_error)
+        {
+            return result;
+        }
+        const auto committed_revision = staged.document.Revision();
+        result.structured["revision"] = committed_revision;
+        if (staged.structural.has_value())
+        {
+            live = std::move(staged.document);
+            if (staged.history_traversed)
+            {
+                _host.HistoryTraversed();
+            }
+            _host.Changed(*staged.structural);
+        }
+        return result;
+    }
 
     void _Add(std::string name, std::string title, std::string description, Json schema, bool read_only, ToolHandler handler)
     {
@@ -737,14 +812,38 @@ private:
         {
             schema["properties"]["agentId"] = Prop("string", "Registered agent ID. Include in every call made on behalf of an agent.");
         }
+        const bool creates_document = name == "new_document" || name == "open_document" || name.starts_with("import_");
+        const bool edits_document   = !read_only && !registration && !unregister && !creates_document && name != "select_document" &&
+                                    name != "save_document" && name != "export_animation";
+        const bool reports_revision = creates_document || name == "select_document" || name == "get_document" || name == "get_summary";
+        if (edits_document)
+        {
+            schema["properties"]["expectedRevision"]            = Prop("integer", "Apply only if the current document has this revision.");
+            schema["properties"]["expectedRevision"]["minimum"] = 1;
+        }
+
         const auto  element         = TargetForTool(name);
         const bool  removes_element = element != AgentTarget::None && name.starts_with("remove_");
-        ToolHandler keep_alive =
-            [this, self = shared_from_this(), h = std::move(handler), unregister, registration, element, removes_element](const Json &args)
+        ToolHandler keep_alive      = [this, self = shared_from_this(), h = std::move(handler), unregister, registration, element,
+                                  removes_element, edits_document, reports_revision](const Json &args)
         {
             if (!_host.ToolsAvailable())
             {
-                throw ToolError("the editor is confirming a document closure; retry after the dialog closes");
+                throw ToolError("the editor is unavailable; retry after the current operation");
+            }
+            if (_calling.test_and_set(std::memory_order_acquire))
+            {
+                throw ToolError("another MCP tool is running");
+            }
+            struct ClearCall
+            {
+                std::atomic_flag &flag;
+                ~ClearCall() { flag.clear(std::memory_order_release); }
+            } clear{_calling};
+
+            if ((registration || unregister || args.contains("agentId")) && !_host.AgentsAvailable())
+            {
+                throw ToolError("the MCP agent sessions have been stopped");
             }
             std::string               id;
             const auto                called_at = DocumentHost::Clock::now();
@@ -764,11 +863,28 @@ private:
                 DocumentHost             &host;
                 DocumentHost::DocumentKey previous;
                 ~RestoreTarget() { host.ExchangeTarget(previous); }
-            } restore{_host, _host.ExchangeTarget(id.empty() ? nullptr : (target ? target : _host.ActiveDocumentKey()))};
+            } restore{_host, _host.ExchangeTarget(target ? target : _host.ActiveDocumentKey())};
 
+            auto run = [&]
+            {
+                if (edits_document)
+                {
+                    return _RunEdit(h, args);
+                }
+                if (args.contains("expectedRevision"))
+                {
+                    throw ToolError("expectedRevision is supported only for edits of an existing document");
+                }
+                auto result = h(args);
+                if (reports_revision && !result.is_error)
+                {
+                    result.structured["revision"] = _Doc().Revision();
+                }
+                return result;
+            };
             if (id.empty())
             {
-                return h(args);
+                return run();
             }
 
             const bool          observe    = _host.TracksAgentActivity();
@@ -782,7 +898,7 @@ private:
             ToolResult result;
             try
             {
-                result = h(args);
+                result = run();
             }
             catch (...)
             {
@@ -856,7 +972,7 @@ private:
                  const double w = a.value("w", type.width);
                  const double h = a.value("h", type.height);
                  const Vec2   c{a.value("x", x) + w / 2, a.value("y", y) + h / 2};
-                 Node        &n = _host.Doc().AddNode(c, type);
+                 Node        &n = _Doc().AddNode(c, type);
                  n.type         = kind; // keep unknown plugin types as given
                  n.w            = std::max(20.0, w);
                  n.h            = std::max(20.0, h);
@@ -870,7 +986,7 @@ private:
                      n.style = json::NodeStyleFromJson(a["style"]);
                  }
                  const std::string id = n.id;
-                 _host.Changed(true);
+                 _Changed(true);
                  return ToolResult::FromJson(Json{{"id", id}});
              });
 
@@ -892,9 +1008,9 @@ private:
                  cur.merge_patch(patch);
                  Node updated = json::NodeFromJson(cur);
                  updated.id   = id;
-                 _host.Doc().Checkpoint();
-                 *_host.Doc().Mutable().FindNode(id) = std::move(updated);
-                 _host.Changed(true);
+                 _Doc().Checkpoint();
+                 *_Doc().Mutable().FindNode(id) = std::move(updated);
+                 _Changed(true);
                  return ToolResult::Text("Node " + id + " updated");
              });
 
@@ -907,8 +1023,8 @@ private:
                  {
                      throw ToolError("node '" + id + "' not found");
                  }
-                 _host.Doc().RemoveNode(id);
-                 _host.Changed(true);
+                 _Doc().RemoveNode(id);
+                 _Changed(true);
                  return ToolResult::Text("Node " + id + " removed");
              });
     }
@@ -929,7 +1045,7 @@ private:
              {
                  const std::string from = RequireString(a, "from");
                  const std::string to   = RequireString(a, "to");
-                 Edge             *e    = _host.Doc().AddEdge(from, to);
+                 Edge             *e    = _Doc().AddEdge(from, to);
                  if (e == nullptr)
                  {
                      throw ToolError("cannot connect '" + from + "' and '" + to + "' (missing node or the same node)");
@@ -944,7 +1060,7 @@ private:
                      e->style = json::EdgeStyleFromJson(a["style"]);
                  }
                  const std::string id = e->id;
-                 _host.Changed(true);
+                 _Changed(true);
                  return ToolResult::FromJson(Json{{"id", id}});
              });
 
@@ -969,9 +1085,9 @@ private:
                  {
                      throw ToolError("edge endpoints must be two existing nodes");
                  }
-                 _host.Doc().Checkpoint();
-                 *_host.Doc().Mutable().FindEdge(id) = std::move(updated);
-                 _host.Changed(true);
+                 _Doc().Checkpoint();
+                 *_Doc().Mutable().FindEdge(id) = std::move(updated);
+                 _Changed(true);
                  return ToolResult::Text("Edge " + id + " updated");
              });
 
@@ -984,8 +1100,8 @@ private:
                  {
                      throw ToolError("edge '" + id + "' not found");
                  }
-                 _host.Doc().RemoveEdge(id);
-                 _host.Changed(true);
+                 _Doc().RemoveEdge(id);
+                 _Changed(true);
                  return ToolResult::Text("Edge " + id + " removed");
              });
     }
@@ -1038,7 +1154,7 @@ private:
                      throw ToolError("unknown step type");
                  }
                  // start from the defaults for the type, then apply the arguments
-                 auto base = _host.Doc().MakeDefaultStep(*type, a.value("start", 0.0));
+                 auto base = _Doc().MakeDefaultStep(*type, a.value("start", 0.0));
                  if (!base.has_value())
                  {
                      throw ToolError("the document has no nodes / edges for this step type");
@@ -1052,8 +1168,8 @@ private:
                  }
                  _ValidateStep(*step);
                  _ResolveMessageEdge(*step);
-                 const std::string id = _host.Doc().AddStep(std::move(*step)).id;
-                 _host.Changed(true);
+                 const std::string id = _Doc().AddStep(std::move(*step)).id;
+                 _Changed(true);
                  return ToolResult::FromJson(Json{{"id", id}});
              });
 
@@ -1081,11 +1197,11 @@ private:
                  step->duration = std::max(kMinStepDuration, step->duration);
                  _ValidateStep(*step);
                  _ResolveMessageEdge(*step);
-                 _host.Doc().Checkpoint();
-                 *_host.Doc().Mutable().FindStep(id) = std::move(*step);
-                 _host.Doc().SortSteps();
-                 _host.Doc().UpdateDuration();
-                 _host.Changed(true);
+                 _Doc().Checkpoint();
+                 *_Doc().Mutable().FindStep(id) = std::move(*step);
+                 _Doc().SortSteps();
+                 _Doc().UpdateDuration();
+                 _Changed(true);
                  return ToolResult::Text("Step " + id + " updated");
              });
 
@@ -1097,8 +1213,8 @@ private:
                  {
                      throw ToolError("step '" + id + "' not found");
                  }
-                 _host.Doc().RemoveStep(id);
-                 _host.Changed(true);
+                 _Doc().RemoveStep(id);
+                 _Changed(true);
                  return ToolResult::Text("Step " + id + " removed");
              });
 
@@ -1134,8 +1250,8 @@ private:
                      start = std::max(start, s.End());
                  }
                  start          = a.value("start", start);
-                 const auto ids = ApplyTemplate(_host.Doc(), *tpl, roles, start);
-                 _host.Changed(true);
+                 const auto ids = ApplyTemplate(_Doc(), *tpl, roles, start);
+                 _Changed(true);
                  return ToolResult::FromJson(Json{{"steps", ids}});
              });
     }
@@ -1158,13 +1274,13 @@ private:
                      throw ToolError("argument 'time' (number) is required");
                  }
                  const double  time = a["time"].get<double>();
-                 const Marker *m    = _host.Doc().AddMarker(time, a.value("label", std::string{}));
+                 const Marker *m    = _Doc().AddMarker(time, a.value("label", std::string{}));
                  if (m == nullptr)
                  {
                      throw ToolError(std::format("there already is a marker at {:.0f} ms", time));
                  }
                  const std::string id = m->id;
-                 _host.Changed(false);
+                 _Changed(false);
                  return ToolResult::FromJson(Json{{"id", id}, {"time", m->time}});
              });
 
@@ -1193,8 +1309,8 @@ private:
                      throw ToolError("marker '" + other->id + "' is already at that time");
                  }
                  // one undo step for both changes
-                 _host.Doc().Checkpoint();
-                 Model  &model = _host.Doc().Mutable();
+                 _Doc().Checkpoint();
+                 Model  &model = _Doc().Mutable();
                  Marker &mk    = *model.FindMarker(id);
                  mk.time       = std::clamp(time, 0.0, model.scenario.duration);
                  if (has_label)
@@ -1202,7 +1318,7 @@ private:
                      mk.label = a["label"].get<std::string>();
                  }
                  NormalizeMarkers(model.scenario);
-                 _host.Changed(false);
+                 _Changed(false);
                  return ToolResult::Text("Marker " + id + " updated");
              });
 
@@ -1210,11 +1326,11 @@ private:
              [this](const Json &a)
              {
                  const std::string id = RequireString(a, "id");
-                 if (!_host.Doc().RemoveMarker(id))
+                 if (!_Doc().RemoveMarker(id))
                  {
                      throw ToolError("marker '" + id + "' not found");
                  }
-                 _host.Changed(false);
+                 _Changed(false);
                  return ToolResult::Text("Marker " + id + " removed");
              });
     }
@@ -1388,7 +1504,7 @@ private:
                          throw ToolError("invalid element definition");
                      }
                      id = e->id;
-                     _host.Doc().UpsertElement(*e);
+                     _Doc().UpsertElement(*e);
                  }
                  else if (kind == "effect")
                  {
@@ -1398,7 +1514,7 @@ private:
                          throw ToolError("invalid effect definition");
                      }
                      id = e->id;
-                     _host.Doc().UpsertEffect(*e);
+                     _Doc().UpsertEffect(*e);
                  }
                  else if (kind == "animation")
                  {
@@ -1408,7 +1524,7 @@ private:
                          throw ToolError("invalid animation definition");
                      }
                      id = t->id;
-                     _host.Doc().UpsertAnimation(*t);
+                     _Doc().UpsertAnimation(*t);
                  }
                  else if (kind == "design-system")
                  {
@@ -1418,13 +1534,13 @@ private:
                          throw ToolError("invalid design system definition");
                      }
                      id = d->id;
-                     _host.Doc().UpsertDesignSystem(*d);
+                     _Doc().UpsertDesignSystem(*d);
                  }
                  else
                  {
                      throw ToolError("kind must be element, effect, animation or design-system");
                  }
-                 _host.Changed(true);
+                 _Changed(true);
                  Json res{{"id", id}};
                  if (!warnings.empty())
                  {
@@ -1438,17 +1554,19 @@ private:
              [this](const Json &a)
              {
                  const std::string id = RequireString(a, "id");
-                 if (!_host.Doc().RemoveLibraryItem(id))
+                 if (!_Doc().RemoveLibraryItem(id))
                  {
                      throw ToolError("'" + id + "' is not in the document library");
                  }
-                 _host.Changed(true);
+                 _Changed(true);
                  return ToolResult::Text("Removed " + id);
              });
     }
 
-    McpServer    &_server;
-    DocumentHost &_host;
+    McpServer       &_server;
+    DocumentHost    &_host;
+    StagedEdit      *_edit = nullptr;
+    std::atomic_flag _calling;
 };
 
 } // namespace
@@ -1506,7 +1624,8 @@ std::string DefaultInstructions()
            "save_document / export_animation. "
            "Times are in milliseconds. Use node ids returned by add_node. "
            "For an agent session, call register_agent and pass its agentId in every subsequent call. "
-           "Use select_document with that agentId to choose a tab and unregister_agent to end the session.";
+           "Use select_document with that agentId to choose a tab and unregister_agent to end the session. "
+           "Pass expectedRevision from the latest relevant structuredContent.revision when editing an existing document.";
 }
 
 } // namespace ad::mcp

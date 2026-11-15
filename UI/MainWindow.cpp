@@ -22,6 +22,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
@@ -1381,6 +1382,7 @@ void MainWindow::closeEvent(QCloseEvent *e)
     QSettings s;
     s.setValue(kGeometryKey, saveGeometry());
     s.setValue(kStateKey, saveState(kStateVersion));
+    _ctx.SetWorkspace(nullptr);
     e->accept();
 }
 
@@ -1617,9 +1619,10 @@ bool MainWindow::_SaveAs(Controller *ctl)
     static const QRegularExpression kBad(QStringLiteral(R"([\\/:*?"<>|\s]+)"));
     const QString                   dir  = QSettings().value(kLastDirKey, QDir::homePath()).toString();
     const QString                   name = Qs(ctl->GetModel().meta.name).replace(kBad, QStringLiteral("_"));
+    const QPointer<Controller>      source(ctl);
     QString path = QFileDialog::getSaveFileName(this, tr("Save Diagram"), dir + QLatin1Char('/') + name + QStringLiteral(".json"),
                                                 tr("Diagrams (*.json)"));
-    if (path.isEmpty())
+    if (path.isEmpty() || !source || !_TabOf(source))
     {
         return false;
     }
@@ -1640,7 +1643,7 @@ bool MainWindow::_SaveAs(Controller *ctl)
 
 void MainWindow::_RenameDiagram()
 {
-    Controller *ctl = _Ctl();
+    const QPointer<Controller> ctl(_Ctl());
     if (ctl == nullptr)
     {
         return;
@@ -1648,7 +1651,7 @@ void MainWindow::_RenameDiagram()
     bool          ok = false;
     const QString name =
         QInputDialog::getText(this, tr("Rename"), tr("Diagram name:"), QLineEdit::Normal, Qs(ctl->GetModel().meta.name), &ok);
-    if (ok)
+    if (ok && ctl && _TabOf(ctl))
     {
         ctl->Rename(name);
     }
@@ -1747,6 +1750,10 @@ void MainWindow::_ApplyAnimation(const QString &template_id)
 
 void MainWindow::StartMcpOnLaunch(int forced_port)
 {
+    if (_closing)
+    {
+        return;
+    }
     const QSettings s;
     if (forced_port <= 0 && !s.value(kMcpAutostart, false).toBool())
     {
@@ -1802,14 +1809,11 @@ void MainWindow::_ShowMcpHelp()
     box.setWindowTitle(tr("Connecting an Agent"));
     box.setTextFormat(Qt::RichText);
     box.setTextInteractionFlags(Qt::TextSelectableByMouse);
-    box.setText(tr("<b>Option 1 — to the open window (HTTP)</b><br>"
-                   "Enable “Tools → MCP Server for Agents” and add the server to your agent:<br>"
+    box.setText(tr("Enable “Tools → MCP Server for Agents” and connect over HTTP:<br>"
                    "<code>claude mcp add --transport http animated-diagrams %1</code><br><br>"
-                   "<b>Option 2 — without a window (stdio)</b><br>"
-                   "The agent launches the program in server mode itself:<br>"
-                   "<code>claude mcp add animated-diagrams -- animated-diagrams --mcp</code><br><br>"
-                   "Tools operate on the active tab (use list_documents / select_document to switch), "
-                   "new documents open in tabs, and changes can be undone with Ctrl+Z.")
+                   "Call register_agent, then include agentId in each call. "
+                   "Use list_documents and select_document to choose a tab. "
+                   "Edits can be undone with Ctrl+Z.")
                     .arg(url));
     box.exec();
 }

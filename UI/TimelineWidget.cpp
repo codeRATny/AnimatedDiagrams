@@ -33,7 +33,12 @@ TimelineWidget::TimelineWidget(Controller &ctl, QWidget *parent) : QAbstractScro
     connect(&_ctl, &Controller::ModelChanged, this,
             [this](bool /*structural*/)
             {
-                // lanes are not repacked while a bar is being dragged
+                if (_drag && _drag->mode != Mode::Scrub && _drag->revision != _ctl.Doc().Revision())
+                {
+                    _drag.reset();
+                    viewport()->unsetCursor();
+                }
+                // Keep lanes stable during the active drag.
                 if (!_drag.has_value() || _drag->mode == Mode::Scrub)
                 {
                     _Relayout();
@@ -342,7 +347,8 @@ void TimelineWidget::mousePressEvent(QMouseEvent *e)
         const Marker *m = _ctl.GetModel().FindMarker(marker);
         _ctl.Pause();
         _ctl.Seek(m->time);
-        _drag = DragState{.mode = Mode::Marker, .step_id = marker, .press_x = pos.x(), .orig_start = m->time};
+        _drag = DragState{
+            .mode = Mode::Marker, .step_id = marker, .press_x = pos.x(), .orig_start = m->time, .revision = _ctl.Doc().Revision()};
         viewport()->update();
         return;
     }
@@ -369,7 +375,12 @@ void TimelineWidget::mousePressEvent(QMouseEvent *e)
         {
             mode = Mode::ResizeR;
         }
-        _drag = DragState{.mode = mode, .step_id = s.id, .press_x = pos.x(), .orig_start = s.start, .orig_duration = s.duration};
+        _drag = DragState{.mode          = mode,
+                          .step_id       = s.id,
+                          .press_x       = pos.x(),
+                          .orig_start    = s.start,
+                          .orig_duration = s.duration,
+                          .revision      = _ctl.Doc().Revision()};
         _ctl.Select(Selection::Kind::Step, s.id);
         return;
     }
@@ -422,7 +433,7 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent *e)
         // one undo step for the whole drag; a time taken by another marker is skipped
         if (std::abs(t - m->time) >= kMarkerEpsilon && _ctl.Doc().MoveMarker(_drag->step_id, t, "timeline:marker-drag"))
         {
-            _drag->edited = true;
+            _drag->revision = _ctl.Doc().Revision();
             _ctl.Changed(false);
             _ctl.Seek(t);
         }
@@ -432,11 +443,8 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent *e)
     {
         return;
     }
-    if (!_drag->edited)
-    {
-        _ctl.Doc().Checkpoint();
-        _drag->edited = true;
-    }
+    _ctl.Doc().Checkpoint("timeline:step-drag");
+    _drag->edited   = true;
     const double dt = _XToTime(pos.x() - _drag->press_x);
     Step        &s  = *_ctl.Doc().Mutable().FindStep(_drag->step_id);
     switch (_drag->mode)
@@ -458,6 +466,9 @@ void TimelineWidget::mouseMoveEvent(QMouseEvent *e)
     case Mode::Marker:
         break;
     }
+    _ctl.Doc().SortSteps();
+    _ctl.Doc().UpdateDuration();
+    _drag->revision = _ctl.Doc().Revision();
     _ctl.Changed(false);
 }
 
@@ -474,8 +485,6 @@ void TimelineWidget::mouseReleaseEvent(QMouseEvent * /*e*/)
     }
     if (edited)
     {
-        _ctl.Doc().SortSteps();
-        _ctl.Doc().UpdateDuration();
         _ctl.Doc().BreakMerge();
         _ctl.Changed(true);
     }

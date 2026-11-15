@@ -290,3 +290,24 @@ TEST(DocumentTest, RemoveLargeGroupIsOneUndo)
     EXPECT_EQ(document.Get(), model);
     EXPECT_FALSE(document.CanUndo());
 }
+
+TEST(DocumentTest, RevisionAdvancesAcrossMergedEditsAndReplacement)
+{
+    Document first;
+    Document second;
+    EXPECT_NE(first.Revision(), second.Revision());
+    const auto initial = first.Revision();
+    first.Checkpoint("typing");
+    first.Mutable().meta.name = "A";
+    const auto first_edit     = first.Revision();
+    first.Checkpoint("typing");
+    first.Mutable().meta.name = "AB";
+    EXPECT_GT(first.Revision(), first_edit);
+    ASSERT_TRUE(first.Undo());
+    EXPECT_NE(first.Revision(), initial);
+    EXPECT_FALSE(first.CanUndo());
+    const auto before_reset = first.Revision();
+    first.Reset(second.Get());
+    EXPECT_GT(first.Revision(), before_reset);
+    EXPECT_FALSE(first.CanRedo());
+}

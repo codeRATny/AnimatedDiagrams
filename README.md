@@ -67,7 +67,7 @@ to Service C.
   kit (OAuth, JWT, WAF).
 
 **🤖 AI-ready**
-- A built-in **MCP server** (stdio and HTTP) lets an agent build, check and export diagrams. A ready-made
+- A built-in **MCP server** (HTTP in the editor) lets an agent build, check and export diagrams. A ready-made
   [skill for agents](skills/animated-diagrams/SKILL.md) is included.
 
 **🧰 Everyday comfort**
@@ -119,7 +119,6 @@ animated-diagrams --export slides/flow.html diagram.json    # HTML player for we
 animated-diagrams --convert out.json scheme.drawio --page 1 # draw.io → native document
 animated-diagrams --export flow.gif checkout.mmd            # Mermaid sequenceDiagram → animated GIF
 animated-diagrams --export docs/flow.md diagram.json        # Mermaid flowchart + sequenceDiagram in Markdown
-animated-diagrams --mcp diagram.json                        # MCP server over stdio
 animated-diagrams --mcp-port 8765 diagram.json              # GUI + MCP over HTTP
 ```
 

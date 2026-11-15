@@ -67,7 +67,7 @@
   JWT, WAF).
 
 **🤖 Для AI**
-- Встроенный **MCP-сервер** (stdio и HTTP): агент строит, проверяет и экспортирует диаграммы. В комплекте
+- Встроенный **MCP-сервер** (HTTP в редакторе): агент строит, проверяет и экспортирует диаграммы. В комплекте
   готовый [скилл для агентов](skills/animated-diagrams/SKILL.md).
 
 **🧰 Удобство**
@@ -162,7 +162,6 @@ animated-diagrams --export slides/flow.html diagram.json # HTML-плеер дл�
 animated-diagrams --convert out.json scheme.drawio --page 1    # draw.io → .json
 animated-diagrams --export flow.gif checkout.mmd        # sequenceDiagram Mermaid → анимированный GIF
 animated-diagrams --export docs/flow.md diagram.json    # flowchart + sequenceDiagram Mermaid в Markdown
-animated-diagrams --mcp [diagram.json]                  # MCP-сервер через stdio
 animated-diagrams --mcp-port 8765 diagram.json          # GUI + MCP по HTTP
 ```
 
@@ -235,7 +234,7 @@ src/        ad_core — вся логика без Qt (покрыта unit-те�
   Io/         JSON (nlohmann) с нормализацией и обратной совместимостью
   Plugins/    формат плагинов, менеджер (сканирование, установка, вкл/выкл)
   Import/     draw.io (XML — pugixml, сжатые страницы — zlib), Mermaid (merman) → модель
-  Mcp/        JSON-RPC MCP-сервер, инструменты документа, stdio-транспорт
+  Mcp/        JSON-RPC MCP-сервер, инструменты документа
   Export/     GIF / WebM / MP4 через libav (GIF: palettegen + paletteuse), PowerPoint (libzip + pugixml),
               Mermaid, сетка кадров, шаблон HTML-плеера
 UI/         Qt Widgets: вкладки, док-панели, холст, таймлайн, инспектор, палитра, библиотека, плагины,

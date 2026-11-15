@@ -59,7 +59,7 @@ public:
     // -----------------------------------------------------------------------
     // Documents
     // -----------------------------------------------------------------------
-    void                      SetWorkspace(Workspace *w) { _workspace = w; }
+    void                      SetWorkspace(Workspace *w);
     [[nodiscard]] Workspace  *GetWorkspace() const { return _workspace; }
     [[nodiscard]] Controller *Active() const { return _active; }
     void                      SetActive(Controller *ctl);

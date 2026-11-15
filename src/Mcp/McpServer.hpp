@@ -13,7 +13,7 @@
 /// @brief Transport-independent Model Context Protocol server (JSON-RPC 2.0).
 ///
 /// Implements initialize, ping, tools/list, tools/call and ignores notifications.
-/// Transports (stdio, HTTP) feed raw messages into Handle() and send back the result.
+/// The HTTP transport feeds raw messages into Handle() and sends back the result.
 
 namespace ad::mcp
 {

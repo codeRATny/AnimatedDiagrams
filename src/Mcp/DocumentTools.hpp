@@ -49,10 +49,10 @@ struct DocumentInfo
     std::string path;
     bool        active   = false;
     bool        modified = false;
+    uint64_t    revision = 0;
 };
 
-/// What the tools operate on. The GUI implements it on top of its controller,
-/// the headless `--mcp` mode uses BasicDocumentHost with an offscreen renderer.
+/// What the tools operate on. The GUI implements it on top of its controller.
 class DocumentHost
 {
 public:
@@ -86,6 +86,7 @@ public:
     virtual void        AgentCalled(const AgentActivity        &/*activity*/) {}
     virtual DocumentKey ActiveDocumentKey() { return this; }
     virtual bool        ToolsAvailable() const { return true; }
+    virtual bool        AgentsAvailable() const { return true; }
     DocumentKey         TargetDocument() const { return _target; }
     DocumentKey         ExchangeTarget(DocumentKey document) { return std::exchange(_target, document); }
 
@@ -93,8 +94,8 @@ public:
     virtual const Registry &Reg() const = 0;
     /// Called after every change made by a tool.
     virtual void Changed(bool structural) = 0;
-    /// Called before a successful undo or redo, so a GUI can cancel previews.
-    virtual void BeforeHistoryTraversal() {}
+    /// Called after committing an undo or redo, before emitting change notifications.
+    virtual void HistoryTraversed() {}
     /// Called after the whole document was replaced (new / open / import).
     virtual void Replaced() = 0;
 
@@ -111,7 +112,7 @@ public:
     /// Open documents; a single-document host returns just the current one.
     virtual std::vector<DocumentInfo> Documents();
     /// Make document `index` the target of the tools; false when out of range.
-    virtual bool SelectDocument(size_t index);
+    virtual bool SelectDocument(size_t index, bool activate);
     /// Called right before new_document / open_document / import_drawio replace the
     /// document: the GUI opens a new tab here instead of overwriting the current one.
     virtual void BeginNewDocument() {}

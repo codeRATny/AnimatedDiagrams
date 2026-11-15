@@ -618,8 +618,8 @@ void CanvasWidget::mouseReleaseEvent(QMouseEvent * /*e*/)
             const Edge *old     = _drag_model->FindEdge(_drag_id);
             const Edge *preview = _preview_model->FindEdge(_drag_id);
             Edge       *edge    = result.FindEdge(_drag_id);
-            if (old != nullptr && preview != nullptr && edge != nullptr && _drag_waypoint < old->waypoints.size() &&
-                _drag_waypoint < preview->waypoints.size() && _drag_waypoint < edge->waypoints.size())
+            if (old != nullptr && preview != nullptr && edge != nullptr && edge->waypoints == old->waypoints &&
+                _drag_waypoint < old->waypoints.size() && _drag_waypoint < preview->waypoints.size())
             {
                 edge->waypoints[_drag_waypoint] =
                     edge->waypoints[_drag_waypoint] + preview->waypoints[_drag_waypoint] - old->waypoints[_drag_waypoint];

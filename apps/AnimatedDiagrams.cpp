@@ -3,7 +3,6 @@
 //   animated-diagrams [file]                          GUI (file: .json, draw.io or Mermaid)
 //   animated-diagrams --export out.gif [opts] file    headless export (no display needed; gif, png, webm, mp4, pptx, html, mmd, md)
 //   animated-diagrams --convert out.json file.drawio  headless conversion to the native format (draw.io, Mermaid)
-//   animated-diagrams --mcp [file]                    MCP server over stdio (for AI agents)
 //   animated-diagrams --mcp-port 8765 [file]          GUI with the HTTP MCP server enabled
 
 #include <QApplication>
@@ -26,8 +25,6 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <fcntl.h>
-#include <io.h>
 #include <windows.h>
 #endif
 
@@ -40,10 +37,6 @@
 #include "Io/JsonIo.hpp"
 #include "Language.hpp"
 #include "MainWindow.hpp"
-#include "Mcp/DocumentTools.hpp"
-#include "Mcp/McpServer.hpp"
-#include "Mcp/StdioTransport.hpp"
-#include "McpHosts.hpp"
 #include "Plugins/PluginManager.hpp"
 #include "QtRender.hpp"
 #include "Theme.hpp"
@@ -61,6 +54,10 @@ bool HasArg(int argc, char **argv, const char *name)
 {
     for (int i = 1; i < argc; ++i)
     {
+        if (std::strcmp(argv[i], "--") == 0)
+        {
+            break;
+        }
         if (std::strcmp(argv[i], name) == 0)
         {
             return true;
@@ -97,7 +94,6 @@ bool IsMermaidPath(const QString &path)
 }
 
 /// An imported file (not a native document: saving must ask for a path).
-bool IsImported(const QString &path) { return IsDrawioPath(path) || IsMermaidPath(path); }
 
 /// Load a native document or import a draw.io file.
 std::expected<Model, std::string> LoadInput(const QString &path, int page)
@@ -235,36 +231,6 @@ int RunConvert(const QCommandLineParser &cli, Model model, const Registry &reg)
     return 0;
 }
 
-int RunMcpStdio(const QStringList &files, int page, const Registry &reg)
-{
-#ifdef _WIN32
-    // JSON-RPC lines must not be mangled by CRLF translation
-    _setmode(_fileno(stdin), _O_BINARY);
-    _setmode(_fileno(stdout), _O_BINARY);
-#endif
-    HeadlessDocumentHost host(reg);
-    if (!files.isEmpty())
-    {
-        auto model = LoadInput(files.front(), page);
-        if (!model.has_value())
-        {
-            std::cerr << "error: " << model.error() << "\n";
-            return 2;
-        }
-        host.Doc().Reset(std::move(*model));
-        if (!IsImported(files.front()))
-        {
-            host.SetCurrentPath(Us(QFileInfo(files.front()).absoluteFilePath()));
-        }
-    }
-    mcp::McpServer server(mcp::ServerInfo{"animated-diagrams", "Animated Diagrams", QCoreApplication::applicationVersion().toStdString(),
-                                          mcp::DefaultInstructions()});
-    mcp::RegisterDocumentTools(server, host);
-    std::cerr << "animated-diagrams: MCP server on stdio (" << server.Tools().size() << " tools)\n";
-    mcp::RunStdio(server, std::cin, std::cout, std::cerr);
-    return 0;
-}
-
 /// --lang <code> / --lang=<code>: read before the command line parser runs, since the
 /// translations must be installed before anything is created.
 QString LanguageArgument(int argc, char **argv)
@@ -288,9 +254,17 @@ QString LanguageArgument(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
-    // CLI modes do not need a display (CI, servers, ssh, agents)
+    if (HasArg(argc, argv, "--mcp"))
+    {
+#ifdef _WIN32
+        AttachParentConsole();
+#endif
+        std::cerr << "error: --mcp was removed; start the editor with --mcp-port 8765 and use HTTP\n";
+        return 2;
+    }
+    // CLI modes do not need a display.
     bool headless = false;
-    for (const char *a : {"--export", "--convert", "--mcp", "--help", "-h", "--help-all", "--version", "-v"})
+    for (const char *a : {"--export", "--convert", "--help", "-h", "--help-all", "--version", "-v"})
     {
         headless = headless || HasArg(argc, argv, a);
     }
@@ -347,7 +321,6 @@ int main(int argc, char **argv)
         {QStringLiteral("convert"), QStringLiteral("Save the input (e.g. a draw.io file) as a native .json document"),
          QStringLiteral("path")},
         {QStringLiteral("page"), QStringLiteral("draw.io page index (default 0)"), QStringLiteral("index"), QStringLiteral("0")},
-        {QStringLiteral("mcp"), QStringLiteral("Run the MCP server over stdio (JSON-RPC lines) without a window")},
         {QStringLiteral("lang"), QStringLiteral("Interface language: en, ru, ... (default: the saved choice or the system language)"),
          QStringLiteral("code")},
         {QStringLiteral("mcp-port"), QStringLiteral("Start the HTTP MCP server on 127.0.0.1:<port> together with the GUI"),
@@ -358,7 +331,7 @@ int main(int argc, char **argv)
     const QStringList files = cli.positionalArguments();
     const int         page  = std::max(0, cli.value(QStringLiteral("page")).toInt());
 
-    if (cli.isSet(QStringLiteral("mcp")) || cli.isSet(QStringLiteral("export")) || cli.isSet(QStringLiteral("convert")))
+    if (cli.isSet(QStringLiteral("export")) || cli.isSet(QStringLiteral("convert")))
     {
         PluginManager plugins;
         Registry      registry;
@@ -366,10 +339,6 @@ int main(int argc, char **argv)
         for (const auto &e : plugins.Errors())
         {
             std::cerr << "warning: plugin " << PathToUtf8(e.path) << ": " << e.message << "\n";
-        }
-        if (cli.isSet(QStringLiteral("mcp")))
-        {
-            return RunMcpStdio(files, page, registry);
         }
         if (files.size() != 1)
         {
@@ -410,15 +379,15 @@ int main(int argc, char **argv)
     AppContext ctx;
     MainWindow window(ctx);
     window.RestoreSession(files.isEmpty()); // all tabs of the previous session
-    window.StartMcpOnLaunch(mcp_port);
     window.show();
     QTimer::singleShot(0, &window,
-                       [&window, files]
+                       [&window, files, mcp_port]
                        {
                            for (const QString &f : files)
                            {
                                window.OpenPath(f); // in tabs, over the shown window (imports ask for options)
                            }
+                           window.StartMcpOnLaunch(mcp_port);
                            NotifyAboutCrashReports(&window); // a report left by the previous session
                        });
     return QApplication::exec();

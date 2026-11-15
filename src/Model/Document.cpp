@@ -1,6 +1,7 @@
 #include "Document.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <unordered_set>
 
@@ -70,9 +71,16 @@ double AutoDuration(const Scenario &s)
 // History
 // ---------------------------------------------------------------------------
 
+uint64_t Document::_NextRevision()
+{
+    static std::atomic<uint64_t> next{1};
+    return next.fetch_add(1, std::memory_order_relaxed);
+}
+
 void Document::Reset(Model m)
 {
-    _model = std::move(m);
+    _model    = std::move(m);
+    _revision = _NextRevision();
     _undo.clear();
     _redo.clear();
     _last_merge_key.clear();
@@ -82,15 +90,17 @@ void Document::Checkpoint(std::string_view merge_key)
 {
     if (!merge_key.empty() && merge_key == _last_merge_key && !_undo.empty())
     {
+        _revision = _NextRevision();
         return;
     }
-    _undo.push_back(_model);
+    _undo.push_back(std::make_shared<const Model>(_model));
     if (_undo.size() > kMaxHistory)
     {
         _undo.erase(_undo.begin());
     }
     _redo.clear();
     _last_merge_key = merge_key;
+    _revision       = _NextRevision();
 }
 
 bool Document::Undo()
@@ -99,9 +109,11 @@ bool Document::Undo()
     {
         return false;
     }
-    _redo.push_back(std::move(_model));
-    _model = std::move(_undo.back());
+    Model previous = *_undo.back();
+    _redo.push_back(std::make_shared<const Model>(std::move(_model)));
+    _model = std::move(previous);
     _undo.pop_back();
+    _revision = _NextRevision();
     _last_merge_key.clear();
     return true;
 }
@@ -112,9 +124,11 @@ bool Document::Redo()
     {
         return false;
     }
-    _undo.push_back(std::move(_model));
-    _model = std::move(_redo.back());
+    Model next = *_redo.back();
+    _undo.push_back(std::make_shared<const Model>(std::move(_model)));
+    _model = std::move(next);
     _redo.pop_back();
+    _revision = _NextRevision();
     _last_merge_key.clear();
     return true;
 }

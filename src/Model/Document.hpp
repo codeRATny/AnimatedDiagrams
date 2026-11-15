@@ -2,6 +2,8 @@
 #define _MODEL_DOCUMENT_HPP_
 
 #include <cstddef>
+#include <cstdint>
+#include <memory>
 #include <optional>
 #include <random>
 #include <string>
@@ -41,6 +43,8 @@ public:
     explicit Document(Model m) : _model(std::move(m)) {}
 
     [[nodiscard]] const Model &Get() const { return _model; }
+    /// Process-local token for the current content, including a tab's initial state.
+    [[nodiscard]] uint64_t Revision() const { return _revision; }
     /// In-place access; call Checkpoint() before modifying.
     [[nodiscard]] Model &Mutable() { return _model; }
 
@@ -113,11 +117,15 @@ public:
     std::string NewId(std::string_view prefix) { return _ids.Next(prefix, _model); }
 
 private:
-    Model              _model;
-    std::vector<Model> _undo;
-    std::vector<Model> _redo;
-    std::string        _last_merge_key;
-    IdGenerator        _ids;
+    static uint64_t _NextRevision();
+
+    Model    _model;
+    uint64_t _revision = _NextRevision();
+    // Checkpoints are immutable so an isolated MCP edit can share the undo history.
+    std::vector<std::shared_ptr<const Model>> _undo;
+    std::vector<std::shared_ptr<const Model>> _redo;
+    std::string                               _last_merge_key;
+    IdGenerator                               _ids;
 };
 
 } // namespace ad
