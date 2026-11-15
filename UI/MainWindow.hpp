@@ -136,6 +136,7 @@ private:
     void _ShowMcpHelp();
     void _About();
 
+    QWidget         *_agent_layer = nullptr;
     AppContext      &_ctx;
     QTabWidget      *_doc_tabs = nullptr;
     std::vector<Tab> _tabs;

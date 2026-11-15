@@ -478,6 +478,18 @@ TEST(UISelectionTest, McpReportsAgentPositionAndTransfers)
     ASSERT_EQ(calls.size(), 1);
     EXPECT_EQ(calls.back().document, first);
     EXPECT_EQ(calls.back().position, first->GetModel().FindNode(node_id)->Bounds().Center());
+    EXPECT_EQ(calls.back().route, mcp::DocumentHost::AgentRoute::CreateNode);
+    EXPECT_EQ(calls.back().element_type, first->GetModel().FindNode(node_id)->type);
+
+    const auto other = mcp.CallTool("add_node", {{"label", "Other node"}, {"x", 340}});
+    ASSERT_FALSE(other.is_error);
+    const auto edge = mcp.CallTool("add_edge", {{"from", node_id}, {"to", other.structured.at("id")}});
+    ASSERT_FALSE(edge.is_error);
+    calls.clear();
+    ASSERT_FALSE(mcp.CallTool("add_step", {{"agentId", id}, {"type", "link"}, {"edgeId", edge.structured.at("id")}}).is_error);
+    ASSERT_EQ(calls.size(), 1);
+    EXPECT_EQ(calls.back().route, mcp::DocumentHost::AgentRoute::AddLinkStep);
+    EXPECT_TRUE(calls.back().position.has_value());
 
     calls.clear();
     EXPECT_TRUE(mcp.CallTool("update_node", {{"agentId", id}, {"id", "unknown"}}).is_error);

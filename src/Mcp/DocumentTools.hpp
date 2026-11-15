@@ -60,6 +60,13 @@ public:
     using DocumentKey                   = void *;
     static constexpr auto kAgentTimeout = std::chrono::minutes(15);
 
+    enum class AgentRoute
+    {
+        Canvas,
+        CreateNode,
+        AddLinkStep
+    };
+
     // A null document ends the session. A null previous document then requests silent removal.
     struct AgentActivity
     {
@@ -68,6 +75,9 @@ public:
         DocumentKey         document;
         std::optional<Vec2> position;
         Clock::time_point   called_at;
+        AgentRoute          route        = AgentRoute::Canvas;
+        std::string         element_type = {};
+        std::string         created_node = {};
     };
 
     DocumentHost();

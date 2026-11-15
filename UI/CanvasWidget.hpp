@@ -2,7 +2,6 @@
 #define _UI_CANVAS_WIDGET_HPP_
 
 #include <QString>
-#include <QTimer>
 #include <QWidget>
 
 #include <optional>
@@ -51,7 +50,10 @@ public:
 
     [[nodiscard]] Controller &GetController() const { return _ctl; }
 
+    std::optional<std::chrono::milliseconds> PaintAgents(QPainter &painter, const QRect &viewport, const AgentOverlay::Project &project);
+
 Q_SIGNALS:
+    void AgentsChanged();
     void ToolChanged(ad::ui::CanvasWidget::Tool tool);
     /// Files dropped on the canvas (opened by the main window).
     void FilesDropped(const QStringList &paths);
@@ -68,6 +70,7 @@ protected:
     void dropEvent(QDropEvent *e) override;
 
 private:
+    void _UpdatePendingAgentNodes();
     enum class Drag
     {
         None,
@@ -92,7 +95,7 @@ private:
 
     Controller                &_ctl;
     AgentOverlay               _agents;
-    QTimer                     _agent_frame;
+    std::set<std::string>      _pending_agent_nodes;
     QString                    _hint;
     Tool                       _tool         = Tool::Select;
     std::string                _pending_type = "service";

@@ -7,6 +7,8 @@
 #include "Model/Model.hpp"
 #include "Model/Registry.hpp"
 
+#include <set>
+
 /// @file HitTest.hpp
 /// @brief Picking diagram elements under the cursor (world coordinates).
 
@@ -33,7 +35,8 @@ struct Hit
 
 /// Priority: ports > waypoints of the selected edge > nodes (topmost) > edges.
 /// `tolerance` is in world units (usually px / zoom).
-Hit HitTest(const Model &m, Vec2 p, const Selection &sel, double tolerance, const Registry &reg = Registry::Default());
+Hit HitTest(const Model &m, Vec2 p, const Selection &sel, double tolerance, const Registry &reg = Registry::Default(),
+            const std::set<std::string> *pending_nodes = nullptr);
 
 } // namespace ad
 

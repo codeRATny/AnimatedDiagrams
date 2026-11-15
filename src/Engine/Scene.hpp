@@ -1,6 +1,7 @@
 #ifndef _ENGINE_SCENE_HPP_
 #define _ENGINE_SCENE_HPP_
 
+#include <set>
 #include <string>
 
 #include "Engine/DisplayList.hpp"
@@ -15,10 +16,11 @@ namespace ad
 
 struct SceneOptions
 {
-    Selection   selection;
-    std::string connect_from_node;     // edge creation source (highlighted)
-    bool        connect_mode  = false; // "edge" tool: larger ports
-    bool        editor_chrome = true;  // waypoint handles and selection outlines
+    Selection                    selection;
+    std::string                  connect_from_node;       // edge creation source (highlighted)
+    bool                         connect_mode  = false;   // "edge" tool: larger ports
+    bool                         editor_chrome = true;    // waypoint handles and selection outlines
+    const std::set<std::string> *pending_nodes = nullptr; // editor-only placement preview
 };
 
 namespace palette

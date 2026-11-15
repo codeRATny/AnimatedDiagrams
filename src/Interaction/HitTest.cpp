@@ -7,11 +7,19 @@
 namespace ad
 {
 
-Hit HitTest(const Model &m, Vec2 p, const Selection &sel, double tolerance, const Registry &reg)
+Hit HitTest(const Model &m, Vec2 p, const Selection &sel, double tolerance, const Registry &reg, const std::set<std::string> *pending_nodes)
 {
+    auto pending = [pending_nodes](const std::string &id)
+    {
+        return pending_nodes && pending_nodes->contains(id);
+    };
     // ports, top to bottom (the last node is drawn on top)
     for (const auto &n : m.nodes | std::views::reverse)
     {
+        if (pending(n.id))
+        {
+            continue;
+        }
         for (const auto &port : n.ports)
         {
             if (Distance(p, {n.x + port.dx, n.y + port.dy}) <= 6 + tolerance)
@@ -23,7 +31,7 @@ Hit HitTest(const Model &m, Vec2 p, const Selection &sel, double tolerance, cons
 
     if (sel.kind == Selection::Kind::Edge)
     {
-        if (const Edge *e = m.FindEdge(sel.id); e != nullptr)
+        if (const Edge *e = m.FindEdge(sel.id); e != nullptr && !pending(e->from) && !pending(e->to))
         {
             for (size_t i = 0; i < e->waypoints.size(); ++i)
             {
@@ -37,7 +45,7 @@ Hit HitTest(const Model &m, Vec2 p, const Selection &sel, double tolerance, cons
 
     for (const auto &n : m.nodes | std::views::reverse)
     {
-        if (n.Bounds().Contains(p))
+        if (!pending(n.id) && n.Bounds().Contains(p))
         {
             return {Hit::Kind::Node, n.id, {}, 0};
         }
@@ -47,6 +55,10 @@ Hit HitTest(const Model &m, Vec2 p, const Selection &sel, double tolerance, cons
     double      best_d = 8 + tolerance;
     for (const auto &e : m.edges)
     {
+        if (pending(e.from) || pending(e.to))
+        {
+            continue;
+        }
         const auto g = ComputeEdgeGeometry(m, e, reg);
         if (!g.has_value())
         {

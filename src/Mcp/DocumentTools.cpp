@@ -822,10 +822,12 @@ private:
             schema["properties"]["expectedRevision"]["minimum"] = 1;
         }
 
+        const bool  creates_node    = name == "add_node";
+        const bool  adds_step       = name == "add_step";
         const auto  element         = TargetForTool(name);
         const bool  removes_element = element != AgentTarget::None && name.starts_with("remove_");
         ToolHandler keep_alive      = [this, self = shared_from_this(), h = std::move(handler), unregister, registration, element,
-                                  removes_element, edits_document, reports_revision](const Json &args)
+                                  removes_element, edits_document, reports_revision, creates_node, adds_step](const Json &args)
         {
             if (!_host.ToolsAvailable())
             {
@@ -919,6 +921,7 @@ private:
             }
             else if (_host.BindAgent(id, document) && observe)
             {
+                DocumentHost::AgentActivity activity{id, target, document, {}, called_at};
                 if (!result.is_error && document && element != AgentTarget::None && !removes_element)
                 {
                     Json edited = element_id;
@@ -931,8 +934,25 @@ private:
                         }
                     }
                     position = AgentPosition(element, _M(), _host.Reg(), edited);
+                    if (creates_node && edited.is_string())
+                    {
+                        if (const auto *node = _M().FindNode(edited.get_ref<const std::string &>()))
+                        {
+                            activity.route        = DocumentHost::AgentRoute::CreateNode;
+                            activity.element_type = node->type;
+                            activity.created_node = node->id;
+                        }
+                    }
+                    if (adds_step && edited.is_string())
+                    {
+                        if (const auto *step = _M().FindStep(edited.get_ref<const std::string &>()); step && step->type == StepType::Link)
+                        {
+                            activity.route = DocumentHost::AgentRoute::AddLinkStep;
+                        }
+                    }
                 }
-                _host.AgentCalled({id, target, document, result.is_error ? std::nullopt : position, called_at});
+                activity.position = result.is_error ? std::nullopt : position;
+                _host.AgentCalled(activity);
             }
             return result;
         };

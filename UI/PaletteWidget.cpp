@@ -1,5 +1,7 @@
 #include "PaletteWidget.hpp"
 
+#include <QTreeWidgetItemIterator>
+
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMenu>
@@ -387,6 +389,38 @@ void PaletteWidget::_ShowMenu(const QPoint &pos)
                        Q_EMIT LibraryRequested(id);
                    });
     menu.exec(_tree->viewport()->mapToGlobal(pos));
+}
+
+std::optional<QPoint> PaletteWidget::ElementAnchor(const QString &id, const QWidget *window) const
+{
+    if (!_tree->isVisible() || _tree->window() != window)
+    {
+        return {};
+    }
+    const auto *viewport = _tree->viewport();
+    QRect       fallback;
+    for (QTreeWidgetItemIterator it(_tree); *it; ++it)
+    {
+        auto *item = *it;
+        if (item->data(0, kIdRole).toString() != id)
+        {
+            continue;
+        }
+        const QRect row = _tree->visualItemRect(item).intersected(viewport->rect());
+        if (!row.isEmpty())
+        {
+            return viewport->mapTo(window, row.center());
+        }
+        for (auto *parent = item->parent(); parent && fallback.isEmpty(); parent = parent->parent())
+        {
+            fallback = _tree->visualItemRect(parent).intersected(viewport->rect());
+        }
+    }
+    if (!fallback.isEmpty())
+    {
+        return viewport->mapTo(window, fallback.center());
+    }
+    return {};
 }
 
 } // namespace ad::ui

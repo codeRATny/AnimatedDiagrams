@@ -79,16 +79,29 @@ public:
         _ComputeNodeEffects(active);
         for (const auto &e : _m.edges)
         {
+            if (_Pending(e.from) || _Pending(e.to))
+            {
+                continue;
+            }
             _owner = "edge:" + e.id;
             _DrawEdge(e);
         }
         for (const auto &n : _m.nodes)
         {
+            if (_Pending(n.id))
+            {
+                continue;
+            }
             _owner = "node:" + n.id;
             _DrawNode(n);
         }
         for (const Step *s : active)
         {
+            const auto *edge = _o.pending_nodes && !s->edge_id.empty() ? _m.FindEdge(s->edge_id) : nullptr;
+            if (_Pending(s->node_id) || _Pending(s->from) || _Pending(s->to) || (edge && (_Pending(edge->from) || _Pending(edge->to))))
+            {
+                continue;
+            }
             _owner         = "step:" + s->id;
             const double p = std::clamp((_t - s->start) / std::max(1.0, s->duration), 0.0, 1.0);
             switch (s->type)
@@ -117,6 +130,8 @@ public:
     }
 
 private:
+    bool _Pending(const std::string &id) const { return _o.pending_nodes && _o.pending_nodes->contains(id); }
+
     /// Color value or "$token" (design system), with a fallback.
     [[nodiscard]] Color _C(std::string_view value, Color fallback) const { return Color::Parse(ResolveColorToken(value, _ds), fallback); }
     [[nodiscard]] Font  _Font(double size, bool bold) const { return {size, bold, _family}; }

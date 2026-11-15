@@ -26,7 +26,9 @@ class TimelinePanel : public QWidget
 public:
     explicit TimelinePanel(Controller &ctl, QWidget *parent = nullptr);
 
-    void AddStep();
+    void                         AddStep();
+    [[nodiscard]] const QWidget *StepTypeControl() const;
+    [[nodiscard]] const QWidget *AddStepControl() const;
     /// Add a marker at the playhead (status message when one is already there).
     void AddMarker();
 
@@ -46,6 +48,7 @@ private:
     QCheckBox      *_loop      = nullptr;
     QCheckBox      *_stop_at   = nullptr;
     QComboBox      *_step_type = nullptr;
+    QPushButton    *_add_step  = nullptr;
 };
 
 } // namespace ad::ui

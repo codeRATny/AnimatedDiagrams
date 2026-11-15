@@ -161,3 +161,27 @@ TEST(SceneTest, ContentBounds)
     EXPECT_GE(r.Right(), 1000);
     EXPECT_EQ(ContentBounds(Model{}, kTm), (Rect{0, 0, 640, 360}));
 }
+
+TEST(SceneTest, PendingPlacementOmitsNodeAndAttachedEdgeFromEditorFrame)
+{
+    const auto                  model = SampleModel();
+    const auto                 &node  = model.nodes.front();
+    SceneOptions                options;
+    const std::set<std::string> pending{node.id};
+    options.pending_nodes = &pending;
+    const auto frame      = BuildFrame(model, 0, options, kTm);
+    const auto has_owner  = [](const Frame &candidate, const std::string &owner)
+    {
+        return std::ranges::any_of(candidate.items,
+                                   [&](const auto &item)
+                                   {
+                                       return item.owner == owner;
+                                   });
+    };
+    EXPECT_FALSE(has_owner(frame, "node:" + node.id));
+    EXPECT_TRUE(has_owner(BuildFrame(model, 0, {}, kTm), "node:" + node.id));
+    for (const auto &edge : model.edges)
+    {
+        EXPECT_EQ(has_owner(frame, "edge:" + edge.id), edge.from != node.id && edge.to != node.id);
+    }
+}

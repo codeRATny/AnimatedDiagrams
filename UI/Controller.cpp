@@ -437,6 +437,7 @@ void Controller::Changed(bool structural)
 void Controller::SetView(const View &v)
 {
     _doc.Mutable().view = v;
+    Q_EMIT ViewChanged();
     _ScheduleAutosave();
 }
 

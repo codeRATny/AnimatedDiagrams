@@ -4,6 +4,7 @@
 #include <QSet>
 #include <QWidget>
 
+#include <optional>
 #include <vector>
 
 #include "Model/Library.hpp"
@@ -35,7 +36,8 @@ public:
     /// Document whose own element types are listed (the active tab).
     void SetDocument(Controller *ctl);
     /// Highlight the type placed by the "node" tool.
-    void SetCurrentType(const QString &id);
+    void                                SetCurrentType(const QString &id);
+    [[nodiscard]] std::optional<QPoint> ElementAnchor(const QString &id, const QWidget *window) const;
 
 Q_SIGNALS:
     void TypeChosen(const QString &id);

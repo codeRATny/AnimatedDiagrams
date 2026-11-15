@@ -43,8 +43,6 @@ CanvasWidget::CanvasWidget(Controller &ctl, QWidget *parent) : QWidget(parent), 
     setMinimumSize(320, 200);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAcceptDrops(true);
-    _agent_frame.setSingleShot(true);
-    connect(&_agent_frame, &QTimer::timeout, this, qOverload<>(&CanvasWidget::update));
     connect(&_ctl.Context(), &AppContext::AgentActivity, this,
             [this](const mcp::DocumentHost::AgentActivity &activity)
             {
@@ -52,15 +50,16 @@ CanvasWidget::CanvasWidget(Controller &ctl, QWidget *parent) : QWidget(parent), 
                 {
                     const auto world = VisibleWorldRect().Center();
                     _agents.Apply(activity, &_ctl, QPointF(world.x, world.y), AgentOverlay::Clock::now());
-                    update();
+                    _UpdatePendingAgentNodes();
+                    Q_EMIT AgentsChanged();
                 }
             });
     connect(&_ctl.Context(), &AppContext::AgentsCleared, this,
             [this]
             {
                 _agents.Clear();
-                _agent_frame.stop();
-                update();
+                _UpdatePendingAgentNodes();
+                Q_EMIT AgentsChanged();
             });
     auto repaint = [this]
     {
@@ -250,8 +249,9 @@ void CanvasWidget::paintEvent(QPaintEvent * /*e*/)
     p.translate(m.view.pan_x, m.view.pan_y);
     p.scale(m.view.zoom, m.view.zoom);
     SceneOptions opt;
-    opt.selection    = _ctl.GetSelection();
-    opt.connect_mode = _tool == Tool::Edge;
+    opt.selection     = _ctl.GetSelection();
+    opt.pending_nodes = _pending_agent_nodes.empty() ? nullptr : &_pending_agent_nodes;
+    opt.connect_mode  = _tool == Tool::Edge;
     if (_connect.has_value())
     {
         opt.connect_from_node = _connect->node;
@@ -282,20 +282,29 @@ void CanvasWidget::paintEvent(QPaintEvent * /*e*/)
         p.setPen(ToQColor(Ui().muted));
         p.drawText(box, Qt::AlignCenter, text);
     }
+}
 
-    if (const auto delay = _agents.Paint(p, rect(), m.view, AgentOverlay::Clock::now()))
-    {
-        _agent_frame.start(static_cast<int>(delay->count()));
-    }
-    else
-    {
-        _agent_frame.stop();
-    }
+std::optional<std::chrono::milliseconds> CanvasWidget::PaintAgents(QPainter &painter, const QRect &viewport,
+                                                                   const AgentOverlay::Project &project)
+{
+    const auto delay = _agents.PaintProjected(painter, viewport, project, AgentOverlay::Clock::now());
+    _UpdatePendingAgentNodes();
+    return delay;
 }
 
 // ---------------------------------------------------------------------------
 // Mouse
 // ---------------------------------------------------------------------------
+
+void CanvasWidget::_UpdatePendingAgentNodes()
+{
+    auto pending = _agents.PendingNodes();
+    if (pending != _pending_agent_nodes)
+    {
+        _pending_agent_nodes = std::move(pending);
+        update();
+    }
+}
 
 void CanvasWidget::_BeginDragEdit()
 {
@@ -332,7 +341,7 @@ void CanvasWidget::mousePressEvent(QMouseEvent *e)
     {
         return;
     }
-    const Hit hit = HitTest(_ctl.GetModel(), w, _ctl.GetSelection(), _Tolerance(), _ctl.Reg());
+    const Hit hit = HitTest(_ctl.GetModel(), w, _ctl.GetSelection(), _Tolerance(), _ctl.Reg(), &_pending_agent_nodes);
 
     if (_tool == Tool::Node)
     {
@@ -554,7 +563,8 @@ void CanvasWidget::mouseReleaseEvent(QMouseEvent * /*e*/)
             const Rect bounds{std::min(a.x, b.x), std::min(a.y, b.y), std::abs(a.x - b.x), std::abs(a.y - b.y)};
             for (const auto &node : _ctl.GetModel().nodes)
             {
-                if (bounds.Contains({node.x, node.y}) && bounds.Contains({node.x + node.w, node.y + node.h}))
+                if (!_pending_agent_nodes.contains(node.id) && bounds.Contains({node.x, node.y}) &&
+                    bounds.Contains({node.x + node.w, node.y + node.h}))
                 {
                     if (_marquee_modifiers.testFlag(Qt::ControlModifier) && std::ranges::contains(ids, node.id))
                     {
@@ -647,7 +657,7 @@ void CanvasWidget::mouseDoubleClickEvent(QMouseEvent *e)
         return;
     }
     const Vec2 w   = _ToWorld(e->position());
-    const Hit  hit = HitTest(_ctl.GetModel(), w, _ctl.GetSelection(), _Tolerance(), _ctl.Reg());
+    const Hit  hit = HitTest(_ctl.GetModel(), w, _ctl.GetSelection(), _Tolerance(), _ctl.Reg(), &_pending_agent_nodes);
     auto      &doc = _ctl.Doc();
     switch (hit.kind)
     {

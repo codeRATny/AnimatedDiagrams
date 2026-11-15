@@ -73,6 +73,54 @@ namespace ad::ui
 namespace
 {
 
+class AgentLayer final : public QWidget
+{
+public:
+    using Paint = std::function<std::optional<std::chrono::milliseconds>(QPainter &, const QRect &)>;
+
+    AgentLayer(QWidget *parent, Paint paint) : QWidget(parent), _paint(std::move(paint))
+    {
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+        setFocusPolicy(Qt::NoFocus);
+        setGeometry(parent->rect());
+        parent->installEventFilter(this);
+        _frame.setSingleShot(true);
+        connect(&_frame, &QTimer::timeout, this, qOverload<>(&QWidget::update));
+    }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (watched == parentWidget() && event->type() == QEvent::Resize)
+        {
+            setGeometry(parentWidget()->rect());
+        }
+        if (event->type() == QEvent::Move || event->type() == QEvent::Resize || event->type() == QEvent::Show ||
+            event->type() == QEvent::Hide)
+        {
+            update();
+        }
+        return QWidget::eventFilter(watched, event);
+    }
+
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter painter(this);
+        if (const auto delay = _paint(painter, rect()))
+        {
+            _frame.start(static_cast<int>(delay->count()));
+        }
+        else
+        {
+            _frame.stop();
+        }
+    }
+
+private:
+    Paint  _paint;
+    QTimer _frame;
+};
+
 constexpr auto    kLastDirKey     = "files/lastDir";
 constexpr auto    kGeometryKey    = "window/geometry";
 constexpr auto    kStateKey       = "window/dockState";
@@ -160,6 +208,49 @@ MainWindow::MainWindow(AppContext &ctx, QWidget *parent) : QMainWindow(parent), 
     restoreGeometry(s.value(kGeometryKey).toByteArray());
     restoreState(s.value(kStateKey).toByteArray(), kStateVersion);
     _SetLocked(s.value(kLockedKey, false).toBool());
+    _agent_layer = new AgentLayer(
+        this,
+        [this](QPainter &painter, const QRect &viewport)
+        {
+            auto *tab = _Current();
+            if (!tab)
+            {
+                return std::optional<std::chrono::milliseconds>{};
+            }
+            return tab->canvas->PaintAgents(
+                painter, viewport,
+                [this, tab](const AgentOverlay::Target &target)
+                {
+                    using Anchor = AgentOverlay::Anchor;
+                    if (target.anchor == Anchor::Palette)
+                    {
+                        if (const auto point = _palette->ElementAnchor(Qs(target.element_type), this))
+                        {
+                            return QPointF(*point);
+                        }
+                    }
+                    if (target.anchor == Anchor::StepType || target.anchor == Anchor::AddStep)
+                    {
+                        const auto *control =
+                            target.anchor == Anchor::StepType ? tab->timeline->StepTypeControl() : tab->timeline->AddStepControl();
+                        if (control->isVisible() && control->window() == this)
+                        {
+                            return QPointF(control->mapTo(this, control->rect().center()));
+                        }
+                    }
+                    const auto   &view = tab->ctl->GetModel().view;
+                    const QPointF local(target.world.x() * view.zoom + view.pan_x, target.world.y() * view.zoom + view.pan_y);
+                    const auto    bounds = tab->canvas->rect().adjusted(4, 4, -4, -4);
+                    return tab->canvas->mapTo(this, QPointF(std::clamp(local.x(), double(bounds.left()), double(bounds.right())),
+                                                            std::clamp(local.y(), double(bounds.top()), double(bounds.bottom()))));
+                });
+        });
+    for (auto *dock : {_palette_dock, _inspector_dock, _timeline_dock})
+    {
+        dock->installEventFilter(_agent_layer);
+    }
+    _agent_layer->raise();
+
     _UpdateMcpState();
     _UpdateExportsIndicator();
 }
@@ -801,6 +892,10 @@ MainWindow::Tab *MainWindow::_AddTab()
     auto *canvas    = new CanvasWidget(*ctl);
     auto *inspector = new Inspector(*ctl);
     auto *timeline  = new TimelinePanel(*ctl);
+    connect(canvas, &CanvasWidget::AgentsChanged, _agent_layer, qOverload<>(&QWidget::update));
+    connect(ctl, &Controller::ViewChanged, _agent_layer, qOverload<>(&QWidget::update));
+    canvas->installEventFilter(_agent_layer);
+
     canvas->SetPendingType(Us(_pending_type));
     _inspector_stack->addWidget(inspector);
     _timeline_stack->addWidget(timeline);
@@ -918,6 +1013,8 @@ void MainWindow::_OnCurrentTabChanged(int index)
     _timeline_stack->setCurrentWidget(t->timeline);
     _ctx.SetActive(t->ctl);
     _palette->SetDocument(t->ctl);
+    _agent_layer->raise();
+    _agent_layer->update();
     if (_library_dialog != nullptr)
     {
         _library_dialog->SetController(t->ctl);

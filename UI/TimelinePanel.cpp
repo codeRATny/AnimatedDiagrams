@@ -125,10 +125,10 @@ TimelinePanel::TimelinePanel(Controller &ctl, QWidget *parent) : QWidget(parent)
         _step_type->addItem(Qs(t.label), static_cast<int>(t.type));
     }
     l->addWidget(_step_type);
-    auto *add = new QPushButton(tr("＋ Add step"));
-    add->setObjectName(QStringLiteral("primaryButton"));
-    connect(add, &QPushButton::clicked, this, &TimelinePanel::AddStep);
-    l->addWidget(add);
+    _add_step = new QPushButton(tr("＋ Add step"));
+    _add_step->setObjectName(QStringLiteral("primaryButton"));
+    connect(_add_step, &QPushButton::clicked, this, &TimelinePanel::AddStep);
+    l->addWidget(_add_step);
     auto *anim = new QPushButton(tr("▶ Animation…"));
     anim->setToolTip(tr("Insert a ready-made animation (template from the library)"));
     connect(anim, &QPushButton::clicked, this, &TimelinePanel::AnimationRequested);
@@ -160,6 +160,10 @@ void TimelinePanel::_Update()
 }
 
 void TimelinePanel::AddMarker() { _timeline->AddMarkerAt(_ctl.Time()); }
+
+const QWidget *TimelinePanel::StepTypeControl() const { return _step_type; }
+
+const QWidget *TimelinePanel::AddStepControl() const { return _add_step; }
 
 void TimelinePanel::AddStep()
 {

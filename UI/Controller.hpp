@@ -111,6 +111,7 @@ public:
     void SetStopAtMarkers(bool on);
 
 Q_SIGNALS:
+    void ViewChanged();
     void ModelReplaced();
     void HistoryTraversal();
     void ModelChanged(bool structural);
